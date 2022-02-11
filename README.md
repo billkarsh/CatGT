@@ -5,7 +5,7 @@ CatGT
 
 CatGT is a postprocessing adjunct to SpikeGLX.
 
-CatGT is a litteral Swiss Army knife that:
+CatGT is a literal Swiss Army knife that:
 
 * TShifts data.
 * Filters data.
