@@ -1,0 +1,710 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta http-equiv="Content-Style-Type" content="text/css" />
+  <meta name="generator" content="pandoc" />
+  <title></title>
+  <style type="text/css">code{white-space: pre;}</style>
+  <link href="data:text/css;charset=utf-8,body%20%7B%0Amargin%3A%20auto%3B%0Apadding%2Dright%3A%201em%3B%0Apadding%2Dleft%3A%201em%3B%0Amax%2Dwidth%3A%2068em%3B%20%0Aborder%2Dleft%3A%201px%20solid%20black%3B%0Aborder%2Dright%3A%201px%20solid%20black%3B%0Acolor%3A%20black%3B%0Afont%2Dfamily%3A%20Verdana%2C%20sans%2Dserif%3B%0Afont%2Dsize%3A%20100%25%3B%0Aline%2Dheight%3A%20140%25%3B%0Acolor%3A%20%23333%3B%0A%7D%0Ablockquote%20%7B%0Aborder%2Dleft%3A%205px%20solid%20%23cccccc%3B%0Amargin%2Dleft%3A%2020px%3B%0Apadding%3A%200%200%200%2015px%3B%0A%7D%0Apre%20%7B%0Aborder%3A%201px%20dotted%20gray%3B%0Aborder%2Dstyle%3A%20dotted%3B%0Abackground%2Dcolor%3A%20%23f5f5f5%3B%20%0Adisplay%3A%20block%3B%0Acolor%3A%20%23f5f5f5%3B%0Apadding%2Dtop%3A%200%3B%0Apadding%2Dbottom%3A%200%3B%0A%0A%7D%0Acode%20%7B%0Afont%2Dfamily%3A%20monospace%3B%0Afont%2Dsize%3A%20115%25%3B%0Abackground%2Dcolor%3A%20transparent%3B%0Acolor%3A%20%231d9d1d%3B%0A%7D%0Ah1%20a%2C%20h2%20a%2C%20h3%20a%2C%20h4%20a%2C%20h5%20a%20%7B%0Atext%2Ddecoration%3A%20none%3B%0Acolor%3A%20%237a5ada%3B%0A%7D%0Ah1%2C%20h2%2C%20h3%2C%20h4%2C%20h5%20%7B%0Afont%2Dfamily%3A%20verdana%3B%0Afont%2Dweight%3A%20bold%3B%0Aborder%2Dbottom%3A%20none%3B%20%0Acolor%3A%20%237a5ada%3B%20%7D%0Ah1%20%7B%0Afont%2Dsize%3A%20130%25%3B%0A%7D%0Ah2%20%7B%0Afont%2Dsize%3A%20110%25%3B%0A%7D%0Ah3%20%7B%0Afont%2Dsize%3A%2095%25%3B%0A%7D%0Ah4%20%7B%0Afont%2Dsize%3A%2090%25%3B%0Afont%2Dstyle%3A%20italic%3B%0A%7D%0Ah5%20%7B%0Afont%2Dsize%3A%2090%25%3B%0Afont%2Dstyle%3A%20italic%3B%0A%7D%0Ah1%2Etitle%20%7B%0Afont%2Dsize%3A%20200%25%3B%0Afont%2Dweight%3A%20bold%3B%0Apadding%2Dtop%3A%200%2E2em%3B%0Apadding%2Dbottom%3A%200%2E2em%3B%0Atext%2Dalign%3A%20left%3B%0Aborder%3A%20none%3B%0A%7D%0Adt%20code%20%7B%0Afont%2Dweight%3A%20bold%3B%0A%7D%0Add%20p%20%7B%0Amargin%2Dtop%3A%200%3B%0A%7D%0A%23footer%20%7B%0Apadding%2Dtop%3A%201em%3B%0Afont%2Dsize%3A%2070%25%3B%0Acolor%3A%20gray%3B%0Atext%2Dalign%3A%20center%3B%0A%7D%0A" rel="stylesheet" type="text/css" />
+</head>
+<body>
+<h1 id="catgt-user-manual">CatGT User Manual</h1>
+<h2 id="purpose">Purpose</h2>
+<ul>
+<li>Optionally join trials with given run_name and index ranges [ga,gb] [ta,tb]...</li>
+<li>...Or run on any individual file.</li>
+<li>Optionally apply demultiplexing corrections.</li>
+<li>Optionally apply band-pass and global CAR filters.</li>
+<li>Optionally edit out saturation artifacts.</li>
+<li>Optionally extract tables of sync waveform edge times to drive TPrime.</li>
+<li>Optionally extract tables of any other TTL event times to be aligned with spikes.</li>
+<li>Optionally join the above outputs across different runs (supercat feature).</li>
+</ul>
+<hr />
+<h2 id="install">Install</h2>
+<h3 id="windows">(Windows)</h3>
+<ol style="list-style-type: decimal">
+<li>Copy CatGT-win to your machine, cd into folder.</li>
+<li>Read this document and the notes in <code>runit.bat</code>.</li>
+</ol>
+<h3 id="linux">(Linux)</h3>
+<ol style="list-style-type: decimal">
+<li>Copy CatGT-linux to your machine, cd into folder.</li>
+<li>If needed, <code>&gt; chmod +x install.sh</code></li>
+<li><code>&gt; ./install.sh</code></li>
+<li>Read this document and the notes in <code>runit.sh</code> wrapper script (required).</li>
+</ol>
+<h3 id="compatibility-linux">Compatibility (Linux)</h3>
+<ul>
+<li>Included libraries are from Ubuntu 16.04 (Xenial).</li>
+<li>Tested with Ubuntu 20.04 and 20.10.</li>
+<li>Tested with Scientific Linux 7.3.</li>
+<li>Tested with Oracle Linux Server 8.3.</li>
+<li>Let me know if it runs on other distributions.</li>
+</ul>
+<hr />
+<h2 id="output">Output</h2>
+<ul>
+<li>Results are placed next to source, named like this, with t-index = 'cat': <code>path/run_name_g5_tcat.imec1.ap.bin</code>.</li>
+<li>Errors and run messages are appended to <code>CatGT.log</code> in the current working directory.</li>
+</ul>
+<hr />
+<h2 id="usage-quick-ref">Usage Quick Ref</h2>
+<h3 id="windows-1">(Windows)</h3>
+<p><code>&gt;runit.bat -dir=data_dir -run=run_name -g=ga,gb -t=ta,tb &lt;which streams&gt; [ options ]</code></p>
+<p>Notes:</p>
+<ul>
+<li>Since version 1.4.0 runit.bat can, itself, take command-line parameters; you can still edit runit.bat directly if you prefer.</li>
+<li>It is easiest to learn by editing a copy of <code>runit.bat</code>. Double-click on a bat file to run it.</li>
+<li>Options must not have spaces, generally.</li>
+<li>File paths and names must not have spaces (a standard script file limitation).</li>
+<li>In *.bat files, continue long lines using [space][caret]. Like this: <code>continue this line ^</code>.</li>
+<li>Remove all white space at line ends, especially after a caret (^).</li>
+<li>Read CatGT.log. There is no interesting output in the command window.</li>
+</ul>
+<h3 id="linux-1">(Linux)</h3>
+<p><code>&gt;runit.sh '-dir=data_dir -run=run_name -g=ga,gb -t=ta,tb &lt;which streams&gt; [ options ]'</code></p>
+<p>Notes:</p>
+<ul>
+<li>Enclosing whole linux parameter list in quotes is recommended in general.</li>
+<li>Enclosing whole linux parameter list in quotes is required for -chnexcl or -supercat.</li>
+<li>Options must not have spaces, generally.</li>
+<li>File paths and names must not have spaces (a standard script file limitation).</li>
+<li>Read CatGT.log. There is no interesting output in the command window.</li>
+</ul>
+<h3 id="command-line-parameters">Command Line Parameters:</h3>
+<pre><code>Which streams:
+-ap                      ;required to process ap streams
+-lf                      ;required to process lf streams
+-ni                      ;required to process ni stream
+-prb_3A                  ;if -ap or -lf process 3A-style probe files, e.g. run_name_g0_t0.imec.ap.bin
+-prb=0,3:5               ;if -ap or -lf AND !prb_3A process these probes
+
+Options:
+-no_run_fld              ;older data, or data files relocated without a run folder
+-prb_fld                 ;use folder-per-probe organization
+-prb_miss_ok             ;instead of stopping, silently skip missing probes
+-gtlist={gj,tja,tjb}     ;override {-g,-t} giving each listed g-index its own t-range
+-t=cat                   ;extract TTL from CatGT output files (instead of -t=ta,tb)
+-exported                ;apply FileViewer 'exported' tag to in/output filenames
+-t_miss_ok               ;instead of stopping, zero-fill if trial missing
+-zerofillmax=500         ;set a maximum zero-fill span (millisec)
+-maxsecs=7.5             ;set a maximum output file length (float seconds)
+-apfilter=Typ,N,Fhi,Flo  ;apply ap band-pass filter of given {type, order, corners(float Hz)}
+-lffilter=Typ,N,Fhi,Flo  ;apply lf band-pass filter of given {type, order, corners(float Hz)}
+-no_tshift               ;DO NOT time-align channels to account for ADC multiplexing
+-loccar=2,8              ;apply ap local CAR annulus (exclude radius, include radius)
+-gblcar                  ;apply ap global CAR filter over all channels
+-gfix=0.40,0.10,0.02     ;rmv ap artifacts: ||amp(mV)||, ||slope(mV/sample)||, ||noise(mV)||
+-chnexcl={prb;chans}     ;this probe, exclude listed chans from ap loccar, gblcar, gfix
+-SY=0,384,6,500          ;extract TTL signal from imec SY (probe,word,bit,millisec)
+-XA=2,3.0,4.5,25         ;extract TTL signal from nidq XA (word,thresh1(V),thresh2(V),millisec)
+-XD=8,0,0                ;extract TTL signal from nidq XD (word,bit,millisec)
+-iSY=0,384,6,500         ;extract inverted TTL signal from imec SY (probe,word,bit,millisec)
+-iXA=2,2.0,1.0,25        ;extract inverted TTL signal from nidq XA (word,thresh1(V),thresh2(V),millisec)
+-iXD=8,0,0               ;extract inverted TTL signal from nidq XD (word,bit,millisec)
+-BF=8,2,4,3              ;extract numeric bit-field from nidq XD (word,startbit,nbits,inarow)
+-inarow=5                ;extractor antibounce stay high/low sample count
+-pass1_force_ni_bin      ;write pass one ni binary tcat file even if not changed
+-supercat={dir,run_ga}   ;concatenate existing output files across runs (see ReadMe)
+-supercat_trim_edges     ;supercat after trimming each stream to matched sync edges
+-supercat_skip_ni_bin    ;do not supercat ni binary files
+-dest=path               ;alternate path for output files (must exist)
+-out_prb_fld             ;if using -dest, create output subfolder per probe</code></pre>
+<h3 id="parameter-ordering">Parameter Ordering</h3>
+<p>You can list parameters on the CatGT command line in any order. CatGT applies them in the logically necessary order. Of particular note, CatGT applies filter operations in this order:</p>
+<ul>
+<li>Load data</li>
+<li>Apply any specified biquad (time domain)</li>
+<li>Transform to frequency domain</li>
+<li>TShift</li>
+<li>Apply any specified Butterworth filtering</li>
+<li>Transform back to time domain</li>
+<li>Detect gfix transients for later file editing</li>
+<li>Loccar, Gblcar</li>
+<li>Write file</li>
+<li>Apply gfix transient edits to file</li>
+</ul>
+<hr />
+<h2 id="individual-parameter-notes">Individual Parameter Notes</h2>
+<h3 id="dir">dir</h3>
+<p>The input files are expected to be organized into folders as SpikeGLX writes them. CatGT will use your hints {-no_run_fld, -prb_fld} to automatically generate a path from <code>data_dir</code> (the parent directory of all runs) to the files it needs from <code>run_name</code> (this run). Here are some examples:</p>
+<ul>
+<li><p>Use <code>-dir=data_dir -run=run_name -no_run_fld</code> if the data reside directly within data_dir without any run folder, as was true in early 3A software, or if you copied some of your run files without the enclosing run folder. That is, the data are organized like this: data_dir/run_name_g0_t0.imec0.ap.bin.</p></li>
+<li><p>Use <code>-dir=data_dir -run=run_name</code> if you did not select probe folders in SpikeGLX, that is, the probe data are all at the same level as the NI data without probe subfolders as in this example: data_dir/run_name_g0/run_name_g0_t0.imec0.ap.bin.</p></li>
+<li><p>Use <code>-dir=data_dir -run=run_name -prb_fld</code> if you did select probe folders in SpikeGLX so that the data from each probe lives in a separate folder inside the run folder as demonstrated here: data_dir/run_name_g0/run_name_g0_imec0/run_name_g0_t0.imec0.ap.bin.</p></li>
+</ul>
+<p>Use option <code>-prb_miss_ok</code> when run output is split across multiple drives.</p>
+<h3 id="run_name">run_name</h3>
+<p>The input run_name is a base (undecorated) name without g- or t-indices.</p>
+<h3 id="stream-identifiers--ap--lf--ni">Stream identifiers <code>{-ap, -lf, -ni}</code></h3>
+<p>In a given run you might have saved a variety of stream/file types {ap.bin, lf.bin, ni.bin}. Use the <code>{-ap, -lf, -ni}</code> flags to indicate which streams within this run you wish to process.</p>
+<p>Note that 2.0 probes output only full-band data with files named ap.bin. Unlike 1.0 probes there isn't a separate lf band for 2.0. However, if the following are true:</p>
+<ul>
+<li>The current probe is a 2.0 type.</li>
+<li>-lf is set.</li>
+<li>-lffilter is set (include the low-pass corner!),</li>
+</ul>
+<p>then CatGT will create a filtered and downsampled (2500 Hz) lf.bin/meta file set from the ap.bin stream data.</p>
+<h3 id="prb-which-probes">prb (which probe(s))</h3>
+<p>This designates which probes to process. Probe indices are assigned by SpikeGLX and always start at zero. Note that if you selected the probe folders box in SpikeGLX, the data for probe 7 would be output to a subfolder like this: data_dir/run_name_g0/run_name_g0_imec7.</p>
+<p>Examples:</p>
+<ul>
+<li>Use <code>-prb=0</code> if your run contains one probe only.</li>
+<li>Use <code>-prb=2:4</code> to process probes {2,3,4}.</li>
+<li>Use <code>-prb=1,3:5</code> to do probes {1,3,4,5} (skip 2).</li>
+</ul>
+<h3 id="index-range-g--t--concatenation">Index range (g-, t- concatenation)</h3>
+<h4 id="background">Background</h4>
+<p>During a SpikeGLX run the data samples from the hardware are enqueued into history streams, one stream for each probe and one for NI data. There are several options for writing data files while a run is in progress. For example, all of the data can be saved in a continuous manner, which would produce a single file named <code>run_name_g0_t0</code>. As another example, the <code>Enable/Disable Recording</code> (gate control) button might be pressed several times creating distinct file-writing epochs, each of which gets its own <code>g-index</code>, e.g., {<code>run_name_g0_t0</code>, <code>run_name_g1_t0</code>, <code>run_name_g3_t0</code>, ...}. Finally, within each open gate epoch, SpikeGLX can write a programmed sequence of triggered files, incrementing the <code>t-index</code> for each of these, e.g. {<code>run_name_g7_t0</code>, <code>run_name_g7_t1</code>, <code>run_name_g7_t2</code>, ...}. Note that triggered sequences share a common run_name and g-index. Note too that each time the gate reopens, the g-index is advanced and the selected trigger program will start over again beginning with index t0. In all of these examples the hardware remains in the running state and file data are being drawn from the shared underlying history streams. That allows files from the same run (run_name) to be sewn back together so as to preserve the timing in the original experiment.</p>
+<h4 id="usage-notes">Usage notes</h4>
+<p>CatGT can concatenate files together that come from the same run. That is, the files have the same base run_name, but may have differing g- and t-indices.</p>
+<ul>
+<li>Example <code>-g=0</code> (or <code>-g=0,0</code>): specifies the single g-index <code>0</code>.</li>
+<li>Example <code>-t=5</code> (or <code>-t=5,5</code>): specifies the single t-index <code>5</code>.</li>
+<li>Example <code>-g=1,4</code>: specifies g-index range <code>[1,4] inclusive</code>.</li>
+<li>Example <code>-t=0,100</code>: specifies t-index range <code>[0,100] inclusive</code>.</li>
+</ul>
+<p>When a g-range [ga,gb] and/or a t-range [ta,tb] are specified, concatenation proceeds like two nested loops:</p>
+<pre><code>    foreach g in range [ga,gb] {
+
+        // put all the t's together for this g...
+
+        foreach t in range [ta,tb] {
+
+            find input FILE with this g and t
+
+            if found {
+
+                // compare FILE 'firstSample' metadata item
+                // to the last sample index in the output...
+
+                if firstSample immediately follows the output
+                    append FILE to output
+                else if firstSample is larger (a gap)
+                    zero-fill gap, then append FILE to output
+                else if firstSample is smaller (overlap)
+                    move FILE pointer beyond overlap, then append remainder
+            }
+            else if option t_miss_ok is specified
+                fill gap with zeros
+            else
+                stop processing this stream
+        }
+    }</code></pre>
+<h4 id="using-catgt-output-files-as-input-for-an-extraction-pass">Using CatGT output files as input for an extraction pass</h4>
+<p>Operate on CatGT output files (in order to do TTL extraction) by setting the -t parameter to: <code>-t=cat</code>. Note that you must specify the single <code>ga</code> that labels that tcat file. (More on this in the TTL extraction notes below).</p>
+<h4 id="running-catgt-on-nonstandard-file-names">Running CatGT on nonstandard file names</h4>
+<p>This can be done easily by creating symbolic file links that use the established SpikeGLX g/t naming conventions.</p>
+<h5 id="windows-2">(Windows)</h5>
+<ol style="list-style-type: decimal">
+<li>Create a folder, e.g. 'ZZZ', to hold your symlinks; it acts like a containing run folder. You can make either a flat folder organization or a standard SpikeGLX hierarchy; adjust the CatGT parameters accordingly.</li>
+<li>Create a .bat script file, e.g. 'makelinks.bat'.</li>
+<li>Edit makelinks.bat, adding entries for each bin/meta file pair like this:</li>
+</ol>
+<pre><code>mklink &lt;...ZZZ\goodname_g0_t0.imec0.ap.bin&gt; &lt;path\myoriginalname.bin&gt;
+mklink &lt;...ZZZ\goodname_g0_t0.imec0.ap.meta&gt; &lt;path\myoriginalname.meta&gt;</code></pre>
+<blockquote>
+<blockquote>
+<p>Set the g/t indices to describe the concatenation order you want.</p>
+</blockquote>
+</blockquote>
+<ol start="4" style="list-style-type: decimal">
+<li>Close makelinks.bat.</li>
+<li>Right-click on makelinks.bat and select <code>Run as administrator</code>.</li>
+</ol>
+<h5 id="linux-2">(Linux)</h5>
+<ol style="list-style-type: decimal">
+<li>Create a folder, e.g. 'ZZZ', to hold your symlinks; it acts like a containing run folder. You can make either a flat folder organization or a standard SpikeGLX hierarchy; adjust the CatGT parameters accordingly.</li>
+<li>Create a .sh script file, e.g. 'makelinks.sh'.</li>
+<li>Edit makelinks.sh, adding entries for each bin/meta file pair like this:</li>
+</ol>
+<pre><code>#!/bin/sh
+
+ls -s &lt;path/myoriginalname.bin&gt; &lt;...ZZZ/goodname_g0_t0.imec0.ap.bin&gt;
+ls -s &lt;path/myoriginalname.meta&gt; &lt;...ZZZ/goodname_g0_t0.imec0.ap.meta&gt;</code></pre>
+<blockquote>
+<blockquote>
+<p>Set the g/t indices to describe the concatenation order you want.</p>
+</blockquote>
+</blockquote>
+<ol start="4" style="list-style-type: decimal">
+<li>Close makelinks.sh, set its executable flag, run it.</li>
+</ol>
+<h3 id="missing-files-and-gap-zero-filling">Missing files and gap zero-filling</h3>
+<p>You can control how CatGT works during file concatenation when one or more of your input files is missing, or, if input file <code>N+1</code> starts later in time than the end of input file <code>N</code>; what we term a &quot;gap&quot; in the recording.</p>
+<p>If you do not use the <code>-t_miss_ok</code> option, the default behavior is to require all files in the series to be present. Processing of a stream will stop if a binary or meta file is not found. If the expected file set is found but there is a gap between the files, the gap is filled with zeros for all channels. If instead, adjacent files overlap in time, the overlap region is represented just once in the output file.</p>
+<p>If you include <code>-t_miss_ok</code> in the command line, then processing does not stop. Rather, the entire missing file (or run of consecutive missing files) is counted as an extended gap. The gap is replaced by zeros when a next expected file set is found.</p>
+<p>By default, CatGT zero-fills gaps so as to precisely preserve the real world duration of the recording. This enables the spikes and other TTL events that are present in the output file to be temporally aligned with other recorded data streams in the experiment.</p>
+<p>However, you might not be interested in aligning the data to other streams, so feel that zeros in the output are wasted space. Moreover, some spike sorting programs are known to crash because they can not handle long spans of time with no detected spikes. Option <code>zerofillmax</code> allows you to set an upper limit on the span of zeros that can be inserted.</p>
+<p>For example, <code>zerofillmax=500</code> directs that gaps whose true length is &lt;= 500 ms are filled by the equivalent-length span of zeros, but longer spans are capped at 500 ms of zeros.</p>
+<p>Setting <code>zerofillmax=0</code> specifies that zero-filling is disabled.</p>
+<blockquote>
+<p>All detected gaps are noted in the CatGT log file. The log entries indicate the time (samples from file start) in the output file that the gap starts, the true length of the gap in the original file set, and the length of the zero-filled span in the output file.</p>
+</blockquote>
+<h3 id="output-files">Output files</h3>
+<ul>
+<li>New .bin/.meta files are output only in these cases:
+<ol style="list-style-type: decimal">
+<li>A range of files is to be concatenated, that is, (gb &gt; ga) or (tb &gt; ta).</li>
+<li>If filters are applied, so the binary data are altered.</li>
+</ol></li>
+<li><p>If you do not specify the <code>-dest</code> option, output files are stored in the same folder as their input files.</p></li>
+<li><p>If a range of g-indices was specified <code>-g=ga,gb</code> the data are all written to the <code>ga</code> folder. Such output files look like <code>path/run_name_g2_tcat.imec1.ap.bin</code>, that is, the g-index is set to the lowest specified input g-index, and the t-index becomes <code>tcat</code> to indicate this file contains a range.</p></li>
+<li><p>The <code>tcat</code> naming convention is used even if a range in g is specified, e.g., <code>-g=0,100</code>, but there is just one t-index for each gate <code>t=0</code>.</p></li>
+<li><p>The <code>-dest=myPath</code> option will store the output in a destination folder of your choosing. It will further create an output subfolder for the run having a <code>catgt_</code> tag: <code>myPath/catgt_run_name_ga</code>.</p></li>
+<li><p>A meta file is also created for each output binary, e.g.: <code>path/run_name_g5_tcat.imec1.ap.meta</code>.</p></li>
+<li><p>The meta file also gets <code>catGTCmdlineN=&lt;command line string&gt;</code>.</p></li>
+<li><p>The meta item e.g., <code>catNFiles</code>, indicates count of concatenated files.</p></li>
+<li><p>The meta item e.g., <code>catGVals=0,1</code>, indicates range of g-indices used.</p></li>
+<li><p>The meta item e.g., <code>catTVals=0,20</code>, indicates range of t-indices used.</p></li>
+</ul>
+<h3 id="gtlist-option">gtlist option</h3>
+<p>This option overrides the <code>-g=</code> and <code>-t=</code> options so that you can specify a separate t-range for each g-index. Specify the list like this:</p>
+<p><code>-gtlist={g0,t0a,t0b}{g1,t1a,t1b}...</code> <em>(include the curly braces)</em>.</p>
+<blockquote>
+<p>With this option the g- and t- values in each list element have to be integers &gt;= 0. You can't use <code>t=cat</code> here.</p>
+</blockquote>
+<h3 id="apfilter-and-lffilter-options">apfilter and lffilter options</h3>
+<p>Digital filtering is separately specified for probe AP and LF bands. CatGT offers these filter options (xx = {ap, lf}):</p>
+<ul>
+<li>xxfilter=biquad,2,Fhi,Flo ; order-2 band-pass</li>
+<li>xxfilter=biquad,2,Fhi,0 ; order-2 high-pass</li>
+<li>xxfilter=biquad,2,0,Flo ; order-2 low-pass</li>
+</ul>
+<p>The biquad is a second order time-domain filter (the order parameter is actually ignored as it must be 2). Our biquad band-pass is implemented as a high-pass followed by a low-pass. We apply all biquads in the forward direction only, making this a causal filter. There is always some phase error associated with causal filtering. This shouldn't disrupt the ability to distinguish waveforms from one another in spike sorting, yet the shapes will differ somewhat from their unfiltered counterparts. This had been the default type of filtering applied in CatGT through version 2.1.</p>
+<ul>
+<li>xxfilter=butter,N,Fhi,Flo ; order-N band-pass</li>
+<li>xxfilter=butter,N,Fhi,0 ; order-N high-pass</li>
+<li>xxfilter=butter,N,0,Flo ; order-N low-pass</li>
+</ul>
+<p>Our Butterworth filters are implemented in the frequency domain. As such they are always acausal (zero phase error). The rate of roll-off of the FFT implementation is about a factor of two slower than in the time domain. For example, to match the result of a single pass (forward-only) order-3 Butterworth (as per MATLAB filter()), specify order 6 here. To match forward-backward time-domain filtering with an order-3 (as per MATLAB filtfilt()), which doubles the effective order, specify order 12 here.</p>
+<h4 id="no_tshift-option">no_tshift option</h4>
+<p>Imec probes digitize the voltages on all of their channels during each sample period (~ 1/(30kHz)). However, the converting circuits (ADCs) are expensive in power and real estate, so there are only a few dozen on the probe and they are shared by the ~384 channels. The channels are organized into multiplex channel groups that are digitized together, consequently each group's actual sampling time is slightly offset from that of other groups.</p>
+<p>CatGT automatically applies an operation we call <code>tshift</code> to undo the effects of multiplexing by temporally aligning channels to each other. This improves the results of operations that compare or combine different channels, such as global CAR filtering or whitening. The FFT-based correction method was proposed by Olivier Winter of the International Brain Laboratory.</p>
+<p>Note that tshift and band-pass filtering should always be done on Neuropixel probe data. The issue is only whether these are applied by CatGT or by some other component of your analysis pipeline.</p>
+<ul>
+<li>Use option <code>-no_tshift</code> to disable CatGT's automatic tshift.</li>
+</ul>
+<h3 id="loccar-option">loccar option</h3>
+<ul>
+<li>Do CAR common average referencing on an annular area about each site.</li>
+<li>Specify an excluded inner radius (in sites) and an outer radius.</li>
+<li>Use a high-pass filter also, to remove DC offsets.</li>
+</ul>
+<h3 id="gblcar-option">gblcar option</h3>
+<ul>
+<li>Do CAR common average referencing using all channels.</li>
+<li>Note that <code>-gblcar</code> tends to cancel LFP band signal.</li>
+<li>Use a high-pass filter also, to remove DC offsets.</li>
+<li>No, filter options <code>-loccar</code> and <code>-gblcar</code> don't make sense together.</li>
+</ul>
+<h3 id="gfix-option">gfix option</h3>
+<p>Light or chewing artifacts often make large amplitude excursions on a majority of channels. This tool identifies them and cuts them out, replacing with zeros. You specify three things.</p>
+<ol style="list-style-type: decimal">
+<li>A minimum absolute amplitude in mV (zero ignores the amplitude test).</li>
+<li>A minimum absolute slope in mV/sample (zero ignores the slope test).</li>
+<li>A noise level in mV defining the end of the transient.</li>
+</ol>
+<ul>
+<li>Yes, <code>-gblcar</code> and <code>-gfix</code> make sense used together.</li>
+</ul>
+<h4 id="tuning-gfix-parameters">Tuning gfix parameters</h4>
+<p>Use the SpikeGLX FileViewer to select appropriate amplitude and slope values for a given run. Be sure to turn high-pass filtering ON and spatial <code>&lt;S&gt;</code> filters OFF to match the conditions the CatGT artifact detector will use. Zoom the time scale (ctrl + click&amp;drag) to see the individual sample points and their connecting segments. Set the slope this way: Zoom in on the artifact initial peak, the points with greatest amplitude. Suppose consecutive points {A,B,C,D} make up the peak and {B,C,D} exceed the amplitude threshold. Then there are three slopes {B-A,C-B,D-C} connecting these points. Select the largest value. That is, set the slope to the fastest voltage change near the peak. An artifact will usually be several times faster than a neuronal spike.</p>
+<h3 id="chnexcl-option">chnexcl option</h3>
+<p>Use this option to prevent bad channels from corrupting calculations over mixtures of channels, such as the spatial filters {loccar, gblcar, gfix}.</p>
+<p>The option <code>-chnexcl={probe;chan_list}{probe;chan_list}...</code> takes a list of elements <em>(include the curly braces)</em> that specify a probe index; and a list of channels to exclude for that probe. Channel lists are specified like page lists in a printer dialog, <code>1,10,40:51</code> for example. Be careful to use a semicolon (;) between probe and channel list, and use only commas and colons (,:) within your channel lists.</p>
+<p>Note that the CatGT spatial filters honor the metadata item <code>~snsShankMap</code>. The shank map has an entry for each saved channel that describes the (shank, col, row) where its electrode resides on the shank, and a fourth 0/1 value, <code>use flag</code>, indicating if the channel should be used in spatial filtering. The chnexcl data force the corresponding use flags to zero before the filters are applied, and the modified <code>~snsShankMap</code> is written to the CatGT output metadata.</p>
+<h3 id="ttl-digital-extractions">TTL (digital) extractions</h3>
+<p>A positive TTL pulse: 1. starts at low baseline (below threshold) 2. has a leading/rising edge (crosses above threshold) 3. (optionally) stays high/deflected for a given duration 4. has a trailing/falling edge (crosses below threshold).</p>
+<p>There are three positive pulse extractors that each make a report/file of the times (seconds) of the leading edges of matched pulses. They differ mainly in the type of channel that they scan, although analog signals need some additional amplitude parameters.</p>
+<ul>
+<li>SY: Finds positive pulses in a probe SY channel.</li>
+<li>XA: Finds positive pulses in an NI analog channel.</li>
+<li>XD: Finds positive pulses in an NI digital channel.</li>
+</ul>
+<p>An inverted TTL pulse: 1. starts at high baseline (above threshold) 2. has a leading/falling edge (crosses below threshold) 3. (optionally) stays low/deflected for a given duration 4. has a trailing/rising edge (crosses above threshold).</p>
+<p>There are three inverted pulse extractors that each make a report/file of the times (seconds) of the leading edges of matched pulses. They differ mainly in the type of channel that they scan, although analog signals need some additional amplitude parameters.</p>
+<ul>
+<li>iSY: Finds inverted pulses in a probe SY channel.</li>
+<li>iXA: Finds inverted pulses in an NI analog channel.</li>
+<li>iXD: Finds inverted pulses in an NI digital channel.</li>
+</ul>
+<p>For brevity we discuss only the positive pulse extractors. The inverted pulse versions work exactly the same way. Just keep in mind that inverted pulses have a high baseline level and deflection toward low values.</p>
+<blockquote>
+<p>It may be helpful to review the organization of words and bits in data streams in the <a href="https://github.com/billkarsh/SpikeGLX/blob/master/Markdown/UserManual.md#channel-naming-and-ordering">SpikeGLX User Manual</a>.</p>
+</blockquote>
+<h4 id="xa-channels">XA channels</h4>
+<p>XA are analog-type NI channels. The signal is parametrized by:</p>
+<ul>
+<li>Index of the word in the stored data file</li>
+<li>Primary TTL threshold-1 (V)</li>
+<li>Optional more stringent threshold-2 (V)</li>
+<li>Milliseconds duration</li>
+</ul>
+<p>If your signal looks like clean square pulses, set threshold-2 to be closer to baseline than threshold-1 to ignore the threshold-2 level and run more efficiently. For noisy signals or for non-square pulses set threshold-2 to be farther from baseline than theshold-1 to ensure pulses attain a desired deflection amplitude. Using two separate threshold levels allows detecting the earliest time that pulse departs from baseline (threshold-1) and separately testing that the deflection is great enough to be considered a real event and not noise (threshold-2).</p>
+<blockquote>
+<p>SpikeGLX MA channels can also be scanned with the <code>-XA</code> option.</p>
+</blockquote>
+<h4 id="sy-and-xd-channels">SY and XD channels</h4>
+<p>SY (imec), XD (NI) are digital-type channels. The signal is parametrized by:</p>
+<ul>
+<li>Index of the word in the stored data file (or -1, see below)</li>
+<li>Index of the bit in the word</li>
+<li>Milliseconds duration.</li>
+</ul>
+<blockquote>
+<p>If the SY word is -1, the index of the last word in the stream is used because that's where the SYNC word appears in standard SpikeGLX binaries.</p>
+</blockquote>
+<blockquote>
+<p>If the XD word is -1, the index of the last word in the stream is used because that follows all of the analog channels, and most users have no more than 16 digital lines.</p>
+</blockquote>
+<h4 id="common-to-all-extractions"><strong>Common to all extractions</strong></h4>
+<ul>
+<li><p>All indexing is zero-based.</p></li>
+<li><p>Milliseconds duration means the signal must remain deflected from baseline for that long.</p></li>
+<li><p>Milliseconds duration can be zero to specify detection of all leading edges regardless of pulse duration.</p></li>
+<li>Milliseconds duration default precision (tolerance) is <strong>+/- 20%</strong>.
+<ul>
+<li>Default tolerance can be overridden by appending it in milliseconds as the last parameter for that extractor.</li>
+<li>Each extractor can have its own tolerance.</li>
+<li>E.g. <code>-XD=8,0,100</code> seeks pulses with duration in default range [80,120] ms.</li>
+<li>E.g. <code>-XD=8,0,100,2</code> seeks pulses with duration in specified range [98,102] ms.</li>
+</ul></li>
+<li><p>A given channel or even bit could encode two or more types of pulse that have different durations, E.g... <code>-XD=8,0,10 -XD=8,0,20</code> scans and reports both 10 and 20 ms pulses on the same line.</p></li>
+<li><p>Each option, say <code>-SY=0,384,6,500</code>, creates an output file whose name reflects the parameters, e.g., <code>run_name_g0_tcat.imec0.ap.SY_384_6_500.txt</code>.</p></li>
+<li><p>The threshold is not encoded in the <code>-XA</code> filename; just word and milliseconds.</p></li>
+<li><p>The files report the times (s) of leading edges of detected pulses; one time per line, <code>\n</code> line endings.</p></li>
+<li><p>The time is relative to the start of the stream in which the pulse is detected (native time).</p></li>
+</ul>
+<h4 id="inarow-option">inarow option</h4>
+<p>All of the TTL extractors use edge detection. By default, when a signal crosses from low to high, it is required to stay high for at least 5 samples. Similarly, when crossing from high to low the signal is required to stay low for at least 5 samples. This requirement is applied even when specifying a pulse duration of zero, that is, it is applied to any edge. This is done to guard against noise.</p>
+<p>You can override the count giving any value &gt;= 1.</p>
+<h3 id="bit-field-bf-extraction">Bit-field (BF) extraction</h3>
+<p>The -XD and -iXD options treat each bit of an ni XD word as an individual line. In contrast, the -BF option interprets a contiguous group of XD bits as a non-negative n-bit binary number. The -BF extactor reports value transitions: the newest value and the time it changed, in two separate files. The parameters are:</p>
+<ul>
+<li><strong>word</strong>: the word to scan in the ni stream (or -1 for last word),</li>
+<li><strong>startbit</strong>: lowest order bit included in group (range [0..15]),</li>
+<li><strong>nbits</strong>: how many bits belong to group (range [1..&lt;16-startbit&gt;]).</li>
+<li><strong>inarow</strong>: a real value has to persist this many samples in a row (1 or higher).</li>
+</ul>
+<p>In the following examples we set inarow=3.</p>
+<p>For example, to interpret all 16 bits of word 5 as a number, set -BF=5,0,16,3. To interpret the high-byte as a number, set -BF=5,8,8,3. To interpret bits {3,4,5,6} as a four-bit value, set -BF=5,3,4,3. You can specify multiple -BF options on the same command line. The words and bits can overlap.</p>
+<p>Each -BF option generates two output files, named according to the parameters (excluding inarow), for example:</p>
+<ul>
+<li><code>run_name_g0_tcat.imec0.ap.BFT_5_3_4.txt</code>,</li>
+<li><code>run_name_g0_tcat.imec0.ap.BFV_5_3_4.txt</code>.</li>
+</ul>
+<p>The two files have paired entries. The <code>BFV</code> file contains the decoded values, and the <code>BFT</code> file contains the time (seconds from file start) that the field switched to that value.</p>
+<h3 id="tcat-defer-extraction-to-a-later-pass">-t=cat defer extraction to a later pass</h3>
+<p>Option <code>-t=cat</code> allows you to concatenate/filter the data in a first pass and later extract TTL events from the output files which are now named <code>tcat</code>.</p>
+<blockquote>
+<p>NOTE: If the files to operate on are now in an output folder named <code>catgt_run_name</code> then <em>DO PUT</em> tag <code>catgt_</code> in the <code>-run</code> parameter like example (2) below:</p>
+</blockquote>
+<blockquote>
+<p>NOTE: Second pass is restricted to TTL/BF extraction. An error is flagged if the second pass specifies any concatenation or filter options.</p>
+</blockquote>
+<p><strong>Examples</strong></p>
+<ul>
+<li><ol style="list-style-type: decimal">
+<li>Saving to native folders --</li>
+</ol>
+<ul>
+<li>Pass 1: <code>&gt;CatGT -dir=aaa -run=bbb -g=ga,gb -t=ta,tb</code>.</li>
+<li>Pass 2: <code>&gt;CatGT -dir=aaa -run=bbb -g=ga -t=cat</code>.</li>
+</ul></li>
+<li><ol start="2" style="list-style-type: decimal">
+<li>Saving to dest folders --</li>
+</ol>
+<ul>
+<li>Pass 1: <code>&gt;CatGT -dir=aaa -run=bbb -g=ga,gb -t=ta,tb -dest=ccc</code>.</li>
+<li>Pass 2: <code>&gt;CatGT -dir=ccc -run=catgt_bbb -g=ga -t=cat -dest=ccc</code>.</li>
+</ul></li>
+</ul>
+<hr />
+<h2 id="supercat-multiple-runs">Supercat Multiple Runs</h2>
+<p>You may want to concatenate the output {bin, meta, extractor} files from two or more different CatGT runs, perhaps, to spike-sort them jointly and look for persistent units over several days. You can do that in a two-step process by (1) running CatGT normally, <code>&quot;pass 1&quot;</code>, for each of the separate runs to generate their tcat-tagged output files, and then (2) running CatGT on those tcat outputs <code>&quot;pass 2&quot;</code> using the <code>-supercat</code> option as described in this section.</p>
+<h2 id="building-the-supercat-command-line----">--- Building The Supercat Command Line ---</h2>
+<h3 id="supercat-option">supercat option</h3>
+<p>The new option <code>-supercat={dir,run_ga}{dir,run_ga}...</code> takes a list of elements <em>(include the curly braces)</em> that specify which runs to join and in what order (the order listed). Remember that CatGT lets you store run output either in the native input folders or in a separate dest folder. Here's how to interpret and set a supercat element depending on how you did that CatGT run:</p>
+<p><strong>Example</strong></p>
+<ul>
+<li><ol style="list-style-type: decimal">
+<li>Saved to native folders <strong>with run folder</strong> --</li>
+</ol>
+<ul>
+<li>dir: The parent directory of the run folder.</li>
+<li>run_ga: The name of the run folder <strong>including g-index</strong>.</li>
+</ul></li>
+<li><ol start="2" style="list-style-type: decimal">
+<li>Saved to native folders <strong>without run folder (-no_run_fld option)</strong> --</li>
+</ol>
+<ul>
+<li>dir: The parent directory of the data files themselves.</li>
+<li>run_ga: The run_name and g-index parts of the tcat output files.</li>
+</ul></li>
+<li><ol start="3" style="list-style-type: decimal">
+<li>Saving to dest folders --</li>
+</ol>
+<ul>
+<li>dir: The parent directory of the catgt_run_ga folder.</li>
+<li>run_ga: 'catgt_' tagged folder name, e.g. <strong>catgt_myrun_g7</strong>.</li>
+</ul></li>
+</ul>
+<blockquote>
+<p>Note that if <code>-no_run_fld</code> is used, it is applied to all elements.</p>
+</blockquote>
+<blockquote>
+<p>Note that in linux, curly braces will be misinterpreted, unless you enclose the whole parameter list in quotes:<br> <strong>&gt; runit.sh 'my_params'</strong></p>
+</blockquote>
+<h3 id="supercat_trim_edges-option">supercat_trim_edges option</h3>
+<p>When SpikeGLX writes files, the first samples written are aligned as closely as possible across each of the streams, either using elapsed time, or using sync if enabled for the run. However, the trailing edges of the files, that is, the last samples written, are not tightly controlled unless you selected a trigger mode that sets a fixed time span for the files. Said another way, the starts of files in a run are aligned, but the lengths of the files are ragged (differences of ~thousandths of a second).</p>
+<p>By default, supercat just sews the files from different runs together end to end without regard for the differences in length of different streams. However, when the supercat_trim_edges option is enabled, supercat does more work to trim the files so that the different streams stay better aligned and closer to the same length. In particular, between each pair of adjacent runs (A) and (B):</p>
+<ul>
+<li><p>The trailing edge of each stream of (A) is cut at a sync edge (the same edge in each stream). The edge itself is kept in the output.</p></li>
+<li><p>The leading edge of each stream of (B) is cut at a sync edge (the same edge in each stream). The edge itself is omitted so that the output has one unambiguous edge at the boundary.</p></li>
+<li><p>Any/all extraction files for a given stream are edited/trimmed in tandem with the stream's binary files.</p></li>
+</ul>
+<blockquote>
+<p>This option requires:</p>
+<ul>
+<li>Sync was enabled in SpikeGLX for each run being supercatted.</li>
+<li>Sync edges are extracted from each stream during pass 1.</li>
+<li>Option zerofillmax should not be used during pass 1.</li>
+<li>Option maxsecs is discouraged during pass 1.</li>
+</ul>
+</blockquote>
+<blockquote>
+<p>Note that to supercat lf files, we need their sync edges which can only be extracted/derived from their ap counterparts:</p>
+<ul>
+<li>Specify (-ap) and sync edge extraction (-SY) during pass 1.</li>
+</ul>
+</blockquote>
+<h3 id="supercat_skip_ni_bin-option-pass1_force_ni_bin">supercat_skip_ni_bin option &amp; pass1_force_ni_bin</h3>
+<p>Your first-pass CatGT runs might have extracted edge files but produced no new binary NI files (that happens if no trial range is specified in the g- or t-indices). The supercat_skip_ni_bin option reminds supercat not to process the missing binary files.</p>
+<p>On the other hand, you might want to make a supercat of NI binary files even though you aren't modifying those data in the first pass. In that case, do the first pass with <code>pass1_force_ni_bin</code> which will ensure that the NI binary files are made and tagged <code>tcat</code> so supercat can find them.</p>
+<blockquote>
+<p>As of version 1.9, any operations on a stream always produce a new 'tcat' meta file so that supercat can later track file lengths.</p>
+</blockquote>
+<h3 id="supercat-other-parameters">supercat (other parameters)</h3>
+<p>Here's how all the other parameters work for a supercat session...</p>
+<blockquote>
+<p>Note that each option is global and will apply to all of the supercat elements.</p>
+</blockquote>
+<pre><code>Standard:
+-dir                     ;ignored (parsed from {dir,run_ga})
+-run                     ;ignored (parsed from {dir,run_ga})
+-g=ga,gb                 ;ignored (parsed from {dir,run_ga})
+-t=ta,tb                 ;ignored (assumed to be t=cat)
+
+Which streams:
+-ap                      ;required to supercat ap streams
+-lf                      ;required to supercat lf streams
+-ni                      ;required to supercat ni stream
+-prb_3A                  ;if -ap or -lf supercat 3A-style probe files, e.g. run_name_g0_tcat.imec.ap.bin
+-prb=0,3:5               ;if -ap or -lf AND !prb_3A supercat these probes
+
+Options:
+-no_run_fld              ;older data, or data files relocated without a run folder
+-prb_fld                 ;use folder-per-probe organization
+-prb_miss_ok             ;instead of stopping, silently skip missing probes
+-gtlist={gj,tja,tjb}     ;ignored (parsed from {dir,run_ga})
+-exported                ;apply FileViewer 'exported' tag to in/output filenames
+-t_miss_ok               ;ignored
+-zerofillmax=500         ;ignored
+-maxsecs=7.5             ;ignored
+-apfilter=Typ,N,Fhi,Flo  ;ignored
+-lffilter=Typ,N,Fhi,Flo  ;ignored
+-no_tshift               ;ignored
+-loccar=2,8              ;ignored
+-gblcar                  ;ignored
+-gfix=0.40,0.10,0.02     ;ignored
+-chnexcl={prb;chans}     ;ignored
+-SY=0,384,6,500          ;required if joining this extractor type
+-XA=2,3.0,4.5,25         ;required if joining this extractor type
+-XD=8,0,0                ;required if joining this extractor type
+-iSY=0,384,6,500         ;required if joining this extractor type
+-iXA=2,2.0,1.0,25        ;required if joining this extractor type
+-iXD=8,0,0               ;required if joining this extractor type
+-BF=8,2,4,3              ;required if joining this extractor type
+-inarow=5                ;ignored
+-pass1_force_ni_bin      ;ignored
+-dest=path               ;required
+-out_prb_fld             ;create output subfolder per probe</code></pre>
+<blockquote>
+<p>Note that you need to provide the same extractor parameters that were used for the individual runs. Although supercat doesn't do extraction, it needs the parameters to create filenames.</p>
+</blockquote>
+<h2 id="supercat-behaviors----">--- Supercat Behaviors ---</h2>
+<h3 id="zero-filling">Zero filling</h3>
+<p>There is no zero filling in supercat. Joining is done end-to-end. Missing files cause processing to stop, with one exception: You can legally skip probes using the <code>-prb_miss_ok</code> option. This allows the data to have been saved in a multidirectory fashion where not all probes will be in a given run folder.</p>
+<p>Otherwise:</p>
+<ul>
+<li>Every run specified in the supercat list is required to exist.</li>
+<li>Every file type {bin, meta, extractor} being joined must exist in each run.</li>
+</ul>
+<blockquote>
+<p>Note that supercat will check if the channel count matches from run to run and flag an error if not. However, beyond that, only you know if it makes any sense to join these runs together.</p>
+</blockquote>
+<h3 id="supercat-output">supercat output</h3>
+<p>You must provide an output directory using the <code>-dest</code> option. CatGT will use the <code>run_ga</code> parts of the first listed supercat element to create a subfolder in the dest directory named <code>supercat_run_ga</code> and place the results there.</p>
+<p>The output metadata will <strong>NOT</strong> contain any of these Pass-1 tags:</p>
+<ul>
+<li><code>catGTCmdlineN : N in range [0..99]</code></li>
+<li><code>catNFiles</code></li>
+<li><code>catGVals</code></li>
+<li><code>catTVals</code></li>
+</ul>
+<p>The output metadata <strong>WILL</strong> contain these supercat tags:</p>
+<ul>
+<li><code>catGTCmdline</code></li>
+<li><code>catNRuns</code></li>
+</ul>
+<p>As runs are joined, supercat will automatically offset the times within extracted edge files. The offset for the k-th listed run is the sum of the file lengths for runs 0 through k-1.</p>
+<hr />
+<h2 id="change-log">Change Log</h2>
+<p>Version 2.4</p>
+<ul>
+<li>Add option -gtlist.</li>
+</ul>
+<p>Version 2.3</p>
+<ul>
+<li>Fix supercat parameter order dependency.</li>
+<li>Add option -pass1_force_ni_bin.</li>
+</ul>
+<p>Version 2.2</p>
+<ul>
+<li>Retire option -tshift (tshift on by default).</li>
+<li>Retire option -gbldmx, preferring tshifted -gblcar.</li>
+<li>Retire options {-aphipass, -aplopass, -lfhipass, -lflopass}.</li>
+<li>Add option -no_tshift (tshift on by default).</li>
+<li>Add option -apfilter=Typ,N,Fhi,Flo.</li>
+<li>Add option -lffilter=Typ,N,Fhi,Flo.</li>
+</ul>
+<p>Version 2.1</p>
+<ul>
+<li>BF gets inarow parameter.</li>
+</ul>
+<p>Version 2.0</p>
+<ul>
+<li>XA seeks threshold-2 even if millisecs=0.</li>
+</ul>
+<p>Version 1.9</p>
+<ul>
+<li>Fix link to fftw3 library.</li>
+<li>Remove glitch at tshift block boundaries.</li>
+<li>Option -gfix now exploits -tshift.</li>
+<li>Option -chnexcl now specified per probe.</li>
+<li>Option -chnexcl now modifies shankMap in output metadata.</li>
+<li>Stream option -lf creates .lf. from .ap. for 2.0 probes.</li>
+<li>Fix supercat premature completion bug.</li>
+<li>Supercat observes -exported option.</li>
+<li>Pass1 always writes new meta files for later supercat.</li>
+<li>Add option -supercat_trim_edges.</li>
+<li>Add option -supercat_skip_ni_bin.</li>
+<li>Add option -maxsecs.</li>
+<li>Add option -BF (bit-field decoder).</li>
+</ul>
+<p>Version 1.8</p>
+<ul>
+<li>Add option -tshift.</li>
+<li>Add option -gblcar.</li>
+</ul>
+<p>Version 1.7</p>
+<ul>
+<li>Suppress linux brace expansion.</li>
+</ul>
+<p>Version 1.6</p>
+<ul>
+<li>Fix bug in g-series concatenation.</li>
+</ul>
+<p>Version 1.5</p>
+<ul>
+<li>Improved calling scripts.</li>
+<li>Add option -supercat.</li>
+</ul>
+<p>Version 1.4.2</p>
+<ul>
+<li>Fix -zerofillmax size tracking.</li>
+<li>Add option -inarow.</li>
+</ul>
+<p>Version 1.4.1</p>
+<ul>
+<li>Working/calling dir can be different from installed dir.</li>
+<li>Log file written to working dir.</li>
+</ul>
+<p>Version 1.4.0</p>
+<ul>
+<li>Allow g-range concatenation.</li>
+<li>Add option -zerofillmax.</li>
+<li>Options -SY, -XD accept word=-1 (last word).</li>
+<li>SY output files include ap/lf stream identifier.</li>
+<li>Add options -iSY, -iXA, -iXD.</li>
+</ul>
+<p>Version 1.3.0</p>
+<ul>
+<li>Support NP1010 probe.</li>
+</ul>
+<p>Version 1.2.9</p>
+<ul>
+<li>Uses 3A imro classes.</li>
+<li>Support for UHD-1 and NHP.</li>
+</ul>
+<p>Version 1.2.8</p>
+<ul>
+<li>Add option -prb_miss_ok to skip missing probes.</li>
+</ul>
+<p>Version 1.2.7</p>
+<ul>
+<li>Fix reporting back of user -XA command line options.</li>
+<li>Add optional tolerance parameter to each extractor.</li>
+</ul>
+<p>Version 1.2.6</p>
+<ul>
+<li>CAR filters are applied whole-probe, not shank-by-shank.</li>
+<li>Better command line error messages.</li>
+</ul>
+<p>Version 1.2.5</p>
+<ul>
+<li>Fix option -gfix crash.</li>
+<li>Fix -gfix artifacts.</li>
+<li>More accurate -gfix spans.</li>
+<li>Log gfix/second average fix rate.</li>
+</ul>
+<p>Version 1.2.4</p>
+<ul>
+<li>New bin/meta output only if concatenating or filtering.</li>
+<li>Reuse output run folder if already exists.</li>
+<li>Add option -t=cat to allow TTL extraction as a second pass.</li>
+<li>Add option -exported to recognize FileViewer export files.</li>
+</ul>
+<p>Version 1.2.3</p>
+<ul>
+<li>Better error reporting.</li>
+<li>Add metadata tag catGTCmdlineN.</li>
+<li>Add option -loccar.</li>
+<li>Rename option -gblexcl to -chnexcl.</li>
+<li>More improvements to option -gfix.</li>
+<li>TTL extractors handle smaller widths.</li>
+</ul>
+<p>Version 1.2.2</p>
+<ul>
+<li>Improvements to option -gfix.</li>
+</ul>
+<p>Version 1.2.1</p>
+<ul>
+<li>Fix option -out_prb_fld.</li>
+</ul>
+<p>Version 1.1</p>
+<ul>
+<li>Option -dest creates subfolder run_name_g0_tcat.</li>
+<li>Add option -out_prb_fld.</li>
+<li>Add tag 'fileCreateTime_original' to metadata.</li>
+</ul>
+<p>Version 1.0</p>
+<ul>
+<li>Initial release.</li>
+</ul>
+<p><em>fin</em></p>
+</body>
+</html>
