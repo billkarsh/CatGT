@@ -30,12 +30,12 @@ app and supporting DLLs from that Qt version.
 I build (under WSL2 on my Windows laptop) using ubuntu 16.04 and Qt
 5.9.9 (MinGW 64-bit). Compiled releases include the app and supporting
 DLLs from those versions of ubuntu and Qt, to make the package complete.
-Using the oldest versions I can fosters portability of the compiled release.
+I build against old versions for (hopefully) better portability.
 
 ### Compiled Software
 
-Download official release software and support materials here:
-[http://billkarsh.github.io/SpikeGLX](http://billkarsh.github.io/SpikeGLX).
+Official release software and support materials are here:
+[**SpikeGLX Download Page**](http://billkarsh.github.io/SpikeGLX).
 
 ### Licensing
 
