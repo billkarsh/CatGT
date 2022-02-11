@@ -289,7 +289,7 @@ mklink <...ZZZ\goodname_g0_t0.imec0.ap.bin> <path\myoriginalname.bin>
 mklink <...ZZZ\goodname_g0_t0.imec0.ap.meta> <path\myoriginalname.meta>
 ```
 
->> Set the g/t indices to describe the concatenation order you want.
+> Set the g/t indices to describe the concatenation order you want.
 
 4.	Close makelinks.bat.
 5.	Right-click on makelinks.bat and select `Run as administrator`.
@@ -310,7 +310,7 @@ ls -s <path/myoriginalname.bin> <...ZZZ/goodname_g0_t0.imec0.ap.bin>
 ls -s <path/myoriginalname.meta> <...ZZZ/goodname_g0_t0.imec0.ap.meta>
 ```
 
->> Set the g/t indices to describe the concatenation order you want.
+> Set the g/t indices to describe the concatenation order you want.
 
 4.	Close makelinks.sh, set its executable flag, run it.
 
