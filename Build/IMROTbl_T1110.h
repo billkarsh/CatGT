@@ -13,7 +13,7 @@ struct IMROHdr_T1110
 {
     qint16  apgn,       // gain, not index
             lfgn;       // gain, not index
-    qint8   colmode,    // {0,1,2} = {in,out,dual}
+    qint8   colmode,    // {0,1,2} = {INNER,OUTER,ALL}
             refid,      // reference index
             apflt,      // bool
             rsrv;
@@ -129,7 +129,6 @@ struct IMROTbl_T1110 : public IMROTbl
 
     virtual void muxTable( int &nADC, int &nGrp, std::vector<int> &T ) const;
 
-//@OBX todo
     virtual int selectSites( int slot, int port, int dock ) const;
     virtual int selectRefs( int slot, int port, int dock ) const;
     virtual int selectGains( int slot, int port, int dock ) const;

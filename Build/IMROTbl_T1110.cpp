@@ -139,7 +139,7 @@ bool IMROTbl_T1110::fromString( QString *msg, const QString &s )
         if( ehdr.colmode == 2 ) {
             if( E.bankA != E.bankB ) {
                 if( msg )
-                    *msg = "In dual col mode bankA must equal bankB.";
+                    *msg = "In 'ALL' col mode bankA must equal bankB.";
                 return false;
             }
         }
@@ -149,7 +149,7 @@ bool IMROTbl_T1110::fromString( QString *msg, const QString &s )
 
             if( aColCrossed == bColCrossed ) {
                 if( msg ) {
-                    *msg =  "In inner (or outer) col mode, one bank"
+                    *msg =  "In 'INNER' (or 'OUTER') col mode, one bank"
                             " must be col-crossed and the other not.";
                 }
                 return false;
@@ -232,21 +232,21 @@ bool IMROTbl_T1110::saveFile( QString &msg, const QString &path ) const
 }
 
 
-// In dual mode bankA and bankB are the same.
-// In outer mode upper cols are even and lower cols are odd.
-// In inner mode upper cols are odd  and lower cols are even.
+// In ALL mode bankA and bankB are the same.
+// In OUTER mode upper cols are even and lower cols are odd.
+// In INNER mode upper cols are odd  and lower cols are even.
 //
 int IMROTbl_T1110::bank( int ch ) const
 {
     const IMRODesc_T1110    &E = e[grpIdx( ch )];
 
-    if( ehdr.colmode == 2 )         // dual
+    if( ehdr.colmode == 2 )         // ALL
         return E.bankA;
     else {
 
         int col = this->col( ch, E.bankA );
 
-        if( ehdr.colmode == 1 ) {  // outer
+        if( ehdr.colmode == 1 ) {  // OUTER
 
             if( col <= 3 ) {
                 if( !(col & 1) )
@@ -255,7 +255,7 @@ int IMROTbl_T1110::bank( int ch ) const
             else if( col & 1 )
                 return E.bankA;
         }
-        else {                      // inner
+        else {                      // INNER
 
             if( col <= 3 ) {
                 if( col & 1 )
@@ -328,43 +328,28 @@ int IMROTbl_T1110::refTypeAndFields( int &shank, int &bank, int /* ch */ ) const
 }
 
 
-// tip -> base (probe orientation):
-//
-// Even bank direct std:          Odd bank group-crossed:
-// G0 G4 G8  G12 G16 G20  (up)    G2 G6 G10 G14 G18 G22  (up)
-// G2 G6 G10 G14 G18 G22  (up)    G0 G4 G8  G12 G16 G20  (up)
-// G1 G5 G9  G13 G17 G21  (lw)    G3 G7 G11 G15 G19 G23  (lw)
-// G3 G7 G11 G15 G19 G23  (lw)    G1 G5 G9  G13 G17 G21  (lw)
-//
-// Each bank has 24 groups arranged as 6 grprows X 4 grpcols.
-// Each group  has 16 chans.
-// Each grprow has 64 chans.
-//
-// The first  two (up) grpcols have only even chans.
-// The second two (lw) grpcols have only odd  chans.
+// Depends only upon channel, not crossings, not switches.
+// Pattern repeats each bank of 384 channels.
+// Each pair of groups (0,1) (2,3) ... contains 32 contiguous channels.
+// All channels in {even/odd} groups are {even/odd}.
 //
 int IMROTbl_T1110::grpIdx( int ch ) const
 {
-    int grprow  = ch / 64,
-        odd     = ch & 1;
+    ch %= 384;
 
-// If ch is even, grpidx is either {4*grprow + 0, 4*grprow + 2}.
-// If ch is odd,  grpidx is either {4*grprow + 1, 4*grprow + 3}.
-// Which set member depends on ch%64 < 32 (if even); ch%64 < 33 (if odd).
-
-    return 4*grprow + odd + 2*((ch - 64*grprow) >= (32 + odd));
+    return 2 * (ch / 32) + (ch & 1);
 }
 
 
 int IMROTbl_T1110::col( int ch, int bank ) const
 {
-    int col_tbl[8]  = {0,2,1,3,  1,3,0,2},
+    int col_tbl[8]  = {0,3,1,2,  1,2,0,3},
         grpIdx      = this->grpIdx( ch ),
         grp_col     = col_tbl[4*(bank & 1) + (grpIdx % 4)],
         crossed     = (bank / 4) & 1,
-        ingrp_col   = ((((ch % 64) % 32) / 2) & 1) ^ crossed;
+        ingrp_col   = ((((ch % 64) % 32) / 2) & 1) ^ crossed;   // ch-even
 
-    return 2*grp_col + ingrp_col;
+    return 2*grp_col + (ch & 1 ? 1 - ingrp_col : ingrp_col);
 }
 
 
@@ -374,8 +359,8 @@ int IMROTbl_T1110::row( int ch, int bank ) const
 
     int grpIdx      = this->grpIdx( ch ),
         grp_row     = grpIdx / 4,
-        ingrp_row   = ((ch % 64) % 32) / 4,
-        b0_row      = 8*grp_row + ingrp_row;
+        ingrp_row   = ((ch % 64) % 32) / 4, // ch-even
+        b0_row      = 8*grp_row + (ch & 1 ? 7 - ingrp_row : ingrp_row);
 
 // Rows per bank = 384 / 8 = 48
 
@@ -383,10 +368,13 @@ int IMROTbl_T1110::row( int ch, int bank ) const
 }
 
 
-// Our idea of electrode index runs faster across row, so,
-// bottom row has electrodes {0..7}. That differs from
-// convention in imec docs, but is easier to understand
-// and the only purpose is sorting chans tip to base.
+// Our idea of electrode index runs consecutively, and
+// faster across row. Bottom row has electrodes {0..7}.
+// Our electrodes have simple row and column ordering.
+// That differs somewhat from convention in imec docs,
+// but is easier to understand and the only purpose is
+// sorting chans tip to base. Electrode index is a
+// virtual intermediary between channel and (row,col).
 //
 int IMROTbl_T1110::chToEl( int ch ) const
 {
@@ -458,12 +446,15 @@ int IMROTbl_T1110::selectSites( int slot, int port, int dock ) const
 
     NP_ErrorCode    err;
 
-    if( err != SUCCESS )
-        return err;
-
 // ---------------
 // Set column mode
 // ---------------
+
+    err = np_selectColumnPattern( slot, port, dock,
+            columnpattern_t(ehdr.colmode) );
+
+    if( err != SUCCESS )
+        return err;
 
 // ------------------------------------
 // Connect all according to table banks
@@ -473,20 +464,15 @@ int IMROTbl_T1110::selectSites( int slot, int port, int dock ) const
 
         const IMRODesc_T1110    E = e[ig];
 
-//        err = np_selectElectrodeMask( slot, port, dock, ic,
-//                shank, electrodebanks_t(E.bankA) );
+        if( ehdr.colmode == ALL )
+            err = np_selectElectrodeGroup( slot, port, dock, ig, E.bankA );
+        else {
+            err = np_selectElectrodeGroupMask( slot, port, dock, ig,
+                    electrodebanks_t((1<<E.bankA) + (1<<E.bankB)) );
+        }
 
         if( err != SUCCESS )
             return err;
-
-        if( ehdr.colmode < 2 ) {
-
-//            err = np_selectElectrodeMask( slot, port, dock, ic,
-//                    shank, electrodebanks_t(E.bankA) );
-
-            if( err != SUCCESS )
-                return err;
-        }
     }
 #endif
 
