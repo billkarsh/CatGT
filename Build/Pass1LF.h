@@ -10,13 +10,14 @@
 class Pass1LF : public IOClient
 {
 private:
-    Pass1IO io;
-    Meta    meta;
-    int     ip;
+    Pass1IO     io;
+    QFileInfo   fim;
+    Meta        meta;
+    int         ip;
 
 public:
-    Pass1LF( int ip ) : io(*this, meta), ip(ip) {}
-    virtual ~Pass1LF()                          {}
+    Pass1LF( int ip ) : io(*this, fim, meta), ip(ip)    {}
+    virtual ~Pass1LF()                                  {}
 
     bool go();
 

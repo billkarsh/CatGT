@@ -61,7 +61,11 @@ FFT::~FFT()
 }
 
 
-void FFT::init( const Meta &meta, int ap_in, int ap_out )
+void FFT::init(
+    const QFileInfo &fim,
+    const Meta      &meta,
+    int             ap_in,
+    int             ap_out )
 {
     if( GBL.tshift ) {
 
@@ -112,6 +116,10 @@ void FFT::init( const Meta &meta, int ap_in, int ap_out )
         else {
             delT = 0;
             ic2grp.fill( -1, meta.nC );
+
+            Log() << QString(
+            "Skipping TShift: Can't identify probe type in metadata '%1'.")
+            .arg( fim.fileName() );
         }
     }
 
@@ -367,7 +375,7 @@ void Pass1IO::alloc( bool initfft )
         }
 
         if( initfft )
-            fft.init( meta, ap_in, ap_out );
+            fft.init( fim, meta, ap_in, ap_out );
     }
 }
 

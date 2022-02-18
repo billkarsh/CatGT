@@ -14,14 +14,10 @@ bool Pass1LF::go()
 
     io.doWrite = GBL.gt_nIndices() > 1 || GBL.lfflt.isenabled() || GBL.tshift;
 
-    {
-        QFileInfo   fim;
-
-        switch( openInputMeta( fim, meta.kvp, g0, t0, ip, 1, GBL.prb_miss_ok ) ) {
-            case 0: break;
-            case 1: return true;
-            case 2: return false;
-        }
+    switch( openInputMeta( fim, meta.kvp, g0, t0, ip, 1, GBL.prb_miss_ok ) ) {
+        case 0: break;
+        case 1: return true;
+        case 2: return false;
     }
 
     if( !GBL.makeOutputProbeFolder( g0, ip ) )

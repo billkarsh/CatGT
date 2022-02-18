@@ -148,6 +148,11 @@ bool Pass1AP::filtersAndScaling()
         R->muxTable( nADC, nGrp, muxTbl );
         delete R;
     }
+    else {
+        Log() << QString("Can't identify probe type in metadata '%1'.")
+                    .arg( fim.fileName() );
+        return false;
+    }
 
     io.set_maxInt( maxInt );
 

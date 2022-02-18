@@ -34,7 +34,7 @@ private:
 
 public:
     Pass1AP( int ip )
-    :   io(*this, meta), shankMap(0), hp_gfix(0), ip(ip)    {}
+    :   io(*this, fim, meta), shankMap(0), hp_gfix(0), ip(ip)   {}
     virtual ~Pass1AP();
 
     bool go();

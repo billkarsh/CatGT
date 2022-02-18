@@ -10,12 +10,13 @@
 class Pass1NI : public IOClient
 {
 private:
-    Pass1IO io;
-    Meta    meta;
+    Pass1IO     io;
+    QFileInfo   fim;
+    Meta        meta;
 
 public:
-    Pass1NI() : io(*this, meta) {}
-    virtual ~Pass1NI()          {}
+    Pass1NI() : io(*this, fim, meta)    {}
+    virtual ~Pass1NI()                  {}
 
     bool go();
 

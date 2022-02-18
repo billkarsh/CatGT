@@ -54,7 +54,11 @@ struct FFT {
                         filter;
     FFT() : cplx(0), real(0), tshift(false), filter(false)  {}
     virtual ~FFT();
-    void init( const Meta &meta, int ap_in, int ap_out );
+    void init(
+        const QFileInfo &fim,
+        const Meta      &meta,
+        int             ap_in,
+        int             ap_out );
     void apply(
         qint16          *dst,
         const qint16    *src,
@@ -68,6 +72,7 @@ private:
 
 struct Pass1IO {
     IOClient            &client;
+    QFileInfo           &fim;
     Meta                &meta;
     QFileInfo           i_fi;
     QString             o_name;
@@ -86,8 +91,9 @@ struct Pass1IO {
                         i_lim,  // input count (samples)
                         gfix0;  // cur o_buf start in i_buf
     bool                doWrite;
-    Pass1IO( IOClient &client, Meta &meta )
-        :   client(client), meta(meta), hipass(0), lopass(0),
+    Pass1IO( IOClient &client, QFileInfo &fim, Meta &meta )
+        :   client(client), fim(fim), meta(meta),
+            hipass(0), lopass(0),
             i_nxt(0), i_lim(0), doWrite(false)  {}
     virtual ~Pass1IO();
     bool o_open( int g0, int ip, int ap_in = 0, int ap_out = 0 );

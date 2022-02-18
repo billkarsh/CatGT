@@ -12,12 +12,8 @@ bool Pass1NI::go()
 
     io.doWrite = GBL.force_ni || GBL.gt_nIndices() > 1;
 
-    {
-        QFileInfo   fim;
-
-        if( openInputMeta( fim, meta.kvp, g0, t0, -1, 0, false ) )
-            return false;
-    }
+    if( openInputMeta( fim, meta.kvp, g0, t0, -1, 0, false ) )
+        return false;
 
     if( !io.o_open( g0, -1 ) )
         return false;
