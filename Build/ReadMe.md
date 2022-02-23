@@ -387,6 +387,13 @@ having a `catgt_` tag: `myPath/catgt_run_name_ga`.
 
 - The meta item e.g., `catTVals=0,20`, indicates range of t-indices used.
 
+- CatGT creates an output file:
+`output_path/run_ga_ct_offsets.txt`.
+This tablulates, for each stream, where the first sample of each input
+file is relative to the start of the concatenated output file. It records
+these offsets in units of samples, and again in units of seconds on that
+stream's clock.
+
 ### gtlist option
 
 This option overrides the `-g=` and `-t=` options so that you can specify
@@ -437,8 +444,10 @@ into multiplex channel groups that are digitized together, consequently each
 group's actual sampling time is slightly offset from that of other groups.
 
 CatGT automatically applies an operation we call `tshift` to undo the
-effects of multiplexing by temporally aligning channels to each other.
-This improves the results of operations that compare or combine different
+effects of multiplexing by temporally aligning channels to each other. Note
+that the "shift" is smaller than one sample so file sizes do not change.
+Rather, the amplitude is redistributed among existing samples. Tshift
+improves the results of operations that compare or combine different
 channels, such as global CAR filtering or whitening. The FFT-based correction
 method was proposed by Olivier Winter of the International Brain Laboratory.
 
@@ -867,9 +876,21 @@ As runs are joined, supercat will automatically offset the times within
 extracted edge files. The offset for the k-th listed run is the sum of
 the file lengths for runs 0 through k-1.
 
+Supercat creates an output file:
+`dest/supercat_run_ga/run_ga_sc_offsets.txt`.
+This tablulates, for each stream, where the first sample of each input
+"tcat" file is relative to the start of the concatenated output file. It
+records these offsets in units of samples, and again in units of seconds
+on that stream's clock.
+
 ------
 
 ## Change Log
+
+Version 2.5
+
+- Add pass-one ct_offsets file.
+- Add supercat sc_offsets file.
 
 Version 2.4
 
