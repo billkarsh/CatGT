@@ -25,6 +25,8 @@ bool Pass1NI::go()
     if( !openDigitalFiles( g0 ) )
         return false;
 
+    gFOff.init( meta.srate );
+
     io.alloc();
 
     io.run();

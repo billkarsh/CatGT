@@ -30,6 +30,8 @@ bool Pass1LF::go()
 
     filtersAndScaling();
 
+    gFOff.init( meta.srate, ip, 1 );
+
     io.alloc( true );
 
     io.run();

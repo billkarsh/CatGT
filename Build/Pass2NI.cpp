@@ -29,6 +29,8 @@ bool Pass2NI::first()
     if( !openDigitalFiles( g0 ) )
         return false;
 
+    gFOff.init( meta.srate );
+
     return next( 0 );
 }
 
@@ -47,6 +49,9 @@ bool Pass2NI::next( int ie )
         return false;
 
     samps += ieSamps;
+
+    if( ie < GBL.velem.size() - 1 )
+        gFOff.addOffset( samps );
 
     meta.pass2_runDone();
 

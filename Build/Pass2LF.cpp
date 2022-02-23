@@ -34,6 +34,8 @@ int Pass2LF::first( int ip )
 
     meta.read( ip, 1 );
 
+    gFOff.init( meta.srate, ip, 1 );
+
     if( !next( 0 ) )
         return 2;
 
@@ -52,6 +54,9 @@ bool Pass2LF::next( int ie )
         return false;
 
     samps += ieSamps;
+
+    if( ie < GBL.velem.size() - 1 )
+        gFOff.addOffset( samps, ip, 1 );
 
     meta.pass2_runDone();
 

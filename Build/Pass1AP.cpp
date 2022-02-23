@@ -49,6 +49,8 @@ bool Pass1AP::go()
     if( !openDigitalFiles( g0 ) )
         return false;
 
+    gFOff.init( meta.srate, ip );
+
     io.alloc( true );
 
     if( GBL.gfixdo )

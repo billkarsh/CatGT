@@ -144,12 +144,16 @@ bool Pass1AP2LF::go()
 
     filtersAndScaling();
 
+    gFOff.init( meta.srate / 12, ip, 1 );
+
     io.alloc( true );
 
     io.run();
 
     adjustMeta();
     meta.write( io.o_name, g0, t0, ip, 1 );
+
+    gFOff.dwnSmp( ip );
 
     return true;
 }

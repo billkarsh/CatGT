@@ -39,6 +39,8 @@ int Pass2AP::first( int ip )
     if( !openDigitalFiles( g0 ) )
         return 2;
 
+    gFOff.init( meta.srate, ip );
+
     if( !next( 0 ) )
         return 2;
 
@@ -60,6 +62,9 @@ bool Pass2AP::next( int ie )
         return false;
 
     samps += ieSamps;
+
+    if( ie < GBL.velem.size() - 1 )
+        gFOff.addOffset( samps, ip );
 
     meta.pass2_runDone();
 

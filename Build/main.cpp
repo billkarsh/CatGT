@@ -8,8 +8,8 @@ static void compareFiles()
 {
 #define BUFSIZE 4096
 
-    QFile   fa( "D:/catgt_test_data/SC24_zerofill2/catgt_SC024_092319_NP1.0_Midbrain_g0/SC024_092319_NP1.0_Midbrain_g0_tcat.nidq.bin" ),
-            fb( "D:/catgt_test_data/SC24_zerofill1/catgt_SC024_092319_NP1.0_Midbrain_g0/SC024_092319_NP1.0_Midbrain_g0_tcat.nidq.bin" );
+    QFile   fa( "D:/CatGTtest/xxx/catgt_SC035_010820_g0/SC035_010820_g0_tcat.exported.imec0.ap.bin" ),
+            fb( "D:/CatGTtest/yyy/catgt_SC035_010820_g0/SC035_010820_g0_tcat.exported.imec0.ap.bin" );
 
     fa.open( QIODevice::ReadOnly );
     fb.open( QIODevice::ReadOnly );

@@ -104,6 +104,7 @@ struct Pass1IO {
     int inputSizeAndOverlap( qint64 &xferBytes, int g, int t );
     bool load( qint64 &xferBytes );
     bool push();
+    int rem();
     bool flush();
     bool write( qint64 bytes );
     virtual qint64 _write( qint64 bytes );
@@ -135,6 +136,20 @@ private:
     void cmdlineEntry();
     void delPass1Tags();
 };
+
+struct FOffsets {
+    QMap<QString,double>            mrate;
+    QMap<QString,QVector<qint64>>   moff;
+    void init( double rate, int ip = -1, int ap = 0 );
+    void addOffset( qint64 off, int ip = -1, int ap = 0 );
+    void dwnSmp( int ip );
+    void ct_write();
+    void sc_write();
+    QString stream( int ip = -1, int ap = 0 );
+    void writeEntries( QString file );
+};
+
+extern FOffsets gFOff;
 
 /* ---------------------------------------------------------------- */
 /* Functions ------------------------------------------------------ */

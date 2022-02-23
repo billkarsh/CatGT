@@ -485,17 +485,20 @@ int Pass1IO::inputSizeAndOverlap( qint64 &xferBytes, int g, int t )
 
         xferBytes = kvp["fileSizeBytes"].toLongLong();
 
-        qint64  olap = IBYT(meta.smpInpEOF - kvp["firstSample"].toLongLong());
+        qint64  olapSmp     = meta.smpInpEOF
+                                - kvp["firstSample"].toLongLong(),
+                olapBytes   = IBYT(olapSmp),
+                fOffset;
 
-        if( olap > 0 ) {
+        if( olapSmp > 0 ) {
 
-            xferBytes -= olap;
+            xferBytes -= olapBytes;
 
             if( xferBytes < meta.smpBytes ) {
                 Log() <<
                     QString("Skipping tiny content"
                     " (olap: %1, rem: %2, bps: %3) file '%4'.")
-                    .arg( olap )
+                    .arg( olapBytes )
                     .arg( xferBytes )
                     .arg( meta.smpBytes )
                     .arg( i_fi.fileName() );
@@ -503,15 +506,17 @@ int Pass1IO::inputSizeAndOverlap( qint64 &xferBytes, int g, int t )
                 return 1;
             }
 
-            if( !i_f.seek( olap ) ) {
+            if( !i_f.seek( olapBytes ) ) {
                 Log() << QString("Seek failed (offset: %1) for file '%2'.")
-                            .arg( olap )
+                            .arg( olapBytes )
                             .arg( i_fi.fileName() );
                 i_f.close();
                 return 2;
             }
+
+            fOffset = meta.smpOutEOF + rem() - olapSmp;
         }
-        else if( olap < 0 ) {
+        else if( olapSmp < 0 ) {
 
             // Push any remainder data out.
             //
@@ -521,9 +526,15 @@ int Pass1IO::inputSizeAndOverlap( qint64 &xferBytes, int g, int t )
             if( !flush() )
                 return 2;
 
-            if( !meta.pass1_zeroFill( *this, -olap ) )
+            if( !meta.pass1_zeroFill( *this, -olapBytes ) )
                 return 2;
+
+            fOffset = meta.smpOutEOF;
         }
+        else
+            fOffset = meta.smpOutEOF + rem();
+
+        gFOff.addOffset( fOffset - meta.smp1st, ip, ap_out );
     }
     else    // Already have meta data for first file
         xferBytes = meta.kvp["fileSizeBytes"].toLongLong();
@@ -615,15 +626,24 @@ bool Pass1IO::push()
 }
 
 
+int Pass1IO::rem()
+{
+    if( !i_nxt || i_nxt >= i_lim )
+        return 0;
+
+    return i_lim - i_nxt;
+}
+
+
 // Process and write any neural remainder.
 //
 bool Pass1IO::flush()
 {
-    if( !i_nxt || i_nxt >= i_lim )
-        return true;
-
-    int ndst = i_lim - i_nxt,
+    int ndst = rem(),
         src0 = i_nxt - SZMRG;
+
+    if( ndst <= 0 )
+        return true;
 
     fft.apply( &o_buf[0], IBUF(src0),
             ndst, i_lim - src0,
@@ -664,7 +684,7 @@ qint64 Pass1IO::_write( qint64 bytes )
 bool Pass1IO::zero( qint64 gapBytes, qint64 zfBytes )
 {
     Log() <<
-    QString("Gap before file '%1' out_start_smp=%2 inp_gap_smp=%3 out_zeros_smp=%4")
+    QString("Gap before file '%1' out_start_smp=%2 inp_gap_smp=%3 out_zeros_smp=%4.")
     .arg( i_fi.fileName() )
     .arg( meta.smpOutSpan() )
     .arg( gapBytes / meta.smpBytes )
@@ -856,10 +876,10 @@ void Meta::pass1_fileDone( int g, int t, int ip, int ap )
         lbl = "ni stream";
 
     if( t == -1 )
-        Log() << QString("Done %1: tcat").arg( lbl );
+        Log() << QString("Done %1: tcat.").arg( lbl );
     else if( nFiles > 1 && nFiles % 20 == 0 ) {
 
-        Log() << QString("Done %1: %2 of %3")
+        Log() << QString("Done %1: %2 of %3.")
                     .arg( lbl ).arg( nFiles ).arg( GBL.gt_nIndices() );
     }
 }
@@ -893,6 +913,121 @@ void Meta::delPass1Tags()
     kvp.remove( "catNFiles" );
     kvp.remove( "catGVals" );
     kvp.remove( "catTVals" );
+}
+
+/* ---------------------------------------------------------------- */
+/* FOffsets ------------------------------------------------------- */
+/* ---------------------------------------------------------------- */
+
+FOffsets    gFOff;  // global file offsets
+
+
+void FOffsets::init( double rate, int ip, int ap )
+{
+    QString s = stream( ip, ap );
+
+    mrate[s] = rate;
+    moff[s].push_back( 0 );
+}
+
+
+void FOffsets::addOffset( qint64 off, int ip, int ap )
+{
+    moff[stream( ip, ap )].push_back( off );
+}
+
+
+void FOffsets::dwnSmp( int ip )
+{
+    QString s = stream( ip, 1 );
+
+    if( moff.find( s ) != moff.end() ) {
+
+        QVector<qint64> &V = moff[s];
+
+        for( int i = 0, n = V.size(); i < n; ++i )
+            V[i] /= 12;
+    }
+}
+
+
+void FOffsets::ct_write()
+{
+    if( GBL.catgt_fld || !gFOff.mrate.size() )
+        return;
+
+    QString dir,
+            srun = QString("%1_g%2")
+                    .arg( GBL.run ).arg( GBL.gt_get_first( 0 ) );
+
+    if( !GBL.opar.isEmpty() )
+        dir = QString("%1/catgt_%2/").arg( GBL.opar ).arg( srun );
+    else {
+        dir = GBL.inpar + "/";
+
+        if( !GBL.no_run_fld )
+            dir += QString("%1/").arg( srun );
+    }
+
+    writeEntries( dir + QString("%1_ct_offsets.txt").arg( srun ) );
+}
+
+
+void FOffsets::sc_write()
+{
+    if( GBL.velem.size() < 2 || !gFOff.mrate.size() )
+        return;
+
+    QString srun = QString("%1_g%2")
+                    .arg( GBL.velem[0].run ).arg( GBL.velem[0].g );
+
+    writeEntries( QString("%1/supercat_%2/%2_sc_offsets.txt")
+                    .arg( GBL.opar ).arg( srun ) );
+}
+
+
+QString FOffsets::stream( int ip, int ap )
+{
+    if( ip == -1 )
+        return "nidq";
+    else if( !ap )
+        return QString("imap%1").arg( ip );
+
+    return QString("imlf%1").arg( ip );
+}
+
+
+void FOffsets::writeEntries( QString file )
+{
+    QFile   f( file );
+    f.open( QIODevice::WriteOnly | QIODevice::Text );
+    QTextStream ts( &f );
+
+    QMap<QString,QVector<qint64>>::const_iterator it, end = moff.end();
+
+    for( it = moff.begin(); it != end; ++it ) {
+
+        const QVector<qint64>   &V = it.value();
+
+        ts << "smp_" << it.key() << ":";
+        foreach( qint64 d, V )
+            ts << "\t" << d;
+        ts << "\n";
+    }
+
+    for( it = moff.begin(); it != end; ++it ) {
+
+        double                  rate    = mrate[it.key()];
+        const QVector<qint64>   &V      = it.value();
+
+        ts << "sec_" << it.key() << ":";
+        foreach( qint64 d, V )
+            ts << "\t" << QString("%1").arg( d / rate, 0, 'f', 6 );
+        ts << "\n";
+    }
+
+    ts.flush();
+    f.close();
 }
 
 /* ---------------------------------------------------------------- */
@@ -960,7 +1095,7 @@ void pass1entrypoint()
     if( GBL.ni ) {
         Pass1NI P;
         if( !P.go() )
-            return;
+            goto done;
     }
 
     foreach( uint ip, GBL.vprb ) {
@@ -968,7 +1103,7 @@ void pass1entrypoint()
         if( GBL.ap ) {
             Pass1AP P( ip );
             if( !P.go() )
-                return;
+                goto done;
         }
 
         if( GBL.lf ) {
@@ -976,13 +1111,13 @@ void pass1entrypoint()
                 case 0: {
                     Pass1LF     P( ip );
                     if( !P.go() )
-                        return;
+                        goto done;
                 }
                 break;
                 case 1: {
                     Pass1AP2LF  P( ip );
                     if( !P.go() )
-                        return;
+                        goto done;
                 }
                 break;
                 default:
@@ -990,6 +1125,9 @@ void pass1entrypoint()
             }
         }
     }
+
+done:
+    gFOff.ct_write();
 }
 
 
@@ -1382,6 +1520,8 @@ void supercatentrypoint()
     }
 
 done:
+    gFOff.sc_write();
+
     if( NI ) {
         NI->close();
         delete NI;
@@ -1440,7 +1580,9 @@ bool getSavedChannels(
 bool openOutputBinary( QFile &fout, QString &outBin, int g0, int ip, int ap )
 {
     if( !GBL.velem.size() && GBL.gt_is_tcat() ) {
-        Log() << "Error: Secondary extraction pass (-t=cat) must not concatenate or filter";
+        Log() <<
+        "Error: Secondary extraction pass (-t=cat) must not"
+        " concatenate, tshift or filter.";
         return false;
     }
 
