@@ -49,6 +49,7 @@ struct IMROTbl_T0base : public IMROTbl
     }
 
     virtual void fillDefault();
+    virtual void fillShankAndBank( int shank, int bank );
 
     virtual int typeConst() const = 0;
     virtual int nShank() const          {return 1;}

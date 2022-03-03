@@ -52,9 +52,17 @@ IMRODesc_T0base IMRODesc_T0base::fromString( const QString &s )
 void IMROTbl_T0base::fillDefault()
 {
     type = typeConst();
-
     e.clear();
     e.resize( nAP() );
+}
+
+
+void IMROTbl_T0base::fillShankAndBank( int shank, int bank )
+{
+    Q_UNUSED( shank )
+
+    for( int i = 0, n = e.size(); i < n; ++i )
+        e[i].bank = qMin( bank, maxBank( i ) );
 }
 
 

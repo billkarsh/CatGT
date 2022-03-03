@@ -19,9 +19,11 @@ struct IMROTbl
 
     virtual void copyFrom( const IMROTbl *rhs ) = 0;
     virtual void fillDefault() = 0;
+    virtual void fillShankAndBank( int shank, int bank ) = 0;
 
     virtual int nElec() const = 0;
     virtual int nShank() const = 0;
+    virtual int nElecPerShank() const = 0;
     virtual int nCol() const = 0;
     virtual int nRow() const = 0;
     virtual int nChan() const = 0;
@@ -47,6 +49,7 @@ struct IMROTbl
 
     virtual int shnk( int ch ) const = 0;
     virtual int bank( int ch ) const = 0;
+            int maxBank( int ch ) const {return (nElecPerShank()-ch-1)/nAP();}
     virtual int elShankAndBank( int &bank, int ch ) const = 0;
     virtual int elShankColRow( int &col, int &row, int ch ) const = 0;
     virtual void eaChansOrder( QVector<int> &v ) const = 0;
@@ -64,7 +67,7 @@ struct IMROTbl
 
     virtual void muxTable( int &nADC, int &nGrp, std::vector<int> &T ) const = 0;
 
-    virtual int selectSites( int slot, int port, int dock ) const;
+    virtual int selectSites( int slot, int port, int dock, bool write ) const;
     virtual int selectRefs( int slot, int port, int dock ) const;
     virtual int selectGains( int slot, int port, int dock ) const;
     virtual int selectAPFlts( int slot, int port, int dock ) const;

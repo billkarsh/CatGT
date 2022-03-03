@@ -105,9 +105,19 @@ void IMROTbl_T21::setElecs()
 void IMROTbl_T21::fillDefault()
 {
     type = imType21Type;
-
     e.clear();
     e.resize( imType21Chan );
+    setElecs();
+}
+
+
+void IMROTbl_T21::fillShankAndBank( int shank, int bank )
+{
+    Q_UNUSED( shank )
+
+    for( int i = 0, n = e.size(); i < n; ++i )
+        e[i].mbank = (1 << qMin( bank, maxBank( i ) ));
+
     setElecs();
 }
 
@@ -369,7 +379,7 @@ void IMROTbl_T21::muxTable( int &nADC, int &nGrp, std::vector<int> &T ) const
 
 // This method connects multiple electrodes per channel.
 //
-int IMROTbl_T21::selectSites( int slot, int port, int dock ) const
+int IMROTbl_T21::selectSites( int slot, int port, int dock, bool write ) const
 {
 #ifdef HAVE_IMEC
 // ------------------------------------
@@ -392,6 +402,9 @@ int IMROTbl_T21::selectSites( int slot, int port, int dock ) const
         if( err != SUCCESS )
             return err;
     }
+
+    if( write )
+        np_writeProbeConfiguration( slot, port, dock, true );
 #endif
 
     return 0;

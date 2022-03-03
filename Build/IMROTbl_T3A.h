@@ -75,10 +75,12 @@ struct IMROTbl_T3A : public IMROTbl
     }
 
     virtual void fillDefault();
+    virtual void fillShankAndBank( int shank, int bank );
 
     virtual int nElec() const           {return (opt == 4 ? imType3AOpt4Elec :
                                         (opt == 3 ? imType3AOpt3Elec : imType3AOpt1Elec));}
     virtual int nShank() const          {return 1;}
+    virtual int nElecPerShank() const   {return nElec();}
     virtual int nCol() const            {return imType3ACol;}
     virtual int nRow() const            {return nElec()/imType3ACol;}
     virtual int nChan() const           {return e.size();}

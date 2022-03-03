@@ -55,9 +55,11 @@ struct IMROTbl_T21 : public IMROTbl
     }
 
     virtual void fillDefault();
+    virtual void fillShankAndBank( int shank, int bank );
 
     virtual int nElec() const           {return imType21Elec;}
     virtual int nShank() const          {return 1;}
+    virtual int nElecPerShank() const   {return imType21Elec;}
     virtual int nCol() const            {return imType21Col;}
     virtual int nRow() const            {return imType21Elec/imType21Col;}
     virtual int nChan() const           {return e.size();}
@@ -104,7 +106,7 @@ struct IMROTbl_T21 : public IMROTbl
 
     virtual void muxTable( int &nADC, int &nGrp, std::vector<int> &T ) const;
 
-    virtual int selectSites( int slot, int port, int dock ) const;
+    virtual int selectSites( int slot, int port, int dock, bool write ) const;
     virtual int selectGains( int, int, int ) const  {return 0;}
     virtual int selectAPFlts( int, int, int ) const {return 0;}
 };

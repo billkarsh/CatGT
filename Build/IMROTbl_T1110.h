@@ -18,10 +18,10 @@ struct IMROHdr_T1110
             apflt,      // bool
             rsrv;
     IMROHdr_T1110()
-    :   apgn(500), lfgn(250), colmode(2), refid(0), apflt(1)    {}
+    :   apgn(500), lfgn(250), colmode(2), refid(0), apflt(1), rsrv(0)   {}
     IMROHdr_T1110( int colmode, int refid, int apgn, int lfgn, int apflt )
     :   apgn(apgn), lfgn(lfgn),
-        colmode(colmode), refid(refid), apflt(apflt)            {}
+        colmode(colmode), refid(refid), apflt(apflt), rsrv(0)           {}
     bool operator==( const IMROHdr_T1110 &rhs ) const
         {return apgn==rhs.apgn       && lfgn==rhs.lfgn
             &&  colmode==rhs.colmode && refid==rhs.refid
@@ -73,9 +73,11 @@ struct IMROTbl_T1110 : public IMROTbl
     }
 
     virtual void fillDefault();
+    virtual void fillShankAndBank( int shank, int bank );
 
     virtual int nElec() const           {return imType1110Elec;}
     virtual int nShank() const          {return 1;}
+    virtual int nElecPerShank() const   {return imType1110Elec;}
     virtual int nCol() const            {return imType1110Col;}
     virtual int nRow() const            {return imType1110Elec/imType1110Col;}
     virtual int nChan() const           {return imType1110Chan;}
@@ -129,7 +131,7 @@ struct IMROTbl_T1110 : public IMROTbl
 
     virtual void muxTable( int &nADC, int &nGrp, std::vector<int> &T ) const;
 
-    virtual int selectSites( int slot, int port, int dock ) const;
+    virtual int selectSites( int slot, int port, int dock, bool write ) const;
     virtual int selectRefs( int slot, int port, int dock ) const;
     virtual int selectGains( int slot, int port, int dock ) const;
     virtual int selectAPFlts( int slot, int port, int dock ) const;

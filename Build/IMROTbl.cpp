@@ -20,7 +20,7 @@ using namespace Neuropixels;
 
 // This method connects one electrode per channel.
 //
-int IMROTbl::selectSites( int slot, int port, int dock ) const
+int IMROTbl::selectSites( int slot, int port, int dock, bool write ) const
 {
 #ifdef HAVE_IMEC
 // ------------------------------------
@@ -42,6 +42,9 @@ int IMROTbl::selectSites( int slot, int port, int dock ) const
         if( err != SUCCESS )
             return err;
     }
+
+    if( write )
+        np_writeProbeConfiguration( slot, port, dock, true );
 #endif
 
     return 0;

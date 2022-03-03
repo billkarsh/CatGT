@@ -57,9 +57,23 @@ IMRODesc_T1110 IMRODesc_T1110::fromString( const QString &s )
 void IMROTbl_T1110::fillDefault()
 {
     type = imType1110Type;
-
+    ehdr = IMROHdr_T1110();
     e.clear();
     e.resize( imType1110Chan );
+}
+
+
+void IMROTbl_T1110::fillShankAndBank( int shank, int bank )
+{
+    Q_UNUSED( shank )
+
+    ehdr.colmode = 2;
+
+    for( int i = 0, n = e.size(); i < n; ++i ) {
+        IMRODesc_T1110  &E = e[i];
+        E.bankA = bank;
+        E.bankB = bank;
+    }
 }
 
 
@@ -440,7 +454,7 @@ void IMROTbl_T1110::muxTable( int &nADC, int &nGrp, std::vector<int> &T ) const
 }
 
 
-int IMROTbl_T1110::selectSites( int slot, int port, int dock ) const
+int IMROTbl_T1110::selectSites( int slot, int port, int dock, bool write ) const
 {
 #ifdef HAVE_IMEC
 
@@ -474,6 +488,9 @@ int IMROTbl_T1110::selectSites( int slot, int port, int dock ) const
         if( err != SUCCESS )
             return err;
     }
+
+    if( write )
+        np_writeProbeConfiguration( slot, port, dock, true );
 #endif
 
     return 0;
@@ -502,7 +519,8 @@ int IMROTbl_T1110::selectRefs( int slot, int port, int dock ) const
     return 0;
 }
 
-
+#if 1
+// True gain setter
 int IMROTbl_T1110::selectGains( int slot, int port, int dock ) const
 {
 #ifdef HAVE_IMEC
@@ -546,6 +564,31 @@ int IMROTbl_T1110::selectGains( int slot, int port, int dock ) const
 
     return 0;
 }
+#endif
+
+
+#if 0
+// Experiment setting gain by row or col
+int IMROTbl_T1110::selectGains( int slot, int port, int dock ) const
+{
+#ifdef HAVE_IMEC
+
+    for( int ic = 0; ic < imType1110Chan; ++ic ) {
+
+        NP_ErrorCode    err;
+
+        int idx = this->col( ic, 0 );
+
+        err = np_setGain( slot, port, dock, ic, idx, idx );
+
+        if( err != SUCCESS )
+            return err;
+    }
+#endif
+
+    return 0;
+}
+#endif
 
 
 int IMROTbl_T1110::selectAPFlts( int slot, int port, int dock ) const

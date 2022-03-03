@@ -46,9 +46,17 @@ void IMROTbl_T3A::fillDefault()
     type        = imType3AType;
     this->pSN   = 0;
     this->opt   = 3;
-
     e.clear();
     e.resize( nAP() );
+}
+
+
+void IMROTbl_T3A::fillShankAndBank( int shank, int bank )
+{
+    Q_UNUSED( shank )
+
+    for( int i = 0, n = e.size(); i < n; ++i )
+        e[i].bank = qMin( bank, maxBank( i ) );
 }
 
 

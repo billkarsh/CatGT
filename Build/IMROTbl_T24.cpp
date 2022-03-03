@@ -76,9 +76,20 @@ void IMROTbl_T24::setElecs()
 void IMROTbl_T24::fillDefault()
 {
     type = imType24Type;
-
     e.clear();
     e.resize( imType24Chan );
+    setElecs();
+}
+
+
+void IMROTbl_T24::fillShankAndBank( int shank, int bank )
+{
+    for( int i = 0, n = e.size(); i < n; ++i ) {
+        IMRODesc_T24    &E = e[i];
+        E.shnk = shank;
+        E.bank = qMin( bank, maxBank( i ) );
+    }
+
     setElecs();
 }
 
