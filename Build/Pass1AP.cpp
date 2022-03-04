@@ -27,7 +27,7 @@ bool Pass1AP::go()
                     || GBL.apflt.isenabled() || GBL.tshift
                     || GBL.locout || GBL.gblcar || GBL.gfixdo;
 
-    switch( openInputMeta( fim, meta.kvp, g0, t0, ip, 0, GBL.prb_miss_ok ) ) {
+    switch( openInputMeta( fim, meta.kvp, g0, t0, AP, ip, GBL.prb_miss_ok ) ) {
         case 0: break;
         case 1: return true;
         case 2: return false;
@@ -36,10 +36,10 @@ bool Pass1AP::go()
     if( !GBL.makeOutputProbeFolder( g0, ip ) )
         return false;
 
-    if( !io.o_open( g0, ip ) )
+    if( !io.o_open( g0, AP, AP, ip ) )
         return false;
 
-    meta.read( ip );
+    meta.read( AP, ip );
 
     if( !filtersAndScaling() )
         return false;
@@ -49,7 +49,7 @@ bool Pass1AP::go()
     if( !openDigitalFiles( g0 ) )
         return false;
 
-    gFOff.init( meta.srate, ip );
+    gFOff.init( meta.srate, AP, ip );
 
     io.alloc( true );
 
@@ -61,7 +61,7 @@ bool Pass1AP::go()
     if( shankMap )
         meta.kvp["~snsShankMap"] = shankMap->toString();
 
-    meta.write( io.o_name, g0, t0, ip );
+    meta.write( io.o_name, g0, t0, AP, ip );
 
     gfixEdits();
 
@@ -289,7 +289,7 @@ bool Pass1AP::openDigitalFiles( int g0 )
         if( T.ip != ip || T.word >= meta.nC )
             continue;
 
-        if( !T.openOutTimesFile( GBL.imOutFile( g0, ip, 2, 0, &T ) ) )
+        if( !T.openOutTimesFile( GBL.imOutFile( g0, AP, ip, eSY, &T ) ) )
             return false;
     }
 
@@ -300,7 +300,7 @@ bool Pass1AP::openDigitalFiles( int g0 )
         if( T.ip != ip || T.word >= meta.nC )
             continue;
 
-        if( !T.openOutTimesFile( GBL.imOutFile( g0, ip, 5, 0, &T ) ) )
+        if( !T.openOutTimesFile( GBL.imOutFile( g0, AP, ip, eiSY, &T ) ) )
             return false;
     }
 

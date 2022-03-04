@@ -64,8 +64,8 @@ FFT::~FFT()
 void FFT::init(
     const QFileInfo &fim,
     const Meta      &meta,
-    int             ap_in,
-    int             ap_out )
+    t_js            js_in,
+    t_js            js_out )
 {
     if( GBL.tshift ) {
 
@@ -83,7 +83,7 @@ void FFT::init(
             R->muxTable( nADC, nGrp, muxTbl );
                 delT = 2 * M_PI / SZFFT;
 
-                if( !ap_in )
+                if( js_in == AP )
                     delT /= (nGrp + (R->nLF() > 0));
                 else
                     delT /= nGrp;
@@ -123,7 +123,7 @@ void FFT::init(
         }
     }
 
-    if( !ap_out && GBL.apflt.needsfft() ) {
+    if( js_out == AP && GBL.apflt.needsfft() ) {
 
         if( GBL.apflt.type == "butter" ) {
 
@@ -156,7 +156,7 @@ void FFT::init(
 
         filter = true;
     }
-    else if( ap_out && GBL.lfflt.needsfft() ) {
+    else if( js_out == LF && GBL.lfflt.needsfft() ) {
 
         if( GBL.lfflt.type == "butter" ) {
 
@@ -339,16 +339,16 @@ Pass1IO::~Pass1IO()
 }
 
 
-bool Pass1IO::o_open( int g0, int ip, int ap_in, int ap_out )
+bool Pass1IO::o_open( int g0, t_js js_in, t_js js_out, int ip )
 {
+    this->js_in  = js_in;
+    this->js_out = js_out;
     this->ip     = ip;
-    this->ap_in  = ap_in;
-    this->ap_out = ap_out;
 
     if( !doWrite )
         return true;
 
-    return openOutputBinary( o_f, o_name, g0, ip, ap_out );
+    return openOutputBinary( o_f, o_name, g0, js_out, ip );
 }
 
 
@@ -359,15 +359,15 @@ void Pass1IO::alloc( bool initfft )
     i_buf.resize( SZIBUF * meta.nC );
     o_buf.resize( SZOBUF * meta.nC );
 
-    if( ip >= 0 ) {
+    if( js_in >= AP ) {
 
-        if( !ap_out && GBL.apflt.isbiquad() ) {
+        if( js_out == AP && GBL.apflt.isbiquad() ) {
             if( GBL.apflt.Fhi )
                 hipass = new Biquad( bq_type_highpass, GBL.apflt.Fhi / meta.srate );
             if( GBL.apflt.Flo )
                 lopass = new Biquad( bq_type_lowpass, GBL.apflt.Flo / meta.srate );
         }
-        else if( ap_out && GBL.lfflt.isbiquad() ) {
+        else if( js_out == LF && GBL.lfflt.isbiquad() ) {
             if( GBL.lfflt.Fhi )
                 hipass = new Biquad( bq_type_highpass, GBL.lfflt.Fhi / meta.srate );
             if( GBL.lfflt.Flo )
@@ -375,7 +375,7 @@ void Pass1IO::alloc( bool initfft )
         }
 
         if( initfft )
-            fft.init( fim, meta, ap_in, ap_out );
+            fft.init( fim, meta, js_in, js_out );
     }
 }
 
@@ -393,7 +393,7 @@ void Pass1IO::run()
         // Open binary
         // -----------
 
-        switch( openInputBinary( i_f, i_fi, g, t, ip, ap_in ) ) {
+        switch( openInputBinary( i_f, i_fi, g, t, js_in, ip ) ) {
             case 0: break;
             case 1: continue;
             case 2: return;
@@ -425,7 +425,7 @@ void Pass1IO::run()
         }
 
         i_f.close();
-        meta.pass1_fileDone( g, t, ip, ap_out );
+        meta.pass1_fileDone( g, t, js_out, ip );
 
         if( meta.smpInpEOF >= meta.maxOutEOF ) {
             flush();
@@ -478,7 +478,7 @@ int Pass1IO::inputSizeAndOverlap( qint64 &xferBytes, int g, int t )
 
         QFileInfo   fim;
         KVParams    kvp;
-        int         ret = openInputMeta( fim, kvp, g, t, ip, ap_in, GBL.t_miss_ok );
+        int         ret = openInputMeta( fim, kvp, g, t, js_in, ip, GBL.t_miss_ok );
 
         if( ret )
             return ret;
@@ -534,7 +534,7 @@ int Pass1IO::inputSizeAndOverlap( qint64 &xferBytes, int g, int t )
         else
             fOffset = meta.smpOutEOF + rem();
 
-        gFOff.addOffset( fOffset - meta.smp1st, ip, ap_out );
+        gFOff.addOffset( fOffset - meta.smp1st, js_out, ip );
     }
     else    // Already have meta data for first file
         xferBytes = meta.kvp["fileSizeBytes"].toLongLong();
@@ -720,20 +720,26 @@ bool Pass1IO::zero( qint64 gapBytes, qint64 zfBytes )
 /* Meta ----------------------------------------------------------- */
 /* ---------------------------------------------------------------- */
 
-void Meta::read( int ip, int ap )
+void Meta::read( t_js js, int ip )
 {
-    if( ip >= 0 ) {
+    switch( js ) {
+        case NI:
+            srate   = kvp["niSampRate"].toDouble();
+            nN      = 0;
+            break;
+        case OB:
+            srate   = kvp["obSampRate"].toDouble();
+            nN      = 0;
+            break;
+        case AP:
+        case LF:
+            QStringList sl = kvp["snsApLfSy"].toString().split(
+                                QRegExp("^\\s+|\\s*,\\s*"),
+                                QString::SkipEmptyParts );
 
-        QStringList sl = kvp["snsApLfSy"].toString().split(
-                            QRegExp("^\\s+|\\s*,\\s*"),
-                            QString::SkipEmptyParts );
-
-        srate   = kvp["imSampRate"].toDouble();
-        nN      = sl[ap].toInt();
-    }
-    else {
-        srate   = kvp["niSampRate"].toDouble();
-        nN      = 0;
+            srate   = kvp["imSampRate"].toDouble();
+            nN      = sl[js-AP].toInt();
+            break;
     }
 
     smp1st      = kvp["firstSample"].toLongLong();
@@ -747,7 +753,7 @@ void Meta::read( int ip, int ap )
 }
 
 
-void Meta::write( const QString &outBin, int g0, int t0, int ip, int ap )
+void Meta::write( const QString &outBin, int g0, int t0, t_js js, int ip )
 {
     QDateTime   tCreate( QDateTime::currentDateTime() );
     qint64      smpFLen = smpOutSpan();
@@ -781,10 +787,12 @@ void Meta::write( const QString &outBin, int g0, int t0, int ip, int ap )
         cmdlineEntry();
     }
 
-    if( ip >= 0 )
-        kvp.toMetaFile( GBL.imOutFile( g0, ip, 1, ap ) );
-    else
-        kvp.toMetaFile( GBL.niOutFile( g0, 1 ) );
+    switch( js ) {
+        case NI: kvp.toMetaFile( GBL.niOutFile( g0, eMETA ) ); break;
+        case OB: kvp.toMetaFile( GBL.obOutFile( g0, ip, eMETA ) ); break;
+        case AP:
+        case LF: kvp.toMetaFile( GBL.imOutFile( g0, js, ip, eMETA ) ); break;
+    }
 }
 
 
@@ -854,7 +862,7 @@ bool Meta::pass1_zeroFill( Pass1IO &io, qint64 gapBytes )
 }
 
 
-void Meta::pass1_fileDone( int g, int t, int ip, int ap )
+void Meta::pass1_fileDone( int g, int t, t_js js, int ip )
 {
 // Counting
 
@@ -870,10 +878,12 @@ void Meta::pass1_fileDone( int g, int t, int ip, int ap )
 
     QString lbl;
 
-    if( ip >= 0 )
-        lbl = QString("%1 prb %2").arg( ap ? "lf" : "ap" ).arg( ip );
-    else
-        lbl = "ni stream";
+    switch( js ) {
+        case NI: lbl = "nidq"; break;
+        case OB: lbl = QString("obx%1").arg( ip ); break;
+        case AP: lbl = QString("imap%1").arg( ip ); break;
+        case LF: lbl = QString("imlf%1").arg( ip ); break;
+    }
 
     if( t == -1 )
         Log() << QString("Done %1: tcat.").arg( lbl );
@@ -922,24 +932,24 @@ void Meta::delPass1Tags()
 FOffsets    gFOff;  // global file offsets
 
 
-void FOffsets::init( double rate, int ip, int ap )
+void FOffsets::init( double rate, t_js js, int ip )
 {
-    QString s = stream( ip, ap );
+    QString s = stream( js, ip );
 
     mrate[s] = rate;
     moff[s].push_back( 0 );
 }
 
 
-void FOffsets::addOffset( qint64 off, int ip, int ap )
+void FOffsets::addOffset( qint64 off, t_js js, int ip )
 {
-    moff[stream( ip, ap )].push_back( off );
+    moff[stream( js, ip )].push_back( off );
 }
 
 
 void FOffsets::dwnSmp( int ip )
 {
-    QString s = stream( ip, 1 );
+    QString s = stream( LF, ip );
 
     if( moff.find( s ) != moff.end() ) {
 
@@ -986,14 +996,14 @@ void FOffsets::sc_write()
 }
 
 
-QString FOffsets::stream( int ip, int ap )
+QString FOffsets::stream( t_js js, int ip )
 {
-    if( ip == -1 )
-        return "nidq";
-    else if( !ap )
-        return QString("imap%1").arg( ip );
-
-    return QString("imlf%1").arg( ip );
+    switch( js ) {
+        case NI: return "nidq";
+        case OB: return QString("obx%1").arg( ip );
+        case AP: return QString("imap%1").arg( ip );
+        case LF: return QString("imlf%1").arg( ip );
+    }
 }
 
 
@@ -1044,7 +1054,7 @@ static int lfCase( int ip )
 // seek 1.0 lf meta
 
     int         t0, g0 = GBL.gt_get_first( &t0 );
-    QString     inMeta = GBL.inFile( g0, t0, ip, 1, 1 );
+    QString     inMeta = GBL.inFile( g0, t0, LF, ip, eMETA );
     QFileInfo   fim( inMeta );
 
     if( fim.exists() )
@@ -1052,7 +1062,7 @@ static int lfCase( int ip )
 
 // seek ap meta
 
-    inMeta = GBL.inFile( g0, t0, ip, 1, 0 );
+    inMeta = GBL.inFile( g0, t0, AP, ip, eMETA );
     fim.setFile( inMeta );
 
     if( !fim.exists() )
@@ -1167,7 +1177,7 @@ static bool _supercat_checkLF( double &tlast, double apsrate, int ip )
     KVParams    kvp;
     qint64      lfsamp;
 
-    switch( openInputMeta( fim, kvp, GBL.ga, -1, ip, 1, GBL.prb_miss_ok ) ) {
+    switch( openInputMeta( fim, kvp, GBL.ga, -1, LF, ip, GBL.prb_miss_ok ) ) {
         case 0: break;
         case 1: return true;
         case 2: return false;
@@ -1185,24 +1195,29 @@ static bool _supercat_checkLF( double &tlast, double apsrate, int ip )
 }
 
 
-// Get first edge (head) and last edge (tail) for stream (ip).
+// Get first edge (head) and last edge (tail) for stream.
 //
-static bool _supercat_streamSelectEdges( int ie, int ip )
+// Note that this operation requires that sync edges files
+// were extracted during pass 1, which can not happen for
+// LF stream. Therefore, this js parameter should be only
+// {NI, OB, AP}.
+//
+static bool _supercat_streamSelectEdges( int ie, t_js js, int ip )
 {
     QFileInfo   fib,
                 fim;
     QFile       fin;
     KVParams    kvp;
     TTL         *T = 0;
-    int         nC,
-                is = 0; // not found
-    bool        canSkip = (ip >= 0 ? GBL.prb_miss_ok : false);
+    int         nC;
+    t_ex        ex = eBIN; // not found
+    bool        canSkip = (js == AP ? GBL.prb_miss_ok : false);
 
 // ---------------------
 // Get common meta items
 // ---------------------
 
-    switch( openInputMeta( fim, kvp, GBL.ga, -1, ip, 0, canSkip ) ) {
+    switch( openInputMeta( fim, kvp, GBL.ga, -1, js, ip, canSkip ) ) {
         case 0: break;
         case 1: return true;
         case 2: return false;
@@ -1211,10 +1226,10 @@ static bool _supercat_streamSelectEdges( int ie, int ip )
     nC = kvp["nSavedChans"].toInt();
 
 // ------------------------------------------
-// Find the TTL and the (is) code for this ip
+// Find the TTL and the (ex) code for this ip
 // ------------------------------------------
 
-    if( ip >= 0 ) { // Probe
+    if( js == AP ) {
 
         for( int i = 0, n = GBL.SY.size(); i < n; ++i ) {
 
@@ -1224,18 +1239,21 @@ static bool _supercat_streamSelectEdges( int ie, int ip )
 
                 D.autoWord( nC );
                 T  = &D;
-                is = 2; // SY
+                ex = eSY;
                 break;
             }
         }
 
-        if( !is ) {
+        if( !ex ) {
             Log() << QString("Can't find SY spec for probe %1 sync.")
                         .arg( ip );
             return false;
         }
     }
-    else {  // NI stream
+    else if( js == OB ) {
+        //@OBX TODO
+    }
+    else if( js == NI ) {
 
         QVector<uint>   chanIds;
         int             iword = kvp["syncNiChan"].toInt(),
@@ -1253,12 +1271,12 @@ static bool _supercat_streamSelectEdges( int ie, int ip )
                 T = &GBL.XA[i];
 
                 if( T->word == iword ) {
-                    is = 4; // XA
+                    ex = eXA;
                     break;
                 }
             }
 
-            if( !is ) {
+            if( !ex ) {
                 Log() << QString("Can't find XA spec for ni sync (word %1).")
                             .arg( iword );
                 return false;
@@ -1279,12 +1297,12 @@ static bool _supercat_streamSelectEdges( int ie, int ip )
 
                 if( D.word == iword && D.bit == bit ) {
                     T  = &D;
-                    is = 3; // XD
+                    ex = eXD;
                     break;
                 }
             }
 
-            if( !is ) {
+            if( !ex ) {
                 Log() << QString("Can't find XD spec for ni sync (word %1 bit %2).")
                             .arg( iword ).arg( bit );
                 return false;
@@ -1296,7 +1314,7 @@ static bool _supercat_streamSelectEdges( int ie, int ip )
 // Open edge file
 // --------------
 
-    if( openInputFile( fin, fib, GBL.ga, -1, ip, is, 0, T ) )
+    if( openInputFile( fin, fib, GBL.ga, -1, js, ip, ex, T ) )
         return false;
 
 // ---------
@@ -1350,7 +1368,7 @@ static bool _supercat_streamSelectEdges( int ie, int ip )
 // Check lf
 // --------
 
-    if( ip >= 0 && GBL.lf
+    if( js == AP && GBL.lf
         && !_supercat_checkLF( tlast, kvp["imSampRate"].toDouble(), ip ) ) {
 
         return false;
@@ -1374,12 +1392,12 @@ static bool _supercat_runSelectEdges( int ie )
 
     GBL.velem[ie].unpack();
 
-    if( GBL.ni && !_supercat_streamSelectEdges( ie, -1 ) )
+    if( GBL.ni && !_supercat_streamSelectEdges( ie, NI, 0 ) )
         return false;
 
     foreach( uint ip, GBL.vprb ) {
 
-        if( (GBL.ap || GBL.lf) && !_supercat_streamSelectEdges( ie, ip ) )
+        if( (GBL.ap || GBL.lf) && !_supercat_streamSelectEdges( ie, AP, ip ) )
             return false;
     }
 
@@ -1577,7 +1595,7 @@ bool getSavedChannels(
 }
 
 
-bool openOutputBinary( QFile &fout, QString &outBin, int g0, int ip, int ap )
+bool openOutputBinary( QFile &fout, QString &outBin, int g0, t_js js, int ip )
 {
     if( !GBL.velem.size() && GBL.gt_is_tcat() ) {
         Log() <<
@@ -1586,10 +1604,12 @@ bool openOutputBinary( QFile &fout, QString &outBin, int g0, int ip, int ap )
         return false;
     }
 
-    if( ip >= 0 )
-        outBin = GBL.imOutFile( g0, ip, 0, ap );
-    else
-        outBin = GBL.niOutFile( g0, 0 );
+    switch( js ) {
+        case NI: outBin = GBL.niOutFile( g0, eBIN ); break;
+        case OB: outBin = GBL.obOutFile( g0, ip, eBIN ); break;
+        case AP:
+        case LF: outBin = GBL.imOutFile( g0, js, ip, eBIN ); break;
+    }
 
     fout.setFileName( outBin );
 
@@ -1614,12 +1634,12 @@ int openInputFile(
     QFileInfo   &fib,
     int         g,
     int         t,
+    t_js        js,
     int         ip,
-    int         is,
-    int         ap,
+    t_ex        ex,
     XCT         *X )
 {
-    QString inBin = GBL.inFile( g, t, ip, is, ap, X );
+    QString inBin = GBL.inFile( g, t, js, ip, ex, X );
 
     fib.setFile( inBin );
 
@@ -1656,10 +1676,10 @@ int openInputBinary(
     QFileInfo   &fib,
     int         g,
     int         t,
-    int         ip,
-    int         ap )
+    t_js        js,
+    int         ip )
 {
-    return openInputFile( fin, fib, g, t, ip, 0, ap );
+    return openInputFile( fin, fib, g, t, js, ip, eBIN );
 }
 
 
@@ -1673,11 +1693,11 @@ int openInputMeta(
     KVParams    &kvp,
     int         g,
     int         t,
+    t_js        js,
     int         ip,
-    int         ap,
     bool        canSkip )
 {
-    QString inMeta = GBL.inFile( g, t, ip, 1, ap );
+    QString inMeta = GBL.inFile( g, t, js, ip, eMETA );
 
     fim.setFile( inMeta );
 
@@ -1700,13 +1720,13 @@ int openInputMeta(
 // - Check channel count matches first run.
 // - Return sample count, or zero if error.
 //
-qint64 p2_checkCounts( const Meta &meta, int ie, int ip, int ap )
+qint64 p2_checkCounts( const Meta &meta, int ie, t_js js, int ip )
 {
     QFileInfo   fim;
     KVParams    kvpn;
     int         chans;
 
-    if( openInputMeta( fim, kvpn, GBL.ga, -1, ip, ap, false ) )
+    if( openInputMeta( fim, kvpn, GBL.ga, -1, js, ip, false ) )
         return 0;
 
     chans = kvpn["nSavedChans"].toInt();
@@ -1739,6 +1759,7 @@ static bool p2_copyBinary(
     Meta                &meta,
     std::vector<BTYPE>  &buf,
     int                 ie,
+    t_js                js,
     int                 ip )
 {
     qint64  head     = GBL.velem[ie].ip2head[ip] * meta.srate,
@@ -1835,7 +1856,13 @@ static bool p2_copyBinary(
 
 // Trimming version.
 //
-static void p2_copyOffsetTimes( QFile &fin, double secs, int ie, int ip, XCT *X )
+static void p2_copyOffsetTimes(
+    QFile   &fin,
+    double  secs,
+    int     ie,
+    t_js    js,
+    int     ip,
+    XCT     *X )
 {
     double  t,
             head = GBL.velem[ie].ip2head[ip],
@@ -1884,29 +1911,29 @@ bool p2_openAndCopyFile(
     std::vector<BTYPE>  &buf,
     qint64              samps,
     int                 ie,
+    t_js                js,
     int                 ip,
-    int                 is,
-    int                 ap,
+    t_ex                ex,
     XCT                 *X )
 {
     QFile       fin;
     QFileInfo   fib;
 
-    if( openInputFile( fin, fib, GBL.ga, -1, ip, is, ap, X ) )
+    if( openInputFile( fin, fib, GBL.ga, -1, js, ip, ex, X ) )
         return false;
 
     if( !X ) {
 
         if( GBL.sc_trim ) {
 
-            if( !p2_copyBinary( fout, fin, fib, meta, buf, ie, ip ) )
+            if( !p2_copyBinary( fout, fin, fib, meta, buf, ie, js, ip ) )
                 return false;
         }
         else if( !p2_copyBinary( fout, fin, fib, meta, buf ) )
             return false;
     }
     else if( GBL.sc_trim )
-        p2_copyOffsetTimes( fin, samps / meta.srate, ie, ip, X );
+        p2_copyOffsetTimes( fin, samps / meta.srate, ie, js, ip, X );
     else
         p2_copyOffsetTimes( fin, samps / meta.srate, X );
 
@@ -1914,15 +1941,21 @@ bool p2_openAndCopyFile(
 }
 
 
-bool p2_openAndCopyBFFiles( Meta &meta, qint64 samps, int ie, XBF &B )
+bool p2_openAndCopyBFFiles(
+    Meta    &meta,
+    qint64  samps,
+    int     ie,
+    t_js    js,
+    int     ip,
+    XBF     &B )
 {
     QFile       ftin, fvin;
     QFileInfo   ftib, fvib;
 
-    if( openInputFile( ftin, ftib, GBL.ga, -1, -1, 8, 0, &B ) )
+    if( openInputFile( ftin, ftib, GBL.ga, -1, js, ip, eBFT, &B ) )
         return false;
 
-    if( openInputFile( fvin, fvib, GBL.ga, -1, -1, 9, 0, &B ) )
+    if( openInputFile( fvin, fvib, GBL.ga, -1, js, ip, eBFV, &B ) )
         return false;
 
     if( GBL.sc_trim ) { // tandem trim and copy

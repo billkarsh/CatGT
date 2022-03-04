@@ -11,6 +11,26 @@ class QTextStream;
 /* Types ---------------------------------------------------------- */
 /* ---------------------------------------------------------------- */
 
+typedef enum {
+    NI      = 0,
+    OB,
+    AP,
+    LF
+} t_js;
+
+typedef enum {
+    eBIN    = 0,
+    eMETA,
+    eSY,
+    eXD,
+    eXA,
+    eiSY,
+    eiXD,
+    eiXA,
+    eBFT,
+    eBFV
+} t_ex;
+
 struct GT3 {
     int g, ta, tb;
 };
@@ -123,6 +143,7 @@ struct XBF : public XCT {
 };
 
 struct Elem {
+//@OBX ip2head, ip2tail need account for (js,ip)
     QMap<int,double>    ip2head,
                         ip2tail;
     QString             dir,
@@ -157,7 +178,7 @@ public:
                     run,
                     inpar,          // derived
                     opar,           // derived
-                    ni_obase,       // derived
+                    aux_obase,      // derived
                     im_obase,       // derived
                     prb_obase;      // derived
     QMap<int,QVector<uint>> mexc;
@@ -187,6 +208,7 @@ public:
                     t_miss_ok,
                     ap,
                     lf,
+//@OBX Search all uses GBL.ni
                     ni,
                     prb_3A,
                     tshift,
@@ -222,9 +244,10 @@ public:
 
     bool makeOutputProbeFolder( int g0, int ip );
 
-    QString inFile( int g, int t, int ip, int is, int ap = 0, XCT *X = 0 );
-    QString niOutFile( int g0, int is, XCT *X = 0 );
-    QString imOutFile( int g0, int ip, int is, int ap = 0, XCT *X = 0 );
+    QString inFile( int g, int t, t_js js, int ip, t_ex ex, XCT *X = 0 );
+    QString niOutFile( int g0, t_ex ex, XCT *X = 0 );
+    QString obOutFile( int g0, int ip, t_ex ex, XCT *X = 0 );
+    QString imOutFile( int g0, t_js js, int ip, t_ex ex, XCT *X = 0 );
 
 private:
     bool parseChnexcl( const QString &s );
@@ -234,8 +257,8 @@ private:
     bool pass1FromCatGT();
     bool makeTaggedDest();
     QString trim_adjust_slashes( const QString &dir );
-    QString inPathUpTo_t( int g, int ip = -1 );
-    QString suffix( int ip, int is, int ap = 0, XCT *X = 0 );
+    QString inPathUpTo_t( int g, t_js js, int ip );
+    QString suffix( t_js js, int ip, t_ex ex, XCT *X = 0 );
 };
 
 /* --------------------------------------------------------------- */

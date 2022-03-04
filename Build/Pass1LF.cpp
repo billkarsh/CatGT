@@ -14,7 +14,7 @@ bool Pass1LF::go()
 
     io.doWrite = GBL.gt_nIndices() > 1 || GBL.lfflt.isenabled() || GBL.tshift;
 
-    switch( openInputMeta( fim, meta.kvp, g0, t0, ip, 1, GBL.prb_miss_ok ) ) {
+    switch( openInputMeta( fim, meta.kvp, g0, t0, LF, ip, GBL.prb_miss_ok ) ) {
         case 0: break;
         case 1: return true;
         case 2: return false;
@@ -23,20 +23,20 @@ bool Pass1LF::go()
     if( !GBL.makeOutputProbeFolder( g0, ip ) )
         return false;
 
-    if( !io.o_open( g0, ip, 1, 1 ) )
+    if( !io.o_open( g0, LF, LF, ip ) )
         return false;
 
-    meta.read( ip, 1 );
+    meta.read( LF, ip );
 
     filtersAndScaling();
 
-    gFOff.init( meta.srate, ip, 1 );
+    gFOff.init( meta.srate, LF, ip );
 
     io.alloc( true );
 
     io.run();
 
-    meta.write( io.o_name, g0, t0, ip, 1 );
+    meta.write( io.o_name, g0, t0, LF, ip );
 
     return true;
 }

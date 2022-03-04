@@ -1,19 +1,16 @@
 #ifndef TOOL_H
 #define TOOL_H
 
+#include "CGBL.h"
 #include "IMROTbl.h"
 #include "KVParams.h"
 
 #include "fftw3.h"
 
-#include <QVector>
 #include <QFileInfo>
 
-struct XCT;
-struct XBF;
 struct Meta;
 class Biquad;
-class QFileInfo;
 
 /* ---------------------------------------------------------------- */
 /* Types ---------------------------------------------------------- */
@@ -57,8 +54,8 @@ struct FFT {
     void init(
         const QFileInfo &fim,
         const Meta      &meta,
-        int             ap_in,
-        int             ap_out );
+        t_js            js_in,
+        t_js            js_out );
     void apply(
         qint16          *dst,
         const qint16    *src,
@@ -83,10 +80,10 @@ struct Pass1IO {
     Biquad              *hipass,
                         *lopass;
     FFT                 fft;
+    t_js                js_in,
+                        js_out;
     int                 maxInt,
                         ip,
-                        ap_in,
-                        ap_out,
                         i_nxt,  // next input middle (samples)
                         i_lim,  // input count (samples)
                         gfix0;  // cur o_buf start in i_buf
@@ -96,7 +93,7 @@ struct Pass1IO {
             hipass(0), lopass(0),
             i_nxt(0), i_lim(0), doWrite(false)  {}
     virtual ~Pass1IO();
-    bool o_open( int g0, int ip, int ap_in = 0, int ap_out = 0 );
+    bool o_open( int g0, t_js js_in, t_js js_out, int ip );
     void alloc( bool initfft = false );
     void set_maxInt( int _maxInt )  {maxInt = _maxInt;}
     char* o_buf8()                  {return (char*)&o_buf[0];}
@@ -124,13 +121,13 @@ struct Meta {
                 gLast,
                 tLast,
                 nFiles;
-    void write( const QString &outBin, int g0, int t0, int ip = -1, int ap = 0 );
-    void read( int ip, int ap = 0 );
+    void write( const QString &outBin, int g0, int t0, t_js js, int ip );
+    void read( t_js js, int ip );
     qint64 smpInpSpan()     {return smpInpEOF - smp1st;}
     qint64 smpOutSpan()     {return smpOutEOF - smp1st;}
     qint64 pass1_sizeRead( int &ntpts, qint64 xferBytes, qint64 bufBytes );
     bool pass1_zeroFill( Pass1IO &io, qint64 gapBytes );
-    void pass1_fileDone( int g, int t, int ip, int ap = 0 );
+    void pass1_fileDone( int g, int t, t_js js, int ip );
     void pass2_runDone()    {++nFiles;}
 private:
     void cmdlineEntry();
@@ -140,12 +137,12 @@ private:
 struct FOffsets {
     QMap<QString,double>            mrate;
     QMap<QString,QVector<qint64>>   moff;
-    void init( double rate, int ip = -1, int ap = 0 );
-    void addOffset( qint64 off, int ip = -1, int ap = 0 );
+    void init( double rate, t_js js, int ip );
+    void addOffset( qint64 off, t_js js, int ip );
     void dwnSmp( int ip );
     void ct_write();
     void sc_write();
-    QString stream( int ip = -1, int ap = 0 );
+    QString stream( t_js js, int ip );
     void writeEntries( QString file );
 };
 
@@ -165,16 +162,16 @@ bool getSavedChannels(
     const KVParams  &kvp,
     const QFileInfo &fim );
 
-bool openOutputBinary( QFile &fout, QString &outBin, int g0, int ip, int ap = 0 );
+bool openOutputBinary( QFile &fout, QString &outBin, int g0, t_js js, int ip );
 
 int openInputFile(
     QFile       &fin,
     QFileInfo   &fib,
     int         g,
     int         t,
+    t_js        js,
     int         ip,
-    int         is,
-    int         ap = 0,
+    t_ex        ex,
     XCT         *X = 0 );
 
 int openInputBinary(
@@ -182,19 +179,19 @@ int openInputBinary(
     QFileInfo   &fib,
     int         g,
     int         t,
-    int         ip,
-    int         ap = 0 );
+    t_js        js,
+    int         ip );
 
 int openInputMeta(
     QFileInfo   &fim,
     KVParams    &kvp,
     int         g,
     int         t,
+    t_js        js,
     int         ip,
-    int         ap,
     bool        canSkip );
 
-qint64 p2_checkCounts( const Meta &meta, int ie, int ip, int ap = 0 );
+qint64 p2_checkCounts( const Meta &meta, int ie, t_js js, int ip );
 
 bool p2_openAndCopyFile(
     QFile               &fout,
@@ -202,12 +199,18 @@ bool p2_openAndCopyFile(
     std::vector<BTYPE>  &buf,
     qint64              samps,
     int                 ie,
+    t_js                js,
     int                 ip,
-    int                 is,
-    int                 ap = 0,
+    t_ex                ex,
     XCT                 *X = 0 );
 
-bool p2_openAndCopyBFFiles( Meta &meta, qint64 samps, int ie, XBF &B );
+bool p2_openAndCopyBFFiles(
+    Meta    &meta,
+    qint64  samps,
+    int     ie,
+    t_js    js,
+    int     ip,
+    XBF     &B );
 
 #endif  // TOOL_H
 

@@ -15,21 +15,21 @@ bool Pass2NI::first()
     {
         QFileInfo   fim;
 
-        if( openInputMeta( fim, meta.kvp, g0, -1, -1, 0, false ) )
+        if( openInputMeta( fim, meta.kvp, g0, -1, NI, 0, false ) )
             return false;
     }
 
-    if( !GBL.sc_skipbin && !openOutputBinary( fout, outBin, g0, -1 ) )
+    if( !GBL.sc_skipbin && !openOutputBinary( fout, outBin, g0, NI, 0 ) )
         return false;
 
-    meta.read( -1 );
+    meta.read( NI, 0 );
 
     initDigitalFields();
 
     if( !openDigitalFiles( g0 ) )
         return false;
 
-    gFOff.init( meta.srate );
+    gFOff.init( meta.srate, NI, 0 );
 
     return next( 0 );
 }
@@ -37,12 +37,12 @@ bool Pass2NI::first()
 
 bool Pass2NI::next( int ie )
 {
-    qint64  ieSamps = p2_checkCounts( meta, ie, -1 );
+    qint64  ieSamps = p2_checkCounts( meta, ie, NI, 0 );
 
     if( !ieSamps )
         return false;
 
-    if( !GBL.sc_skipbin && !p2_openAndCopyFile( fout, meta, buf, 0, ie, -1, 0 ) )
+    if( !GBL.sc_skipbin && !p2_openAndCopyFile( fout, meta, buf, 0, ie, NI, 0, eBIN ) )
         return false;
 
     if( !copyDigitalFiles( ie ) )
@@ -51,7 +51,7 @@ bool Pass2NI::next( int ie )
     samps += ieSamps;
 
     if( ie < GBL.velem.size() - 1 )
-        gFOff.addOffset( samps );
+        gFOff.addOffset( samps, NI, 0 );
 
     meta.pass2_runDone();
 
@@ -65,7 +65,7 @@ void Pass2NI::close()
         int g0 = GBL.gt_get_first( 0 );
         fout.close();
         meta.smpOutEOF = meta.smp1st + samps;
-        meta.write( outBin, g0, -1 );
+        meta.write( outBin, g0, -1, NI, 0 );
         closed = true;
     }
 }
@@ -93,7 +93,7 @@ bool Pass2NI::openDigitalFiles( int g0 )
         if( T.word >= meta.nC )
             continue;
 
-        if( !T.openOutTimesFile( GBL.niOutFile( g0, 4, &T ) ) )
+        if( !T.openOutTimesFile( GBL.niOutFile( g0, eXA, &T ) ) )
             return false;
     }
 
@@ -104,7 +104,7 @@ bool Pass2NI::openDigitalFiles( int g0 )
         if( T.word >= meta.nC )
             continue;
 
-        if( !T.openOutTimesFile( GBL.niOutFile( g0, 3, &T ) ) )
+        if( !T.openOutTimesFile( GBL.niOutFile( g0, eXD, &T ) ) )
             return false;
     }
 
@@ -115,7 +115,7 @@ bool Pass2NI::openDigitalFiles( int g0 )
         if( T.word >= meta.nC )
             continue;
 
-        if( !T.openOutTimesFile( GBL.niOutFile( g0, 7, &T ) ) )
+        if( !T.openOutTimesFile( GBL.niOutFile( g0, eiXA, &T ) ) )
             return false;
     }
 
@@ -126,7 +126,7 @@ bool Pass2NI::openDigitalFiles( int g0 )
         if( T.word >= meta.nC )
             continue;
 
-        if( !T.openOutTimesFile( GBL.niOutFile( g0, 6, &T ) ) )
+        if( !T.openOutTimesFile( GBL.niOutFile( g0, eiXD, &T ) ) )
             return false;
     }
 
@@ -137,10 +137,10 @@ bool Pass2NI::openDigitalFiles( int g0 )
         if( B.word >= meta.nC )
             continue;
 
-        if( !B.openOutTimesFile( GBL.niOutFile( g0, 8, &B ) ) )
+        if( !B.openOutTimesFile( GBL.niOutFile( g0, eBFT, &B ) ) )
             return false;
 
-        if( !B.openOutValsFile( GBL.niOutFile( g0, 9, &B ) ) )
+        if( !B.openOutValsFile( GBL.niOutFile( g0, eBFV, &B ) ) )
             return false;
     }
 
@@ -157,7 +157,7 @@ bool Pass2NI::copyDigitalFiles( int ie )
         if( T.word >= meta.nC )
             continue;
 
-        if( !p2_openAndCopyFile( *T.f, meta, buf, samps, ie, -1, 4, 0, &T ) )
+        if( !p2_openAndCopyFile( *T.f, meta, buf, samps, ie, NI, 0, eXA, &T ) )
             return false;
     }
 
@@ -168,7 +168,7 @@ bool Pass2NI::copyDigitalFiles( int ie )
         if( T.word >= meta.nC )
             continue;
 
-        if( !p2_openAndCopyFile( *T.f, meta, buf, samps, ie, -1, 3, 0, &T ) )
+        if( !p2_openAndCopyFile( *T.f, meta, buf, samps, ie, NI, 0, eXD, &T ) )
             return false;
     }
 
@@ -179,7 +179,7 @@ bool Pass2NI::copyDigitalFiles( int ie )
         if( T.word >= meta.nC )
             continue;
 
-        if( !p2_openAndCopyFile( *T.f, meta, buf, samps, ie, -1, 7, 0, &T ) )
+        if( !p2_openAndCopyFile( *T.f, meta, buf, samps, ie, NI, 0, eiXA, &T ) )
             return false;
     }
 
@@ -190,7 +190,7 @@ bool Pass2NI::copyDigitalFiles( int ie )
         if( T.word >= meta.nC )
             continue;
 
-        if( !p2_openAndCopyFile( *T.f, meta, buf, samps, ie, -1, 6, 0, &T ) )
+        if( !p2_openAndCopyFile( *T.f, meta, buf, samps, ie, NI, 0, eiXD, &T ) )
             return false;
     }
 
@@ -201,7 +201,7 @@ bool Pass2NI::copyDigitalFiles( int ie )
         if( B.word >= meta.nC )
             continue;
 
-        if( !p2_openAndCopyBFFiles( meta, samps, ie, B ) )
+        if( !p2_openAndCopyBFFiles( meta, samps, ie, NI, 0, B ) )
             return false;
     }
 

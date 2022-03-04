@@ -1657,13 +1657,9 @@ bool CGBL::makeOutputProbeFolder( int g0, int ip )
 }
 
 
-// ip = (-1,ip) =               (ni,probe).
-// is = (0,1,2,3,4,5,6,7,8,9) = (bin,meta,SY,XD,XA,iSY,iXD,iXA,BFT,BFV).
-// ap = (0,1) =                 (ap,lf).
-//
-QString CGBL::inFile( int g, int t, int ip, int is, int ap, XCT *X )
+QString CGBL::inFile( int g, int t, t_js js, int ip, t_ex ex, XCT *X )
 {
-    QString s = inPathUpTo_t( g, ip );
+    QString s = inPathUpTo_t( g, js, ip );
 
 // t-index
 
@@ -1674,39 +1670,46 @@ QString CGBL::inFile( int g, int t, int ip, int is, int ap, XCT *X )
     else
         t_str = QString("%1").arg( t );
 
-    return s + t_str + suffix( ip, is, ap, X );
+    return s + t_str + suffix( js, ip, ex, X );
 }
 
 
-// is = (0,1,2,3,4,5,6,7,8,9) = (bin,meta,SY,XD,XA,iSY,iXD,iXA,BFT,BFV).
-//
-QString CGBL::niOutFile( int g0, int is, XCT *X )
+QString CGBL::niOutFile( int g0, t_ex ex, XCT *X )
 {
     QString s;
 
-    if( ni_obase.isEmpty() )
-        s = inPathUpTo_t( g0 ) + "cat";
+    if( aux_obase.isEmpty() )
+        s = inPathUpTo_t( g0, NI, 0 ) + "cat";
     else
-        s = ni_obase;
+        s = aux_obase;
 
-    return s + suffix( -1, is, 0, X );
+    return s + suffix( NI, 0, ex, X );
 }
 
 
-// ip = (-1,ip) =               (ni,probe).
-// is = (0,1,2,3,4,5,6,7,8,9) = (bin,meta,SY,XD,XA,iSY,iXD,iXA,BFT,BFV).
-// ap = (0,1) =                 (ap,lf).
-//
-QString CGBL::imOutFile( int g0, int ip, int is, int ap, XCT *X )
+QString CGBL::obOutFile( int g0, int ip, t_ex ex, XCT *X )
+{
+    QString s;
+
+    if( aux_obase.isEmpty() )
+        s = inPathUpTo_t( g0, OB, ip ) + "cat";
+    else
+        s = aux_obase;
+
+    return s + suffix( OB, ip, ex, X );
+}
+
+
+QString CGBL::imOutFile( int g0, t_js js, int ip, t_ex ex, XCT *X )
 {
     QString s;
 
     if( prb_obase.isEmpty() )
-        s = inPathUpTo_t( g0, ip ) + "cat";
+        s = inPathUpTo_t( g0, js, ip ) + "cat";
     else
         s = prb_obase;
 
-    return s + suffix( ip, is, ap, X );
+    return s + suffix( js, ip, ex, X );
 }
 
 
@@ -1925,12 +1928,12 @@ bool CGBL::makeTaggedDest()
             return false;
         }
 
-        // -------------------------------------------
-        // NI file base: dest/catgt_run_g0/run_g0_tcat
-        // -------------------------------------------
+        // ----------------------------------------------
+        // NI/OB file base: dest/catgt_run_g0/run_g0_tcat
+        // ----------------------------------------------
 
-        ni_obase = QString("%1/%2_g%3_tcat")
-                    .arg( im_obase ).arg( run ).arg( g0 );
+        aux_obase = QString("%1/%2_g%3_tcat")
+                        .arg( im_obase ).arg( run ).arg( g0 );
 
         // ---------------
         // IM file base...
@@ -1942,7 +1945,7 @@ bool CGBL::makeTaggedDest()
         //  + append run_g0_tcat base
 
         if( !out_prb_fld )
-            im_obase = ni_obase;
+            im_obase = aux_obase;
     }
 
     return true;
@@ -1958,9 +1961,7 @@ QString CGBL::trim_adjust_slashes( const QString &dir )
 }
 
 
-// ip = (-1,ip) = (ni,probe).
-//
-QString CGBL::inPathUpTo_t( int g, int ip )
+QString CGBL::inPathUpTo_t( int g, t_js js, int ip )
 {
     QString srun = QString("%1_g%2").arg( run ).arg( g ),
             s;
@@ -1981,7 +1982,7 @@ QString CGBL::inPathUpTo_t( int g, int ip )
 
 // probe subfolder?
 
-    if( ip >= 0 && prb_fld )
+    if( js >= AP && prb_fld )
         s += QString("%1_imec%2/").arg( srun ).arg( ip );
 
 // run name up to _t
@@ -1990,40 +1991,35 @@ QString CGBL::inPathUpTo_t( int g, int ip )
 }
 
 
-// ip = (-1,ip) =               (ni,probe).
-// is = (0,1,2,3,4,5,6,7,8,9) = (bin,meta,SY,XD,XA,iSY,iXD,iXA,BFT,BFV).
-// ap = (0,1) =                 (ap,lf).
-//
-QString CGBL::suffix( int ip, int is, int ap, XCT *X )
+QString CGBL::suffix( t_js js, int ip, t_ex ex, XCT *X )
 {
     QString suf;
 
     if( exported )
         suf = ".exported";
 
-    if( ip >= 0 ) {
-
-        suf += ".imec";
-
-        if( !prb_3A )
-            suf += QString("%1").arg( ip );
-
-        suf += (ap ? ".lf" : ".ap");
+    switch( js ) {
+        case NI: suf += ".nidq"; break;
+        case OB: suf += QString(".obx%1.obx").arg( ip ); break;
+        case AP:
+        case LF:
+            suf += ".imec";
+            if( !prb_3A )
+                suf += QString("%1").arg( ip );
+            suf += (js == AP ? ".ap" : ".lf");
     }
-    else
-        suf += ".nidq";
 
-    switch( is ) {
-        case 0: suf += ".bin";  break;
-        case 1: suf += ".meta"; break;
-        case 2: suf += X->suffix( "SY" ); break;
-        case 3: suf += X->suffix( "XD" ); break;
-        case 4: suf += X->suffix( "XA" ); break;
-        case 5: suf += X->suffix( "iSY" ); break;
-        case 6: suf += X->suffix( "iXD" ); break;
-        case 7: suf += X->suffix( "iXA" ); break;
-        case 8: suf += X->suffix( "BFT" ); break;
-        case 9: suf += X->suffix( "BFV" ); break;
+    switch( ex ) {
+        case eBIN: suf += ".bin";  break;
+        case eMETA: suf += ".meta"; break;
+        case eSY: suf += X->suffix( "SY" ); break;
+        case eXD: suf += X->suffix( "XD" ); break;
+        case eXA: suf += X->suffix( "XA" ); break;
+        case eiSY: suf += X->suffix( "iSY" ); break;
+        case eiXD: suf += X->suffix( "iXD" ); break;
+        case eiXA: suf += X->suffix( "iXA" ); break;
+        case eBFT: suf += X->suffix( "BFT" ); break;
+        case eBFV: suf += X->suffix( "BFV" ); break;
     }
 
     return suf;

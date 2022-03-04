@@ -12,26 +12,26 @@ bool Pass1NI::go()
 
     io.doWrite = GBL.force_ni || GBL.gt_nIndices() > 1;
 
-    if( openInputMeta( fim, meta.kvp, g0, t0, -1, 0, false ) )
+    if( openInputMeta( fim, meta.kvp, g0, t0, NI, 0, false ) )
         return false;
 
-    if( !io.o_open( g0, -1 ) )
+    if( !io.o_open( g0, NI, NI, 0 ) )
         return false;
 
-    meta.read( -1 );
+    meta.read( NI, 0 );
 
     initDigitalFields();
 
     if( !openDigitalFiles( g0 ) )
         return false;
 
-    gFOff.init( meta.srate );
+    gFOff.init( meta.srate, NI, 0 );
 
     io.alloc();
 
     io.run();
 
-    meta.write( io.o_name, g0, t0 );
+    meta.write( io.o_name, g0, t0, NI, 0 );
 
     return true;
 }
@@ -173,7 +173,7 @@ bool Pass1NI::openDigitalFiles( int g0 )
         if( T.word >= meta.nC )
             continue;
 
-        if( !T.openOutTimesFile( GBL.niOutFile( g0, 4, &T ) ) )
+        if( !T.openOutTimesFile( GBL.niOutFile( g0, eXA, &T ) ) )
             return false;
     }
 
@@ -184,7 +184,7 @@ bool Pass1NI::openDigitalFiles( int g0 )
         if( T.word >= meta.nC )
             continue;
 
-        if( !T.openOutTimesFile( GBL.niOutFile( g0, 3, &T ) ) )
+        if( !T.openOutTimesFile( GBL.niOutFile( g0, eXD, &T ) ) )
             return false;
     }
 
@@ -195,7 +195,7 @@ bool Pass1NI::openDigitalFiles( int g0 )
         if( T.word >= meta.nC )
             continue;
 
-        if( !T.openOutTimesFile( GBL.niOutFile( g0, 7, &T ) ) )
+        if( !T.openOutTimesFile( GBL.niOutFile( g0, eiXA, &T ) ) )
             return false;
     }
 
@@ -206,7 +206,7 @@ bool Pass1NI::openDigitalFiles( int g0 )
         if( T.word >= meta.nC )
             continue;
 
-        if( !T.openOutTimesFile( GBL.niOutFile( g0, 6, &T ) ) )
+        if( !T.openOutTimesFile( GBL.niOutFile( g0, eiXD, &T ) ) )
             return false;
     }
 
@@ -217,10 +217,10 @@ bool Pass1NI::openDigitalFiles( int g0 )
         if( B.word >= meta.nC )
             continue;
 
-        if( !B.openOutTimesFile( GBL.niOutFile( g0, 8, &B ) ) )
+        if( !B.openOutTimesFile( GBL.niOutFile( g0, eBFT, &B ) ) )
             return false;
 
-        if( !B.openOutValsFile( GBL.niOutFile( g0, 9, &B ) ) )
+        if( !B.openOutValsFile( GBL.niOutFile( g0, eBFV, &B ) ) )
             return false;
     }
 
