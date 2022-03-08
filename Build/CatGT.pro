@@ -39,6 +39,7 @@ HEADERS +=              \
     Pass2AP.h           \
     Pass2LF.h           \
     Pass2NI.h           \
+    Pass2OB.h           \
     SGLTypes.h          \
     ShankMap.h          \
     Subset.h            \
@@ -67,6 +68,7 @@ SOURCES +=              \
     Pass2AP.cpp         \
     Pass2LF.cpp         \
     Pass2NI.cpp         \
+    Pass2OB.cpp         \
     ShankMap.cpp        \
     Subset.cpp          \
     Tool.cpp            \
