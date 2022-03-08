@@ -2,13 +2,15 @@
 #include "Tool.h"
 #include "CGBL.h"
 #include "Util.h"
-#include "Pass1NI.h"
 #include "Pass1AP.h"
 #include "Pass1AP2LF.h"
 #include "Pass1LF.h"
-#include "Pass2NI.h"
+#include "Pass1NI.h"
+#include "Pass1OB.h"
 #include "Pass2AP.h"
 #include "Pass2LF.h"
+#include "Pass2NI.h"
+#include "Pass2OB.h"
 #include "Biquad.h"
 #include "SGLTypes.h"
 #include "Subset.h"
@@ -1108,6 +1110,13 @@ void pass1entrypoint()
             goto done;
     }
 
+    foreach( uint ip, GBL.vobx ) {
+
+        Pass1OB P( ip );
+        if( !P.go() )
+            goto done;
+    }
+
     foreach( uint ip, GBL.vprb ) {
 
         if( GBL.ap ) {
@@ -1395,9 +1404,15 @@ static bool _supercat_runSelectEdges( int ie )
     if( GBL.ni && !_supercat_streamSelectEdges( ie, NI, 0 ) )
         return false;
 
+    foreach( uint ip, GBL.vobx ) {
+
+        if( !_supercat_streamSelectEdges( ie, OB, ip ) )
+            return false;
+    }
+
     foreach( uint ip, GBL.vprb ) {
 
-        if( (GBL.ap || GBL.lf) && !_supercat_streamSelectEdges( ie, AP, ip ) )
+        if( !_supercat_streamSelectEdges( ie, AP, ip ) )
             return false;
     }
 
@@ -1450,6 +1465,26 @@ static bool _supercatNI( Pass2NI *NI )
     }
 
     NI->close();
+    return true;
+}
+
+
+static bool _supercatOB( Pass2OB *OB, int ip )
+{
+    GBL.velem[0].unpack();
+
+    if( !OB->first( ip ) )
+        return false;
+
+    for( int ie = 1, ne = GBL.velem.size(); ie < ne; ++ie ) {
+
+        GBL.velem[ie].unpack();
+
+        if( !OB->next( ie ) )
+            return false;
+    }
+
+    OB->close();
     return true;
 }
 
@@ -1516,11 +1551,18 @@ void supercatentrypoint()
     std::vector<BTYPE>  buf( 32*1024*1024 / sizeof(BTYPE) );
 
     Pass2NI *NI = (GBL.ni ? new Pass2NI( buf ) : 0);
+    Pass2OB *OB = (GBL.ob ? new Pass2OB( buf ) : 0);
     Pass2AP *AP = (GBL.ap ? new Pass2AP( buf ) : 0);
     Pass2LF *LF = (GBL.lf ? new Pass2LF( buf ) : 0);
 
     if( GBL.ni ) {
         if( !_supercatNI( NI ) )
+            goto done;
+    }
+
+    foreach( uint ip, GBL.vobx ) {
+
+        if( !_supercatOB( OB, ip ) )
             goto done;
     }
 
@@ -1540,9 +1582,9 @@ void supercatentrypoint()
 done:
     gFOff.sc_write();
 
-    if( NI ) {
-        NI->close();
-        delete NI;
+    if( LF ) {
+        LF->close();
+        delete LF;
     }
 
     if( AP ) {
@@ -1550,9 +1592,14 @@ done:
         delete AP;
     }
 
-    if( LF ) {
-        LF->close();
-        delete LF;
+    if( OB ) {
+        OB->close();
+        delete OB;
+    }
+
+    if( NI ) {
+        NI->close();
+        delete NI;
     }
 }
 

@@ -186,9 +186,8 @@ public:
                     prb_obase;      // derived
     QMap<int,QVector<uint>> mexc;
     QVector<GT3>    gtlist;
-//@OBX Sym GBL.vobx <-> GBL.vprb
-    QVector<uint>   vprb,
-                    vobx;
+    QVector<uint>   vobx,
+                    vprb;
 //@OBX Need (js,ip) universal extractors
     QVector<TTLD>   SY,
                     iSY,
@@ -212,11 +211,10 @@ public:
                     exported,
                     catgt_fld,      // derived
                     t_miss_ok,
+                    ni,
+                    ob,
                     ap,
                     lf,
-                    ob,
-//@OBX Sym GBL.ob <-> GBL.ni
-                    ni,
                     prb_3A,
                     tshift,
                     gblcar,
@@ -234,7 +232,7 @@ public:
             zfilmax(-1), locin(0), locout(0), inarow(-1),
             no_run_fld(false), prb_fld(false), prb_miss_ok(false),
             exported(false), catgt_fld(false), t_miss_ok(false),
-            ap(false), lf(false), ob(false), ni(false), prb_3A(false),
+            ni(false), ob(false), ap(false), lf(false), prb_3A(false),
             tshift(true), gblcar(false), gfixdo(false),
             force_ni_ob(false), sc_trim(false), sc_skipbin(false),
             out_prb_fld(false)  {}

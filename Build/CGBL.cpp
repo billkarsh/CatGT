@@ -963,9 +963,11 @@ static void PrintUsage()
     Log() << "Usage:";
     Log() << ">CatGT -dir=data_dir -run=run_name -g=ga,gb -t=ta,tb <which streams> [ options ]\n";
     Log() << "Which streams:";
+    Log() << "-ni                      ;required to process ni stream";
+    Log() << "-ob                      ;required to process ob streams";
     Log() << "-ap                      ;required to process ap streams";
     Log() << "-lf                      ;required to process lf streams";
-    Log() << "-ni                      ;required to process ni stream";
+    Log() << "-obx=0,3:5               ;if -ob process these Oneboxes";
     Log() << "-prb_3A                  ;if -ap or -lf process 3A-style probe files, e.g. run_name_g0_t0.imec.ap.bin";
     Log() << "-prb=0,3:5               ;if -ap or -lf AND !prb_3A process these probes\n";
     Log() << "Options:";
@@ -1073,12 +1075,19 @@ bool CGBL::SetCmdLine( int argc, char* argv[] )
             exported = true;
         else if( IsArg( "-t_miss_ok", argv[i] ) )
             t_miss_ok = true;
+        else if( IsArg( "-ni", argv[i] ) )
+            ni = true;
+        else if( IsArg( "-ob", argv[i] ) )
+            ob = true;
         else if( IsArg( "-ap", argv[i] ) )
             ap = true;
         else if( IsArg( "-lf", argv[i] ) )
             lf = true;
-        else if( IsArg( "-ni", argv[i] ) )
-            ni = true;
+        else if( GetArgStr( sarg, "-obx=", argv[i] ) ) {
+
+            if( !Subset::rngStr2Vec( vobx, sarg ) )
+                goto bad_param;
+        }
         else if( GetArgStr( sarg, "-prb=", argv[i] ) ) {
 
             if( !Subset::rngStr2Vec( vprb, sarg ) )
@@ -1305,8 +1314,13 @@ bad_param:
             goto error;
     }
 
-    if( !ap && !lf && !ni ) {
-        Log() << "Error: Missing stream indicator {-ap, -lf, -ni}.";
+    if( !ni && !ob && !ap && !lf ) {
+        Log() << "Error: Missing stream indicator {-ni, -ob, -ap, -lf}.";
+        goto error;
+    }
+
+    if( ob && !vobx.size() ) {
+        Log() << "Error: Missing Onebox specifier -obx=???.";
         goto error;
     }
 
@@ -1322,6 +1336,7 @@ error:
 
     QString sreq        = "",
             sgt         = "",
+            sobxs       = "",
             sprbs       = "",
             szfil       = "",
             smaxsecs    = "",
@@ -1348,6 +1363,9 @@ error:
     }
     else
         sgt = " -t=cat";
+
+    if( vobx.size() )
+        sobxs = " -obx=" + Subset::vec2RngStr( vobx );
 
     if( vprb.size() && !prb_3A )
         sprbs = " -prb=" + Subset::vec2RngStr( vprb );
@@ -1415,8 +1433,8 @@ error:
 
     sCmd =
         QString(
-            "CatGT%1%2%3%4%5%6%7%8%9%10%11%12%13%14%15%16%17%18"
-            "%19%20%21%22%23%24%25%26%27%28%29%30%31%32%33%34%35")
+            "CatGT%1%2%3%4%5%6%7%8%9%10%11%12%13%14%15%16%17%18%19"
+            "%20%21%22%23%24%25%26%27%28%29%30%31%32%33%34%35%36%37")
         .arg( sreq )
         .arg( sgt )
         .arg( no_run_fld ? " -no_run_fld" : "" )
@@ -1424,11 +1442,13 @@ error:
         .arg( prb_miss_ok ? " -prb_miss_ok" : "" )
         .arg( exported ? " -exported" : "" )
         .arg( t_miss_ok ? " -t_miss_ok" : "" )
-        .arg( sprbs )
+        .arg( ni ? " -ni" : "" )
+        .arg( ob ? " -ob" : "" )
         .arg( ap ? " -ap" : "" )
         .arg( lf ? " -lf" : "" )
-        .arg( ni ? " -ni" : "" )
+        .arg( sobxs )
         .arg( prb_3A ? " -prb_3A" : "" )
+        .arg( sprbs )
         .arg( szfil )
         .arg( smaxsecs )
         .arg( sapfilter )

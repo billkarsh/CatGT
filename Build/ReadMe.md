@@ -77,9 +77,11 @@ Notes:
 
 ```
 Which streams:
+-ni                      ;required to process ni stream
+-ob                      ;required to process ob streams
 -ap                      ;required to process ap streams
 -lf                      ;required to process lf streams
--ni                      ;required to process ni stream
+-obx=0,3:5               ;if -ob process these Oneboxes
 -prb_3A                  ;if -ap or -lf process 3A-style probe files, e.g. run_name_g0_t0.imec.ap.bin
 -prb=0,3:5               ;if -ap or -lf AND !prb_3A process these probes
 
@@ -142,7 +144,7 @@ applies filter operations in this order:
 The input files are expected to be organized into folders as SpikeGLX
 writes them. CatGT will use your hints {-no_run_fld, -prb_fld} to
 automatically generate a path from `data_dir` (the parent directory
-of all runs) to the files it needs from `run_name` (this run).
+of several runs) to the files it needs from `run_name` (this run).
 Here are some examples:
 
 - Use `-dir=data_dir -run=run_name -no_run_fld` if the data reside directly
@@ -163,15 +165,20 @@ data_dir/run_name_g0/run_name_g0_imec0/run_name_g0_t0.imec0.ap.bin.
 
 Use option `-prb_miss_ok` when run output is split across multiple drives.
 
+>The recently added **obx stream** has small files: just a few analog and
+digital channels per file. Like NI files, obx files are always at the
+**top level** of the run folder, and are always in the **main (dir-0)
+directory** when multidirectory saving is enabled.
+
 ### run_name
 
 The input run_name is a base (undecorated) name without g- or t-indices.
 
-### Stream identifiers `{-ap, -lf, -ni}`
+### Stream identifiers `{-ni, -ob, -ap, -lf}`
 
 In a given run you might have saved a variety of stream/file types
-{ap.bin, lf.bin, ni.bin}. Use the `{-ap, -lf, -ni}` flags to indicate
-which streams within this run you wish to process.
+{nidq.bin, obx.bin, ap.bin, lf.bin}. Use the `{-ni, -ob, -ap, -lf}`
+flags to indicate which streams within this run you wish to process.
 
 Note that 2.0 probes output only full-band data with files named ap.bin.
 Unlike 1.0 probes there isn't a separate lf band for 2.0. However, if the
@@ -183,6 +190,18 @@ following are true:
 
 then CatGT will create a filtered and downsampled (2500 Hz) lf.bin/meta
 file set from the ap.bin stream data.
+
+### obx (which Onebox(es))
+
+This designates which Oneboxes to process. Onebox indices are assigned by
+SpikeGLX and always start at zero. Unlike probes, all obx files are at
+the top level of a run folder (like NI); there are no obx subfolders.
+
+Examples:
+
+- Use `-obx=0` if your run contains one Onebox only.
+- Use `-obx=2:4` to process Oneboxes {2,3,4}.
+- Use `-obx=1,3:5` to do Oneboxes {1,3,4,5} (skip 2).
 
 ### prb (which probe(s))
 
@@ -277,12 +296,12 @@ established SpikeGLX g/t naming conventions.
 
 ##### (Windows)
 
-1.	Create a folder, e.g. 'ZZZ', to hold your symlinks;
+1. Create a folder, e.g. 'ZZZ', to hold your symlinks;
 it acts like a containing run folder. You can make either a flat
 folder organization or a standard SpikeGLX hierarchy; adjust the
 CatGT parameters accordingly.
-2.	Create a .bat script file, e.g. 'makelinks.bat'.
-3.	Edit makelinks.bat, adding entries for each bin/meta file pair like this:
+2. Create a .bat script file, e.g. 'makelinks.bat'.
+3. Edit makelinks.bat, adding entries for each bin/meta file pair like this:
 
 ```
 mklink <...ZZZ\goodname_g0_t0.imec0.ap.bin> <path\myoriginalname.bin>
@@ -291,17 +310,17 @@ mklink <...ZZZ\goodname_g0_t0.imec0.ap.meta> <path\myoriginalname.meta>
 
 > Set the g/t indices to describe the concatenation order you want.
 
-4.	Close makelinks.bat.
-5.	Right-click on makelinks.bat and select `Run as administrator`.
+4. Close makelinks.bat.
+5. Right-click on makelinks.bat and select `Run as administrator`.
 
 ##### (Linux)
 
-1.	Create a folder, e.g. 'ZZZ', to hold your symlinks;
+1. Create a folder, e.g. 'ZZZ', to hold your symlinks;
 it acts like a containing run folder. You can make either a flat
 folder organization or a standard SpikeGLX hierarchy; adjust the
 CatGT parameters accordingly.
-2.	Create a .sh script file, e.g. 'makelinks.sh'.
-3.	Edit makelinks.sh, adding entries for each bin/meta file pair like this:
+2. Create a .sh script file, e.g. 'makelinks.sh'.
+3. Edit makelinks.sh, adding entries for each bin/meta file pair like this:
 
 ```
 #!/bin/sh
@@ -312,7 +331,7 @@ ls -s <path/myoriginalname.meta> <...ZZZ/goodname_g0_t0.imec0.ap.meta>
 
 > Set the g/t indices to describe the concatenation order you want.
 
-4.	Close makelinks.sh, set its executable flag, run it.
+4. Close makelinks.sh, set its executable flag, run it.
 
 ### Missing files and gap zero-filling
 
@@ -796,9 +815,11 @@ Standard:
 -t=ta,tb                 ;ignored (assumed to be t=cat)
 
 Which streams:
+-ni                      ;required to supercat ni stream
+-ob                      ;required to supercat ob streams
 -ap                      ;required to supercat ap streams
 -lf                      ;required to supercat lf streams
--ni                      ;required to supercat ni stream
+-obx=0,3:5               ;if -ob supercat these Oneboxes
 -prb_3A                  ;if -ap or -lf supercat 3A-style probe files, e.g. run_name_g0_tcat.imec.ap.bin
 -prb=0,3:5               ;if -ap or -lf AND !prb_3A supercat these probes
 
@@ -890,6 +911,7 @@ on that stream's clock.
 
 Version 2.6
 
+- Add obx file support.
 - Rename pass1_force_ni_ob_bin, supercat_skip_ni_ob_bin options.
 
 Version 2.5
