@@ -993,10 +993,10 @@ static void PrintUsage()
     Log() << "-iXD=8,0,0               ;extract inverted TTL signal from nidq XD (word,bit,millisec)";
     Log() << "-BF=8,2,4,3              ;extract numeric bit-field from nidq XD (word,startbit,nbits,inarow)";
     Log() << "-inarow=5                ;extractor antibounce stay high/low sample count";
-    Log() << "-pass1_force_ni_bin      ;write pass one ni binary tcat file even if not changed";
+    Log() << "-pass1_force_ni_ob_bin   ;write pass one ni/ob binary tcat file even if not changed";
     Log() << "-supercat={dir,run_ga}   ;concatenate existing output files across runs (see ReadMe)";
     Log() << "-supercat_trim_edges     ;supercat after trimming each stream to matched sync edges";
-    Log() << "-supercat_skip_ni_bin    ;do not supercat ni binary files";
+    Log() << "-supercat_skip_ni_ob_bin ;do not supercat ni/ob binary files";
     Log() << "-dest=path               ;alternate path for output files (must exist)";
     Log() << "-out_prb_fld             ;if using -dest, create output subfolder per probe";
     Log() << "------------------------\n";
@@ -1239,13 +1239,13 @@ bool CGBL::SetCmdLine( int argc, char* argv[] )
 
             BF.push_back( B );
         }
-        else if( IsArg( "-pass1_force_ni_bin", argv[i] ) )
-            force_ni = true;
+        else if( IsArg( "-pass1_force_ni_ob_bin", argv[i] ) )
+            force_ni_ob = true;
         else if( GetArgStr( sarg, "-supercat=", argv[i] ) )
             ssupercat = sarg;
         else if( IsArg( "-supercat_trim_edges", argv[i] ) )
             sc_trim = true;
-        else if( IsArg( "-supercat_skip_ni_bin", argv[i] ) )
+        else if( IsArg( "-supercat_skip_ni_ob_bin", argv[i] ) )
             sc_skipbin = true;
         else if( GetArgStr( sarg, "-dest=", argv[i] ) )
             opar = trim_adjust_slashes( sarg );
@@ -1446,10 +1446,10 @@ error:
         .arg( siXD )
         .arg( sBF )
         .arg( sinarow )
-        .arg( force_ni ? " -pass1_force_ni_bin" : "" )
+        .arg( force_ni_ob ? " -pass1_force_ni_ob_bin" : "" )
         .arg( ssuper )
         .arg( sc_trim ? " -supercat_trim_edges" : "" )
-        .arg( sc_skipbin ? " -supercat_skip_ni_bin" : "" )
+        .arg( sc_skipbin ? " -supercat_skip_ni_ob_bin" : "" )
         .arg( sodir )
         .arg( out_prb_fld ? " -out_prb_fld" : "" );
 

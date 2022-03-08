@@ -10,7 +10,7 @@ bool Pass1NI::go()
 {
     int t0, g0 = GBL.gt_get_first( &t0 );
 
-    io.doWrite = GBL.force_ni || GBL.gt_nIndices() > 1;
+    io.doWrite = GBL.force_ni_ob || GBL.gt_nIndices() > 1;
 
     if( openInputMeta( fim, meta.kvp, g0, t0, NI, 0, false ) )
         return false;

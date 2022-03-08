@@ -108,10 +108,10 @@ Options:
 -iXD=8,0,0               ;extract inverted TTL signal from nidq XD (word,bit,millisec)
 -BF=8,2,4,3              ;extract numeric bit-field from nidq XD (word,startbit,nbits,inarow)
 -inarow=5                ;extractor antibounce stay high/low sample count
--pass1_force_ni_bin      ;write pass one ni binary tcat file even if not changed
+-pass1_force_ni_ob_bin   ;write pass one ni/ob binary tcat file even if not changed
 -supercat={dir,run_ga}   ;concatenate existing output files across runs (see ReadMe)
 -supercat_trim_edges     ;supercat after trimming each stream to matched sync edges
--supercat_skip_ni_bin    ;do not supercat ni binary files
+-supercat_skip_ni_ob_bin ;do not supercat ni/ob binary files
 -dest=path               ;alternate path for output files (must exist)
 -out_prb_fld             ;if using -dest, create output subfolder per probe
 ```
@@ -766,17 +766,18 @@ with the stream's binary files.
 >
 > - Specify (-ap) and sync edge extraction (-SY) during pass 1.
 
-### supercat_skip_ni_bin option & pass1_force_ni_bin
+### supercat_skip_ni_ob_bin option & pass1_force_ni_ob_bin
 
 Your first-pass CatGT runs might have extracted edge files but produced
-no new binary NI files (that happens if no trial range is specified in
-the g- or t-indices). The supercat_skip_ni_bin option reminds supercat
+no new binary NI or OB files (that happens if no trial range is specified
+in the g- or t-indices). The supercat_skip_ni_ob_bin option reminds supercat
 not to process the missing binary files.
 
-On the other hand, you might want to make a supercat of NI binary files
-even though you aren't modifying those data in the first pass. In that
-case, do the first pass with `pass1_force_ni_bin` which will ensure that
-the NI binary files are made and tagged `tcat` so supercat can find them.
+On the other hand, you might want to make a supercat of NI or OB binary
+files even though you aren't modifying those data in the first pass. In
+that case, do the first pass with `pass1_force_ni_ob_bin` which will ensure
+that the NI and OB binary files are made and tagged `tcat` so supercat can
+find them.
 
 >As of version 1.9, any operations on a stream always produce a new
 'tcat' meta file so that supercat can later track file lengths.
@@ -825,7 +826,7 @@ Options:
 -iXD=8,0,0               ;required if joining this extractor type
 -BF=8,2,4,3              ;required if joining this extractor type
 -inarow=5                ;ignored
--pass1_force_ni_bin      ;ignored
+-pass1_force_ni_ob_bin   ;ignored
 -dest=path               ;required
 -out_prb_fld             ;create output subfolder per probe
 ```
@@ -886,6 +887,10 @@ on that stream's clock.
 ------
 
 ## Change Log
+
+Version 2.6
+
+- Rename pass1_force_ni_ob_bin, supercat_skip_ni_ob_bin options.
 
 Version 2.5
 

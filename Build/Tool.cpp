@@ -1332,8 +1332,8 @@ static bool _supercat_streamSelectEdges( int ie, t_js js, int ip )
         double  t = line.toDouble( &ok );
 
         if( ok ) {
-            GBL.velem[ie].ip2head[ip]   = (ie ? t : 0);
-            tlast                       = t;
+            GBL.velem[ie].head( js, ip )    = (ie ? t : 0);
+            tlast                           = t;
             break;
         }
     }
@@ -1378,7 +1378,7 @@ static bool _supercat_streamSelectEdges( int ie, t_js js, int ip )
 // Store
 // -----
 
-    GBL.velem[ie].ip2tail[ip] = tlast;
+    GBL.velem[ie].tail( js, ip ) = tlast;
 
     return true;
 }
@@ -1413,21 +1413,21 @@ static bool _supercat_runSelectEdges( int ie )
 // whole periods until "close."
 
     double  shortest = 1e99;
-    QMap<int,double>::iterator  it, end = GBL.velem[ie].ip2tail.end();
-    for( it = GBL.velem[ie].ip2tail.begin(); it != end; ++it ) {
+    QMap<int,double>::iterator  it, end = GBL.velem[ie].iq2tail.end();
+    for( it = GBL.velem[ie].iq2tail.begin(); it != end; ++it ) {
         if( it.value() < shortest )
             shortest = it.value();
     }
 
-    QList<int>  keys = GBL.velem[ie].ip2tail.keys();
-    foreach( int ip, keys ) {
+    QList<int>  keys = GBL.velem[ie].iq2tail.keys();
+    foreach( int iq, keys ) {
 
-        double  tail = GBL.velem[ie].ip2tail[ip];
+        double  tail = GBL.velem[ie].iq2tail[iq];
 
         while( tail - shortest > GBL.syncper/2 )
             tail -= GBL.syncper;
 
-        GBL.velem[ie].ip2tail[ip] = tail;
+        GBL.velem[ie].iq2tail[iq] = tail;
     }
 
     return true;
@@ -1741,8 +1741,8 @@ qint64 p2_checkCounts( const Meta &meta, int ie, t_js js, int ip )
 
     if( GBL.sc_trim ) {
         Elem    &E = GBL.velem[ie];
-        return  qint64(E.ip2tail[ip] * meta.srate + 1)
-                - qint64(E.ip2head[ip] * meta.srate)
+        return  qint64(E.tail( js, ip ) * meta.srate + 1)
+                - qint64(E.head( js, ip ) * meta.srate)
                 - (ie ? 1 : 0);
     }
 
@@ -1762,8 +1762,8 @@ static bool p2_copyBinary(
     t_js                js,
     int                 ip )
 {
-    qint64  head     = GBL.velem[ie].ip2head[ip] * meta.srate,
-            tail     = GBL.velem[ie].ip2tail[ip] * meta.srate + 1,
+    qint64  head     = GBL.velem[ie].head( js, ip ) * meta.srate,
+            tail     = GBL.velem[ie].tail( js, ip ) * meta.srate + 1,
             bufBytes = sizeof(BTYPE) * buf.size(),
             finBytes = fin.size();
 
@@ -1865,8 +1865,8 @@ static void p2_copyOffsetTimes(
     XCT     *X )
 {
     double  t,
-            head = GBL.velem[ie].ip2head[ip],
-            tail = GBL.velem[ie].ip2tail[ip];
+            head = GBL.velem[ie].head( js, ip ),
+            tail = GBL.velem[ie].tail( js, ip );
     QString line;
     bool    ok;
 
@@ -1962,8 +1962,8 @@ bool p2_openAndCopyBFFiles(
 
         double  t,
                 secs = samps / meta.srate,
-                head = GBL.velem[ie].ip2head[-1],
-                tail = GBL.velem[ie].ip2tail[-1];
+                head = GBL.velem[ie].head( js, ip ),
+                tail = GBL.velem[ie].tail( js, ip );
         QString LT, LV;
         bool    ok;
 

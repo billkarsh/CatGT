@@ -55,7 +55,9 @@ struct Filter {
     bool haslopass()    {return isenabled() && Flo != 0;}
     bool needsfft()     {return isenabled() && !isbiquad();}
     bool parse( const QString &s );
-    QString format()    {return QString("%1,%2,%3,%4").arg( type ).arg( order ).arg( Fhi ).arg( Flo );}
+    QString format()    {return QString("%1,%2,%3,%4")
+                                    .arg( type ).arg( order )
+                                    .arg( Fhi ).arg( Flo );}
 };
 
 struct LR {
@@ -123,7 +125,7 @@ struct TTLD : public TTL {
 };
 
 struct XBF : public XCT {
-// NI bitfield extractor
+// Digital bitfield extractor
     QFile       *fv;    // value file
     QTextStream *tsv;
     int         b0,     // cmdline
@@ -143,9 +145,8 @@ struct XBF : public XCT {
 };
 
 struct Elem {
-//@OBX ip2head, ip2tail need account for (js,ip)
-    QMap<int,double>    ip2head,
-                        ip2tail;
+    QMap<int,double>    iq2head,
+                        iq2tail;
     QString             dir,
                         run;
     int                 g;
@@ -161,6 +162,8 @@ struct Elem {
         bool            catgt_fld )
         :   dir(dir), run(run), g(g),
             no_run_fld(no_run_fld), catgt_fld(catgt_fld)    {}
+    double& head( t_js js, int ip ) {return iq2head[1000*js + ip];}
+    double& tail( t_js js, int ip ) {return iq2tail[1000*js + ip];}
     void unpack();
 };
 
@@ -169,9 +172,9 @@ class CGBL
 public:
     double          syncper,        // measured in supercat_trim
                     maxsecs,
-                    gfixamp,
-                    gfixslp,
-                    gfixbas;
+                    gfixamp,        // amplitude
+                    gfixslp,        // slope
+                    gfixbas;        // baseline
     Filter          apflt,
                     lfflt;
     QString         sCmd,
@@ -183,7 +186,10 @@ public:
                     prb_obase;      // derived
     QMap<int,QVector<uint>> mexc;
     QVector<GT3>    gtlist;
-    QVector<uint>   vprb;
+//@OBX Sym GBL.vobx <-> GBL.vprb
+    QVector<uint>   vprb,
+                    vobx;
+//@OBX Need (js,ip) universal extractors
     QVector<TTLD>   SY,
                     iSY,
                     XD,
@@ -208,13 +214,14 @@ public:
                     t_miss_ok,
                     ap,
                     lf,
-//@OBX Search all uses GBL.ni
+                    ob,
+//@OBX Sym GBL.ob <-> GBL.ni
                     ni,
                     prb_3A,
                     tshift,
                     gblcar,
                     gfixdo,
-                    force_ni,
+                    force_ni_ob,
                     sc_trim,
                     sc_skipbin,
                     out_prb_fld;
@@ -227,9 +234,9 @@ public:
             zfilmax(-1), locin(0), locout(0), inarow(-1),
             no_run_fld(false), prb_fld(false), prb_miss_ok(false),
             exported(false), catgt_fld(false), t_miss_ok(false),
-            ap(false), lf(false), ni(false), prb_3A(false),
+            ap(false), lf(false), ob(false), ni(false), prb_3A(false),
             tshift(true), gblcar(false), gfixdo(false),
-            force_ni(false), sc_trim(false), sc_skipbin(false),
+            force_ni_ob(false), sc_trim(false), sc_skipbin(false),
             out_prb_fld(false)  {}
 
     bool SetCmdLine( int argc, char* argv[] );
