@@ -33,11 +33,12 @@ HEADERS +=              \
     KVParams.h          \
     Pass1AP.h           \
     Pass1AP2LF.h        \
-    Pass1NI.h           \
     Pass1LF.h           \
+    Pass1NI.h           \
+    Pass1OB.h           \
     Pass2AP.h           \
-    Pass2NI.h           \
     Pass2LF.h           \
+    Pass2NI.h           \
     SGLTypes.h          \
     ShankMap.h          \
     Subset.h            \
@@ -60,11 +61,12 @@ SOURCES +=              \
     main.cpp            \
     Pass1AP.cpp         \
     Pass1AP2LF.cpp      \
-    Pass1NI.cpp         \
     Pass1LF.cpp         \
+    Pass1NI.cpp         \
+    Pass1OB.cpp         \
     Pass2AP.cpp         \
-    Pass2NI.cpp         \
     Pass2LF.cpp         \
+    Pass2NI.cpp         \
     ShankMap.cpp        \
     Subset.cpp          \
     Tool.cpp            \

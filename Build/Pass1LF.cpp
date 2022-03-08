@@ -42,20 +42,6 @@ bool Pass1LF::go()
 }
 
 
-void Pass1LF::digital( const qint16 *data, int ntpts )
-{
-    Q_UNUSED( data )
-    Q_UNUSED( ntpts )
-}
-
-
-void Pass1LF::neural( qint16 *data, int ntpts )
-{
-    Q_UNUSED( data )
-    Q_UNUSED( ntpts )
-}
-
-
 void Pass1LF::filtersAndScaling()
 {
 // ----

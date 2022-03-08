@@ -105,6 +105,7 @@ int main( int argc, char *argv[] )
     else
         supercatentrypoint();
 
+//@OBX universal extractor closure
     foreach( TTLD T, GBL.SY )
         T.close();
 

@@ -16,13 +16,13 @@ private:
     int         ip;
 
 public:
-    Pass1LF( int ip ) : io(*this, fim, meta), ip(ip)    {}
-    virtual ~Pass1LF()                                  {}
+    Pass1LF( int ip ) : io(*this, fim, meta), ip(ip)        {}
+    virtual ~Pass1LF()                                      {}
 
     bool go();
 
-    virtual void digital( const qint16 *data, int ntpts );
-    virtual void neural( qint16 *data, int ntpts );
+    virtual void digital( const qint16 *data, int ntpts )   {}
+    virtual void neural( qint16 *data, int ntpts )          {}
 
 private:
     void filtersAndScaling();

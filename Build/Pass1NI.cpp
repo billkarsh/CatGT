@@ -91,13 +91,6 @@ void Pass1NI::digital( const qint16 *data, int ntpts )
 }
 
 
-void Pass1NI::neural( qint16 *data, int ntpts )
-{
-    Q_UNUSED( data )
-    Q_UNUSED( ntpts )
-}
-
-
 void Pass1NI::initDigitalFields()
 {
     for( int i = 0, n = GBL.XA.size(); i < n; ++i ) {
