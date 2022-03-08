@@ -909,7 +909,7 @@ on that stream's clock.
 
 ## Change Log
 
-Version 2.6
+Version 3.0
 
 - Add obx file support.
 - Rename pass1_force_ni_ob_bin, supercat_skip_ni_ob_bin options.
