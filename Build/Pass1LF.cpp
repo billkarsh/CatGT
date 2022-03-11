@@ -1,6 +1,5 @@
 
 #include "Pass1LF.h"
-#include "CGBL.h"
 #include "Util.h"
 
 #define MAX10BIT    512
@@ -32,7 +31,7 @@ bool Pass1LF::go()
 
     gFOff.init( meta.srate, LF, ip );
 
-    io.alloc( true );
+    io.alloc();
 
     io.run();
 

@@ -1,6 +1,5 @@
 
 #include "Tool.h"
-#include "CGBL.h"
 #include "Util.h"
 #include "Pass1AP.h"
 #include "Pass1AP2LF.h"
@@ -353,7 +352,7 @@ bool Pass1IO::o_open( int g0, t_js js_in, t_js js_out, int ip )
 
 // Must be called after Meta::get().
 //
-void Pass1IO::alloc( bool initfft )
+void Pass1IO::alloc()
 {
     i_buf.resize( SZIBUF * meta.nC );
     o_buf.resize( SZOBUF * meta.nC );
@@ -373,8 +372,7 @@ void Pass1IO::alloc( bool initfft )
                 lopass = new Biquad( bq_type_lowpass, GBL.lfflt.Flo / meta.srate );
         }
 
-        if( initfft )
-            fft.init( fim, meta, js_in, js_out );
+        fft.init( fim, meta, js_in, js_out );
     }
 }
 

@@ -1,6 +1,5 @@
 
 #include "Pass1OB.h"
-#include "CGBL.h"
 #include "Util.h"
 
 
@@ -27,7 +26,7 @@ bool Pass1OB::go()
 
     gFOff.init( meta.srate, OB, ip );
 
-    io.alloc( true );
+    io.alloc();
 
     io.run();
 

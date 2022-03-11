@@ -1,7 +1,6 @@
 
-#include "CGBL.h"
-#include "Util.h"
 #include "Tool.h"
+#include "Util.h"
 
 #if 0
 static void compareFiles()

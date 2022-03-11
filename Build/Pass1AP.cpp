@@ -1,6 +1,5 @@
 
 #include "Pass1AP.h"
-#include "CGBL.h"
 #include "Util.h"
 #include "Biquad.h"
 #include "ShankMap.h"
@@ -51,7 +50,7 @@ bool Pass1AP::go()
 
     gFOff.init( meta.srate, AP, ip );
 
-    io.alloc( true );
+    io.alloc();
 
     if( GBL.gfixdo )
         gfixbuf.resize( GFIXBUFSMP * meta.nC );

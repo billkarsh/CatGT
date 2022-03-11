@@ -1,6 +1,5 @@
 
 #include "Pass2.h"
-#include "CGBL.h"
 #include "Util.h"
 
 

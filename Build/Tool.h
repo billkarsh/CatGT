@@ -94,7 +94,7 @@ struct Pass1IO {
             i_nxt(0), i_lim(0), doWrite(false)  {}
     virtual ~Pass1IO();
     bool o_open( int g0, t_js js_in, t_js js_out, int ip );
-    void alloc( bool initfft = false );
+    void alloc();
     void set_maxInt( int _maxInt )  {maxInt = _maxInt;}
     char* o_buf8()                  {return (char*)&o_buf[0];}
     void run();

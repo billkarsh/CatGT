@@ -1,6 +1,5 @@
 
 #include "Pass1NI.h"
-#include "CGBL.h"
 #include "Util.h"
 
 
