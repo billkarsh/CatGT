@@ -18,7 +18,7 @@
 <li>Optionally apply band-pass and global CAR filters.</li>
 <li>Optionally edit out saturation artifacts.</li>
 <li>Optionally extract tables of sync waveform edge times to drive TPrime.</li>
-<li>Optionally extract tables of any other TTL event times to be aligned with spikes.</li>
+<li>Optionally extract tables of other nonneural event times to be aligned with spikes.</li>
 <li>Optionally join the above outputs across different runs (supercat feature).</li>
 </ul>
 <hr />
@@ -75,9 +75,11 @@
 </ul>
 <h3 id="command-line-parameters">Command Line Parameters:</h3>
 <pre><code>Which streams:
+-ni                      ;required to process ni stream
+-ob                      ;required to process ob streams
 -ap                      ;required to process ap streams
 -lf                      ;required to process lf streams
--ni                      ;required to process ni stream
+-obx=0,3:5               ;if -ob process these Oneboxes
 -prb_3A                  ;if -ap or -lf process 3A-style probe files, e.g. run_name_g0_t0.imec.ap.bin
 -prb=0,3:5               ;if -ap or -lf AND !prb_3A process these probes
 
@@ -86,7 +88,7 @@ Options:
 -prb_fld                 ;use folder-per-probe organization
 -prb_miss_ok             ;instead of stopping, silently skip missing probes
 -gtlist={gj,tja,tjb}     ;override {-g,-t} giving each listed g-index its own t-range
--t=cat                   ;extract TTL from CatGT output files (instead of -t=ta,tb)
+-t=cat                   ;extract events from CatGT output files (instead of -t=ta,tb)
 -exported                ;apply FileViewer 'exported' tag to in/output filenames
 -t_miss_ok               ;instead of stopping, zero-fill if trial missing
 -zerofillmax=500         ;set a maximum zero-fill span (millisec)
@@ -98,18 +100,16 @@ Options:
 -gblcar                  ;apply ap global CAR filter over all channels
 -gfix=0.40,0.10,0.02     ;rmv ap artifacts: ||amp(mV)||, ||slope(mV/sample)||, ||noise(mV)||
 -chnexcl={prb;chans}     ;this probe, exclude listed chans from ap loccar, gblcar, gfix
--SY=0,384,6,500          ;extract TTL signal from imec SY (probe,word,bit,millisec)
--XA=2,3.0,4.5,25         ;extract TTL signal from nidq XA (word,thresh1(V),thresh2(V),millisec)
--XD=8,0,0                ;extract TTL signal from nidq XD (word,bit,millisec)
--iSY=0,384,6,500         ;extract inverted TTL signal from imec SY (probe,word,bit,millisec)
--iXA=2,2.0,1.0,25        ;extract inverted TTL signal from nidq XA (word,thresh1(V),thresh2(V),millisec)
--iXD=8,0,0               ;extract inverted TTL signal from nidq XD (word,bit,millisec)
--BF=8,2,4,3              ;extract numeric bit-field from nidq XD (word,startbit,nbits,inarow)
--inarow=5                ;extractor antibounce stay high/low sample count
--pass1_force_ni_bin      ;write pass one ni binary tcat file even if not changed
+-xa=0,0,2,3.0,4.5,25     ;extract pulse signal from analog chan (js,ip,word,thresh1(V),thresh2(V),millisec)
+-xd=2,0,384,6,500        ;extract pulse signal from digital chan (js,ip,word,bit,millisec)
+-xia=0,0,2,3.0,4.5,2     ;inverted version of xa
+-xid=2,0,384,6,50        ;inverted version of xd
+-bf=0,0,8,2,4,3          ;extract numeric bit-field from digital chan (js,ip,word,startbit,nbits,inarow)
+-inarow=5                ;extractor {xa,xd,xia,xid} antibounce stay high/low sample count
+-pass1_force_ni_ob_bin   ;write pass one ni/ob binary tcat file even if not changed
 -supercat={dir,run_ga}   ;concatenate existing output files across runs (see ReadMe)
 -supercat_trim_edges     ;supercat after trimming each stream to matched sync edges
--supercat_skip_ni_bin    ;do not supercat ni binary files
+-supercat_skip_ni_ob_bin ;do not supercat ni/ob binary files
 -dest=path               ;alternate path for output files (must exist)
 -out_prb_fld             ;if using -dest, create output subfolder per probe</code></pre>
 <h3 id="parameter-ordering">Parameter Ordering</h3>
@@ -129,17 +129,20 @@ Options:
 <hr />
 <h2 id="individual-parameter-notes">Individual Parameter Notes</h2>
 <h3 id="dir">dir</h3>
-<p>The input files are expected to be organized into folders as SpikeGLX writes them. CatGT will use your hints {-no_run_fld, -prb_fld} to automatically generate a path from <code>data_dir</code> (the parent directory of all runs) to the files it needs from <code>run_name</code> (this run). Here are some examples:</p>
+<p>The input files are expected to be organized into folders as SpikeGLX writes them. CatGT will use your hints {-no_run_fld, -prb_fld} to automatically generate a path from <code>data_dir</code> (the parent directory of several runs) to the files it needs from <code>run_name</code> (this run). Here are some examples:</p>
 <ul>
 <li><p>Use <code>-dir=data_dir -run=run_name -no_run_fld</code> if the data reside directly within data_dir without any run folder, as was true in early 3A software, or if you copied some of your run files without the enclosing run folder. That is, the data are organized like this: data_dir/run_name_g0_t0.imec0.ap.bin.</p></li>
 <li><p>Use <code>-dir=data_dir -run=run_name</code> if you did not select probe folders in SpikeGLX, that is, the probe data are all at the same level as the NI data without probe subfolders as in this example: data_dir/run_name_g0/run_name_g0_t0.imec0.ap.bin.</p></li>
 <li><p>Use <code>-dir=data_dir -run=run_name -prb_fld</code> if you did select probe folders in SpikeGLX so that the data from each probe lives in a separate folder inside the run folder as demonstrated here: data_dir/run_name_g0/run_name_g0_imec0/run_name_g0_t0.imec0.ap.bin.</p></li>
 </ul>
 <p>Use option <code>-prb_miss_ok</code> when run output is split across multiple drives.</p>
+<blockquote>
+<p>The recently added <strong>obx stream</strong> has small files: just a few analog and digital channels per file. Like NI files, obx files are always at the <strong>top level</strong> of the run folder, and are always in the <strong>main (dir-0) directory</strong> when multidirectory saving is enabled.</p>
+</blockquote>
 <h3 id="run_name">run_name</h3>
 <p>The input run_name is a base (undecorated) name without g- or t-indices.</p>
-<h3 id="stream-identifiers--ap--lf--ni">Stream identifiers <code>{-ap, -lf, -ni}</code></h3>
-<p>In a given run you might have saved a variety of stream/file types {ap.bin, lf.bin, ni.bin}. Use the <code>{-ap, -lf, -ni}</code> flags to indicate which streams within this run you wish to process.</p>
+<h3 id="stream-identifiers--ni--ob--ap--lf">Stream identifiers <code>{-ni, -ob, -ap, -lf}</code></h3>
+<p>In a given run you might have saved a variety of stream/file types {nidq.bin, obx.bin, ap.bin, lf.bin}. Use the <code>{-ni, -ob, -ap, -lf}</code> flags to indicate which streams within this run you wish to process.</p>
 <p>Note that 2.0 probes output only full-band data with files named ap.bin. Unlike 1.0 probes there isn't a separate lf band for 2.0. However, if the following are true:</p>
 <ul>
 <li>The current probe is a 2.0 type.</li>
@@ -147,6 +150,14 @@ Options:
 <li>-lffilter is set (include the low-pass corner!),</li>
 </ul>
 <p>then CatGT will create a filtered and downsampled (2500 Hz) lf.bin/meta file set from the ap.bin stream data.</p>
+<h3 id="obx-which-oneboxes">obx (which Onebox(es))</h3>
+<p>This designates which Oneboxes to process. Onebox indices are assigned by SpikeGLX and always start at zero. Unlike probes, all obx files are at the top level of a run folder (like NI); there are no obx subfolders.</p>
+<p>Examples:</p>
+<ul>
+<li>Use <code>-obx=0</code> if your run contains one Onebox only.</li>
+<li>Use <code>-obx=2:4</code> to process Oneboxes {2,3,4}.</li>
+<li>Use <code>-obx=1,3:5</code> to do Oneboxes {1,3,4,5} (skip 2).</li>
+</ul>
 <h3 id="prb-which-probes">prb (which probe(s))</h3>
 <p>This designates which probes to process. Probe indices are assigned by SpikeGLX and always start at zero. Note that if you selected the probe folders box in SpikeGLX, the data for probe 7 would be output to a subfolder like this: data_dir/run_name_g0/run_name_g0_imec7.</p>
 <p>Examples:</p>
@@ -194,7 +205,7 @@ Options:
         }
     }</code></pre>
 <h4 id="using-catgt-output-files-as-input-for-an-extraction-pass">Using CatGT output files as input for an extraction pass</h4>
-<p>Operate on CatGT output files (in order to do TTL extraction) by setting the -t parameter to: <code>-t=cat</code>. Note that you must specify the single <code>ga</code> that labels that tcat file. (More on this in the TTL extraction notes below).</p>
+<p>Operate on CatGT output files (in order to do event extraction) by setting the -t parameter to: <code>-t=cat</code>. Note that you must specify the single <code>ga</code> that labels that tcat file. (More on this in the Extractor notes below).</p>
 <h4 id="running-catgt-on-nonstandard-file-names">Running CatGT on nonstandard file names</h4>
 <p>This can be done easily by creating symbolic file links that use the established SpikeGLX g/t naming conventions.</p>
 <h5 id="windows-2">(Windows)</h5>
@@ -232,7 +243,7 @@ ls -s &lt;path/myoriginalname.meta&gt; &lt;...ZZZ/goodname_g0_t0.imec0.ap.meta&g
 <p>You can control how CatGT works during file concatenation when one or more of your input files is missing, or, if input file <code>N+1</code> starts later in time than the end of input file <code>N</code>; what we term a &quot;gap&quot; in the recording.</p>
 <p>If you do not use the <code>-t_miss_ok</code> option, the default behavior is to require all files in the series to be present. Processing of a stream will stop if a binary or meta file is not found. If the expected file set is found but there is a gap between the files, the gap is filled with zeros for all channels. If instead, adjacent files overlap in time, the overlap region is represented just once in the output file.</p>
 <p>If you include <code>-t_miss_ok</code> in the command line, then processing does not stop. Rather, the entire missing file (or run of consecutive missing files) is counted as an extended gap. The gap is replaced by zeros when a next expected file set is found.</p>
-<p>By default, CatGT zero-fills gaps so as to precisely preserve the real world duration of the recording. This enables the spikes and other TTL events that are present in the output file to be temporally aligned with other recorded data streams in the experiment.</p>
+<p>By default, CatGT zero-fills gaps so as to precisely preserve the real world duration of the recording. This enables the spikes and other nonneural events that are present in the output file to be temporally aligned with other recorded data streams in the experiment.</p>
 <p>However, you might not be interested in aligning the data to other streams, so feel that zeros in the output are wasted space. Moreover, some spike sorting programs are known to crash because they can not handle long spans of time with no detected spikes. Option <code>zerofillmax</code> allows you to set an upper limit on the span of zeros that can be inserted.</p>
 <p>For example, <code>zerofillmax=500</code> directs that gaps whose true length is &lt;= 500 ms are filled by the equivalent-length span of zeros, but longer spans are capped at 500 ms of zeros.</p>
 <p>Setting <code>zerofillmax=0</code> specifies that zero-filling is disabled.</p>
@@ -313,51 +324,61 @@ ls -s &lt;path/myoriginalname.meta&gt; &lt;...ZZZ/goodname_g0_t0.imec0.ap.meta&g
 <p>Use this option to prevent bad channels from corrupting calculations over mixtures of channels, such as the spatial filters {loccar, gblcar, gfix}.</p>
 <p>The option <code>-chnexcl={probe;chan_list}{probe;chan_list}...</code> takes a list of elements <em>(include the curly braces)</em> that specify a probe index; and a list of channels to exclude for that probe. Channel lists are specified like page lists in a printer dialog, <code>1,10,40:51</code> for example. Be careful to use a semicolon (;) between probe and channel list, and use only commas and colons (,:) within your channel lists.</p>
 <p>Note that the CatGT spatial filters honor the metadata item <code>~snsShankMap</code>. The shank map has an entry for each saved channel that describes the (shank, col, row) where its electrode resides on the shank, and a fourth 0/1 value, <code>use flag</code>, indicating if the channel should be used in spatial filtering. The chnexcl data force the corresponding use flags to zero before the filters are applied, and the modified <code>~snsShankMap</code> is written to the CatGT output metadata.</p>
-<h3 id="ttl-digital-extractions">TTL (digital) extractions</h3>
-<p>A positive TTL pulse: 1. starts at low baseline (below threshold) 2. has a leading/rising edge (crosses above threshold) 3. (optionally) stays high/deflected for a given duration 4. has a trailing/falling edge (crosses below threshold).</p>
-<p>There are three positive pulse extractors that each make a report/file of the times (seconds) of the leading edges of matched pulses. They differ mainly in the type of channel that they scan, although analog signals need some additional amplitude parameters.</p>
+<h3 id="extractors">Extractors</h3>
+<p>There are five extractors for scanning and decoding nonneural data channels in any data stream. They differ in the data types they operate upon:</p>
 <ul>
-<li>SY: Finds positive pulses in a probe SY channel.</li>
-<li>XA: Finds positive pulses in an NI analog channel.</li>
-<li>XD: Finds positive pulses in an NI digital channel.</li>
+<li>xa: Finds positive pulses in any analog channel.</li>
+<li>xd: Finds positive pulses in any digital channel.</li>
+<li>xia: Finds inverted pulses in any analog channel.</li>
+<li>xid: Finds inverted pulses in any digital channel.</li>
+<li>bf: Decodes positive bitfields in any digital channel.</li>
 </ul>
-<p>An inverted TTL pulse: 1. starts at high baseline (above threshold) 2. has a leading/falling edge (crosses below threshold) 3. (optionally) stays low/deflected for a given duration 4. has a trailing/rising edge (crosses above threshold).</p>
-<p>There are three inverted pulse extractors that each make a report/file of the times (seconds) of the leading edges of matched pulses. They differ mainly in the type of channel that they scan, although analog signals need some additional amplitude parameters.</p>
+<p>The first three parameters of any extractor specify the stream-type, stream-index and channel (16-bit word) to operate on, E.g.:</p>
+<p>-xa=<strong>js,ip,word</strong>,&lt;additional parameters&gt;</p>
+<h4 id="extractors-js-stream-type">Extractors js (stream-type):</h4>
 <ul>
-<li>iSY: Finds inverted pulses in a probe SY channel.</li>
-<li>iXA: Finds inverted pulses in an NI analog channel.</li>
-<li>iXD: Finds inverted pulses in an NI digital channel.</li>
+<li><strong>NI</strong>: js = 0 (any extractor).</li>
+<li><strong>OB</strong>: js = 1 (any extractor).</li>
+<li><strong>AP</strong>: js = 2 (only {xd, xid} are legal).</li>
 </ul>
-<p>For brevity we discuss only the positive pulse extractors. The inverted pulse versions work exactly the same way. Just keep in mind that inverted pulses have a high baseline level and deflection toward low values.</p>
+<blockquote>
+<p><em>Extractors do not work on LF files.</em></p>
+</blockquote>
+<h4 id="extractors-ip-stream-index">Extractors ip (stream-index)</h4>
+<ul>
+<li><strong>NI</strong>: ip = 0 (there is only one NI stream).</li>
+<li><strong>OB</strong>: ip = 0 selects obx0, ip = 7 selects obx7, etc.</li>
+<li><strong>AP</strong>: ip = 0 selects imec0, ip = 7 selects imec7, etc.</li>
+</ul>
+<h4 id="extractors-word">Extractors word</h4>
+<p>Word is a zero-based channel index. It selects the 16-bit data word to process.</p>
+<p>word = -1, selects the last word in that stream. That's especially useful to specify the SY word at the end of a Onebox or probe stream.</p>
 <blockquote>
 <p>It may be helpful to review the organization of words and bits in data streams in the <a href="https://github.com/billkarsh/SpikeGLX/blob/master/Markdown/UserManual.md#channel-naming-and-ordering">SpikeGLX User Manual</a>.</p>
 </blockquote>
-<h4 id="xa-channels">XA channels</h4>
-<p>XA are analog-type NI channels. The signal is parametrized by:</p>
+<h4 id="extractors-positive-pulse">Extractors positive pulse</h4>
+<ol style="list-style-type: decimal">
+<li>starts at low <strong>non-negative</strong> baseline (below threshold)</li>
+<li>has a leading/rising edge (crosses above threshold)</li>
+<li>(optionally) stays high/deflected for a given duration</li>
+<li>has a trailing/falling edge (crosses below threshold)</li>
+</ol>
+<p>The positive pulse extractors <strong>{xa, xd}</strong> make text files that report the times (seconds) of the leading edges of matched pulses.</p>
+<h4 id="extractors-xa">Extractors xa</h4>
+<p>Following <strong>-xa=js,ip,word</strong>, these parameters are required:</p>
 <ul>
-<li>Index of the word in the stored data file</li>
-<li>Primary TTL threshold-1 (V)</li>
-<li>Optional more stringent threshold-2 (V)</li>
-<li>Milliseconds duration</li>
-</ul>
-<p>If your signal looks like clean square pulses, set threshold-2 to be closer to baseline than threshold-1 to ignore the threshold-2 level and run more efficiently. For noisy signals or for non-square pulses set threshold-2 to be farther from baseline than theshold-1 to ensure pulses attain a desired deflection amplitude. Using two separate threshold levels allows detecting the earliest time that pulse departs from baseline (threshold-1) and separately testing that the deflection is great enough to be considered a real event and not noise (threshold-2).</p>
-<blockquote>
-<p>SpikeGLX MA channels can also be scanned with the <code>-XA</code> option.</p>
-</blockquote>
-<h4 id="sy-and-xd-channels">SY and XD channels</h4>
-<p>SY (imec), XD (NI) are digital-type channels. The signal is parametrized by:</p>
-<ul>
-<li>Index of the word in the stored data file (or -1, see below)</li>
-<li>Index of the bit in the word</li>
+<li>Primary threshold-1 (V).</li>
+<li>Optional more stringent threshold-2 (V).</li>
 <li>Milliseconds duration.</li>
 </ul>
-<blockquote>
-<p>If the SY word is -1, the index of the last word in the stream is used because that's where the SYNC word appears in standard SpikeGLX binaries.</p>
-</blockquote>
-<blockquote>
-<p>If the XD word is -1, the index of the last word in the stream is used because that follows all of the analog channels, and most users have no more than 16 digital lines.</p>
-</blockquote>
-<h4 id="common-to-all-extractions"><strong>Common to all extractions</strong></h4>
+<p>If your signal looks like clean square pulses, set threshold-2 to be closer to baseline than threshold-1 to ignore the threshold-2 level and run more efficiently. For noisy signals or for non-square pulses set threshold-2 to be farther from baseline than theshold-1 to ensure pulses attain a desired deflection amplitude. Using two separate threshold levels allows detecting the earliest time that pulse departs from baseline (threshold-1) and separately testing that the deflection is great enough to be considered a real event and not noise (threshold-2).</p>
+<h4 id="extractors-xd">Extractors xd</h4>
+<p>Following <strong>-xd=js,ip,word</strong>, these parameters are required:</p>
+<ul>
+<li>Index of the bit in the word.</li>
+<li>Milliseconds duration.</li>
+</ul>
+<h4 id="extractors-both-xa-and-xd">Extractors both xa and xd</h4>
 <ul>
 <li><p>All indexing is zero-based.</p></li>
 <li><p>Milliseconds duration means the signal must remain deflected from baseline for that long.</p></li>
@@ -366,41 +387,57 @@ ls -s &lt;path/myoriginalname.meta&gt; &lt;...ZZZ/goodname_g0_t0.imec0.ap.meta&g
 <ul>
 <li>Default tolerance can be overridden by appending it in milliseconds as the last parameter for that extractor.</li>
 <li>Each extractor can have its own tolerance.</li>
-<li>E.g. <code>-XD=8,0,100</code> seeks pulses with duration in default range [80,120] ms.</li>
-<li>E.g. <code>-XD=8,0,100,2</code> seeks pulses with duration in specified range [98,102] ms.</li>
+<li>E.g. -xd=js,ip,word,bit,100 seeks pulses with duration in default range [80,120] ms.</li>
+<li>E.g. -xd=js,ip,word,bit,100,2 seeks pulses with duration in specified range [98,102] ms.</li>
 </ul></li>
-<li><p>A given channel or even bit could encode two or more types of pulse that have different durations, E.g... <code>-XD=8,0,10 -XD=8,0,20</code> scans and reports both 10 and 20 ms pulses on the same line.</p></li>
-<li><p>Each option, say <code>-SY=0,384,6,500</code>, creates an output file whose name reflects the parameters, e.g., <code>run_name_g0_tcat.imec0.ap.SY_384_6_500.txt</code>.</p></li>
-<li><p>The threshold is not encoded in the <code>-XA</code> filename; just word and milliseconds.</p></li>
+<li><p>A given channel or even bit could encode two or more types of pulse that have different durations, E.g. <code>-xd=0,0,8,0,10 -xd=0,0,8,0,20</code> scans and reports both 10 and 20 ms pulses on the same line.</p></li>
+<li><p>Each option, say <code>-xd=2,0,384,6,500</code>, creates an output file whose name reflects the parameters, e.g., <code>run_name_g0_tcat.imec0.ap.xd_384_6_500.txt</code>.</p></li>
+<li><p>The threshold is not encoded in the <code>-xa</code> filename; just word and milliseconds.</p></li>
 <li><p>The files report the times (s) of leading edges of detected pulses; one time per line, <code>\n</code> line endings.</p></li>
 <li><p>The time is relative to the start of the stream in which the pulse is detected (native time).</p></li>
 </ul>
-<h4 id="inarow-option">inarow option</h4>
-<p>All of the TTL extractors use edge detection. By default, when a signal crosses from low to high, it is required to stay high for at least 5 samples. Similarly, when crossing from high to low the signal is required to stay low for at least 5 samples. This requirement is applied even when specifying a pulse duration of zero, that is, it is applied to any edge. This is done to guard against noise.</p>
+<h4 id="extractors-inverted-pulse">Extractors inverted pulse</h4>
+<ol style="list-style-type: decimal">
+<li>starts at high <strong>positive</strong> baseline (above threshold)</li>
+<li>has a leading/falling edge (crosses below threshold)</li>
+<li>(optionally) stays low/deflected for a given duration</li>
+<li>has a trailing/rising edge (crosses above threshold)</li>
+</ol>
+<blockquote>
+<p><em>Although the shape is &quot;inverted,&quot; these pulses are nevertheless entirely non-negative.</em></p>
+</blockquote>
+<p>The inverted pulse extractors <strong>{xia, xid}</strong> make text files that report the times (seconds) of the leading edges of matched pulses.</p>
+<p>The inverted pulse versions work exactly the same way as their positive counterparts. Just keep in mind that inverted pulses have a high baseline level and deflect toward lower values.</p>
+<h4 id="extractors-inarow-option">Extractors inarow option</h4>
+<p>The pulse extractors <strong>{xa,xd,xia,xid}</strong> use edge detection. By default, when a signal crosses from low to high, it is required to stay high for at least 5 samples. Similarly, when crossing from high to low the signal is required to stay low for at least 5 samples. This requirement is applied even when specifying a pulse duration of zero, that is, it is applied to any edge. This is done to guard against noise.</p>
 <p>You can override the count giving any value &gt;= 1.</p>
-<h3 id="bit-field-bf-extraction">Bit-field (BF) extraction</h3>
-<p>The -XD and -iXD options treat each bit of an ni XD word as an individual line. In contrast, the -BF option interprets a contiguous group of XD bits as a non-negative n-bit binary number. The -BF extactor reports value transitions: the newest value and the time it changed, in two separate files. The parameters are:</p>
+<h4 id="extractors-bf-bit-field">Extractors bf (bit-field)</h4>
+<p>The -xd and -xid options treat each bit of a digital word as an individual line. In contrast, the -bf option interprets a contiguous group of bits as a non-negative n-bit binary number. The -bf extactor reports value transitions: the newest value and the time it changed, in two separate files. Following <strong>-xa=js,ip,word</strong>, the parameters are:</p>
 <ul>
-<li><strong>word</strong>: the word to scan in the ni stream (or -1 for last word),</li>
 <li><strong>startbit</strong>: lowest order bit included in group (range [0..15]),</li>
 <li><strong>nbits</strong>: how many bits belong to group (range [1..&lt;16-startbit&gt;]).</li>
 <li><strong>inarow</strong>: a real value has to persist this many samples in a row (1 or higher).</li>
 </ul>
-<p>In the following examples we set inarow=3.</p>
-<p>For example, to interpret all 16 bits of word 5 as a number, set -BF=5,0,16,3. To interpret the high-byte as a number, set -BF=5,8,8,3. To interpret bits {3,4,5,6} as a four-bit value, set -BF=5,3,4,3. You can specify multiple -BF options on the same command line. The words and bits can overlap.</p>
-<p>Each -BF option generates two output files, named according to the parameters (excluding inarow), for example:</p>
+<p>In the following examples we set inarow=3:</p>
 <ul>
-<li><code>run_name_g0_tcat.imec0.ap.BFT_5_3_4.txt</code>,</li>
-<li><code>run_name_g0_tcat.imec0.ap.BFV_5_3_4.txt</code>.</li>
+<li><p>To interpret all 16 bits of NI word 5 as a number, set -bf=0,0,5,0,16,3.</p></li>
+<li><p>To interpret the high-byte as a number, set -bf=0,0,5,8,8,3.</p></li>
+<li><p>To interpret bits {3,4,5,6} as a four-bit value, set -bf=0,0,5,3,4,3.</p></li>
 </ul>
-<p>The two files have paired entries. The <code>BFV</code> file contains the decoded values, and the <code>BFT</code> file contains the time (seconds from file start) that the field switched to that value.</p>
+<p>You can specify multiple -bf options on the same command line. The words and bits can overlap.</p>
+<p>Each -bf option generates two output files, named according to the parameters (excluding inarow), for example:</p>
+<ul>
+<li><code>run_name_g0_tcat.nidq.bfv_5_3_4.txt</code>.</li>
+<li><code>run_name_g0_tcat.nidq.bft_5_3_4.txt</code>,</li>
+</ul>
+<p>The two files have paired entries. The <code>bfv</code> file contains the decoded values, and the <code>bft</code> file contains the time (seconds from file start) that the field switched to that value.</p>
 <h3 id="tcat-defer-extraction-to-a-later-pass">-t=cat defer extraction to a later pass</h3>
-<p>Option <code>-t=cat</code> allows you to concatenate/filter the data in a first pass and later extract TTL events from the output files which are now named <code>tcat</code>.</p>
+<p>Option <code>-t=cat</code> allows you to concatenate/filter the data in a first pass and later extract nonneural events from the output files which are now named <code>tcat</code>.</p>
 <blockquote>
 <p>NOTE: If the files to operate on are now in an output folder named <code>catgt_run_name</code> then <em>DO PUT</em> tag <code>catgt_</code> in the <code>-run</code> parameter like example (2) below:</p>
 </blockquote>
 <blockquote>
-<p>NOTE: Second pass is restricted to TTL/BF extraction. An error is flagged if the second pass specifies any concatenation or filter options.</p>
+<p>NOTE: Second pass is restricted to event extraction. An error is flagged if the second pass specifies any concatenation or filter options.</p>
 </blockquote>
 <p><strong>Examples</strong></p>
 <ul>
@@ -475,12 +512,12 @@ ls -s &lt;path/myoriginalname.meta&gt; &lt;...ZZZ/goodname_g0_t0.imec0.ap.meta&g
 <blockquote>
 <p>Note that to supercat lf files, we need their sync edges which can only be extracted/derived from their ap counterparts:</p>
 <ul>
-<li>Specify (-ap) and sync edge extraction (-SY) during pass 1.</li>
+<li>Specify (-ap) and sync edge extraction (-xd=2,ip,-1,6,500) during pass 1.</li>
 </ul>
 </blockquote>
-<h3 id="supercat_skip_ni_bin-option-pass1_force_ni_bin">supercat_skip_ni_bin option &amp; pass1_force_ni_bin</h3>
-<p>Your first-pass CatGT runs might have extracted edge files but produced no new binary NI files (that happens if no trial range is specified in the g- or t-indices). The supercat_skip_ni_bin option reminds supercat not to process the missing binary files.</p>
-<p>On the other hand, you might want to make a supercat of NI binary files even though you aren't modifying those data in the first pass. In that case, do the first pass with <code>pass1_force_ni_bin</code> which will ensure that the NI binary files are made and tagged <code>tcat</code> so supercat can find them.</p>
+<h3 id="supercat_skip_ni_ob_bin-option-pass1_force_ni_ob_bin">supercat_skip_ni_ob_bin option &amp; pass1_force_ni_ob_bin</h3>
+<p>Your first-pass CatGT runs might have extracted edge files but produced no new binary NI or OB files (that happens if no trial range is specified in the g- or t-indices). The supercat_skip_ni_ob_bin option reminds supercat not to process the missing binary files.</p>
+<p>On the other hand, you might want to make a supercat of NI or OB binary files even though you aren't modifying those data in the first pass. In that case, do the first pass with <code>pass1_force_ni_ob_bin</code> which will ensure that the NI and OB binary files are made and tagged <code>tcat</code> so supercat can find them.</p>
 <blockquote>
 <p>As of version 1.9, any operations on a stream always produce a new 'tcat' meta file so that supercat can later track file lengths.</p>
 </blockquote>
@@ -496,9 +533,11 @@ ls -s &lt;path/myoriginalname.meta&gt; &lt;...ZZZ/goodname_g0_t0.imec0.ap.meta&g
 -t=ta,tb                 ;ignored (assumed to be t=cat)
 
 Which streams:
+-ni                      ;required to supercat ni stream
+-ob                      ;required to supercat ob streams
 -ap                      ;required to supercat ap streams
 -lf                      ;required to supercat lf streams
--ni                      ;required to supercat ni stream
+-obx=0,3:5               ;if -ob supercat these Oneboxes
 -prb_3A                  ;if -ap or -lf supercat 3A-style probe files, e.g. run_name_g0_tcat.imec.ap.bin
 -prb=0,3:5               ;if -ap or -lf AND !prb_3A supercat these probes
 
@@ -518,15 +557,13 @@ Options:
 -gblcar                  ;ignored
 -gfix=0.40,0.10,0.02     ;ignored
 -chnexcl={prb;chans}     ;ignored
--SY=0,384,6,500          ;required if joining this extractor type
--XA=2,3.0,4.5,25         ;required if joining this extractor type
--XD=8,0,0                ;required if joining this extractor type
--iSY=0,384,6,500         ;required if joining this extractor type
--iXA=2,2.0,1.0,25        ;required if joining this extractor type
--iXD=8,0,0               ;required if joining this extractor type
--BF=8,2,4,3              ;required if joining this extractor type
+-xa=0,0,2,3.0,4.5,25     ;required if joining this extractor type
+-xd=2,0,384,6,500        ;required if joining this extractor type
+-xia=0,0,2,3.0,4.5,25    ;required if joining this extractor type
+-xid=2,0,384,6,500       ;required if joining this extractor type
+-bf=0,0,8,2,4,3          ;required if joining this extractor type
 -inarow=5                ;ignored
--pass1_force_ni_bin      ;ignored
+-pass1_force_ni_ob_bin   ;ignored
 -dest=path               ;required
 -out_prb_fld             ;create output subfolder per probe</code></pre>
 <blockquote>
@@ -561,6 +598,13 @@ Options:
 <p>Supercat creates an output file: <code>dest/supercat_run_ga/run_ga_sc_offsets.txt</code>. This tablulates, for each stream, where the first sample of each input &quot;tcat&quot; file is relative to the start of the concatenated output file. It records these offsets in units of samples, and again in units of seconds on that stream's clock.</p>
 <hr />
 <h2 id="change-log">Change Log</h2>
+<p>Version 3.0</p>
+<ul>
+<li>Add obx file support.</li>
+<li>Add extractors {xa,xd,ixa,ixd,bf}.</li>
+<li>Retire extractors {SY,XA,XD,iSY,iXA,iXD,BF}.</li>
+<li>Rename pass1_force_ni_ob_bin, supercat_skip_ni_ob_bin options.</li>
+</ul>
 <p>Version 2.5</p>
 <ul>
 <li>Add pass-one ct_offsets file.</li>
@@ -678,7 +722,7 @@ Options:
 <ul>
 <li>New bin/meta output only if concatenating or filtering.</li>
 <li>Reuse output run folder if already exists.</li>
-<li>Add option -t=cat to allow TTL extraction as a second pass.</li>
+<li>Add option -t=cat to allow event extraction as a second pass.</li>
 <li>Add option -exported to recognize FileViewer export files.</li>
 </ul>
 <p>Version 1.2.3</p>
@@ -688,7 +732,7 @@ Options:
 <li>Add option -loccar.</li>
 <li>Rename option -gblexcl to -chnexcl.</li>
 <li>More improvements to option -gfix.</li>
-<li>TTL extractors handle smaller widths.</li>
+<li>Event extractors handle smaller widths.</li>
 </ul>
 <p>Version 1.2.2</p>
 <ul>

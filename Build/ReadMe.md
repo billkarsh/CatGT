@@ -8,7 +8,7 @@
 + Optionally apply band-pass and global CAR filters.
 + Optionally edit out saturation artifacts.
 + Optionally extract tables of sync waveform edge times to drive TPrime.
-+ Optionally extract tables of any other TTL event times to be aligned with spikes.
++ Optionally extract tables of other nonneural event times to be aligned with spikes.
 + Optionally join the above outputs across different runs (supercat feature).
 
 ------
@@ -41,7 +41,8 @@
 
 + Results are placed next to source, named like this, with t-index = 'cat':
 `path/run_name_g5_tcat.imec1.ap.bin`.
-+ Errors and run messages are appended to `CatGT.log` in the current working directory.
++ Errors and run messages are appended to `CatGT.log` in the current
+working directory.
 
 ------
 
@@ -90,7 +91,7 @@ Options:
 -prb_fld                 ;use folder-per-probe organization
 -prb_miss_ok             ;instead of stopping, silently skip missing probes
 -gtlist={gj,tja,tjb}     ;override {-g,-t} giving each listed g-index its own t-range
--t=cat                   ;extract TTL from CatGT output files (instead of -t=ta,tb)
+-t=cat                   ;extract events from CatGT output files (instead of -t=ta,tb)
 -exported                ;apply FileViewer 'exported' tag to in/output filenames
 -t_miss_ok               ;instead of stopping, zero-fill if trial missing
 -zerofillmax=500         ;set a maximum zero-fill span (millisec)
@@ -102,14 +103,12 @@ Options:
 -gblcar                  ;apply ap global CAR filter over all channels
 -gfix=0.40,0.10,0.02     ;rmv ap artifacts: ||amp(mV)||, ||slope(mV/sample)||, ||noise(mV)||
 -chnexcl={prb;chans}     ;this probe, exclude listed chans from ap loccar, gblcar, gfix
--SY=0,384,6,500          ;extract TTL signal from imec SY (probe,word,bit,millisec)
--XA=2,3.0,4.5,25         ;extract TTL signal from nidq XA (word,thresh1(V),thresh2(V),millisec)
--XD=8,0,0                ;extract TTL signal from nidq XD (word,bit,millisec)
--iSY=0,384,6,500         ;extract inverted TTL signal from imec SY (probe,word,bit,millisec)
--iXA=2,2.0,1.0,25        ;extract inverted TTL signal from nidq XA (word,thresh1(V),thresh2(V),millisec)
--iXD=8,0,0               ;extract inverted TTL signal from nidq XD (word,bit,millisec)
--BF=8,2,4,3              ;extract numeric bit-field from nidq XD (word,startbit,nbits,inarow)
--inarow=5                ;extractor antibounce stay high/low sample count
+-xa=0,0,2,3.0,4.5,25     ;extract pulse signal from analog chan (js,ip,word,thresh1(V),thresh2(V),millisec)
+-xd=2,0,384,6,500        ;extract pulse signal from digital chan (js,ip,word,bit,millisec)
+-xia=0,0,2,3.0,4.5,2     ;inverted version of xa
+-xid=2,0,384,6,50        ;inverted version of xd
+-bf=0,0,8,2,4,3          ;extract numeric bit-field from digital chan (js,ip,word,startbit,nbits,inarow)
+-inarow=5                ;extractor {xa,xd,xia,xid} antibounce stay high/low sample count
 -pass1_force_ni_ob_bin   ;write pass one ni/ob binary tcat file even if not changed
 -supercat={dir,run_ga}   ;concatenate existing output files across runs (see ReadMe)
 -supercat_trim_edges     ;supercat after trimming each stream to matched sync edges
@@ -284,10 +283,10 @@ proceeds like two nested loops:
 
 #### Using CatGT output files as input for an extraction pass
 
-Operate on CatGT output files (in order to do TTL extraction) by
+Operate on CatGT output files (in order to do event extraction) by
 setting the -t parameter to: `-t=cat`. Note that you must specify
-the single `ga` that labels that tcat file. (More on this in the TTL
-extraction notes below).
+the single `ga` that labels that tcat file. (More on this in the
+Extractor notes below).
 
 #### Running CatGT on nonstandard file names
 
@@ -352,7 +351,7 @@ missing files) is counted as an extended gap. The gap is replaced by
 zeros when a next expected file set is found.
 
 By default, CatGT zero-fills gaps so as to precisely preserve the real
-world duration of the recording. This enables the spikes and other TTL
+world duration of the recording. This enables the spikes and other nonneural
 events that are present in the output file to be temporally aligned with
 other recorded data streams in the experiment.
 
@@ -376,7 +375,8 @@ and the length of the zero-filled span in the output file.
 ### Output files
 
 - New .bin/.meta files are output only in these cases:
-    1. A range of files is to be concatenated, that is, (gb > ga) or (tb > ta).
+    1. A range of files is to be concatenated, that is, (gb > ga) or
+    (tb > ta).
     2. If filters are applied, so the binary data are altered.
 
 - If you do not specify the `-dest` option, output files are stored in the
@@ -535,162 +535,191 @@ filtering. The chnexcl data force the corresponding use flags to zero
 before the filters are applied, and the modified `~snsShankMap` is written
 to the CatGT output metadata.
 
-### TTL (digital) extractions
+### Extractors
 
-A positive TTL pulse:
-1. starts at low baseline (below threshold)
-2. has a leading/rising edge (crosses above threshold)
-3. (optionally) stays high/deflected for a given duration
-4. has a trailing/falling edge (crosses below threshold).
+There are five extractors for scanning and decoding nonneural data
+channels in any data stream. They differ in the data types they operate
+upon:
 
-There are three positive pulse extractors that each make a report/file of
-the times (seconds) of the leading edges of matched pulses. They differ
-mainly in the type of channel that they scan, although analog signals
-need some additional amplitude parameters.
+- xa: Finds positive pulses in any analog  channel.
+- xd: Finds positive pulses in any digital channel.
+- xia: Finds inverted pulses in any analog  channel.
+- xid: Finds inverted pulses in any digital channel.
+- bf: Decodes positive bitfields in any digital channel.
 
-- SY: Finds positive pulses in a probe SY channel.
-- XA: Finds positive pulses in an NI analog channel.
-- XD: Finds positive pulses in an NI digital channel.
+The first three parameters of any extractor specify the stream-type,
+stream-index and channel (16-bit word) to operate on, E.g.:
 
-An inverted TTL pulse:
-1. starts at high baseline (above threshold)
-2. has a leading/falling edge (crosses below threshold)
-3. (optionally) stays low/deflected for a given duration
-4. has a trailing/rising edge (crosses above threshold).
+-xa=**js,ip,word**,\<additional parameters\>
 
-There are three inverted pulse extractors that each make a report/file of
-the times (seconds) of the leading edges of matched pulses. They differ
-mainly in the type of channel that they scan, although analog signals
-need some additional amplitude parameters.
+#### Extractors js (stream-type):
 
-- iSY: Finds inverted pulses in a probe SY channel.
-- iXA: Finds inverted pulses in an NI analog channel.
-- iXD: Finds inverted pulses in an NI digital channel.
+- **NI**: js = 0 (any extractor).
+- **OB**: js = 1 (any extractor).
+- **AP**: js = 2 (only {xd, xid} are legal).
 
-For brevity we discuss only the positive pulse extractors. The inverted
-pulse versions work exactly the same way. Just keep in mind that inverted
-pulses have a high baseline level and deflection toward low values.
+>*Extractors do not work on LF files.*
+
+#### Extractors ip (stream-index)
+
+- **NI**: ip = 0 (there is only one NI stream).
+- **OB**: ip = 0 selects obx0, ip = 7 selects obx7, etc.
+- **AP**: ip = 0 selects imec0, ip = 7 selects imec7, etc.
+
+#### Extractors word
+
+Word is a zero-based channel index. It selects the 16-bit data word to
+process.
+
+word = -1, selects the last word in that stream. That's especially useful
+to specify the SY word at the end of a Onebox or probe stream.
 
 >It may be helpful to review the organization of words and bits in data
 streams in the
 [SpikeGLX User Manual](https://github.com/billkarsh/SpikeGLX/blob/master/Markdown/UserManual.md#channel-naming-and-ordering).
 
-#### XA channels
+#### Extractors positive pulse
 
-XA are analog-type NI channels. The signal is parametrized by:
+1. starts at low **non-negative** baseline (below threshold)
+2. has a leading/rising edge (crosses above threshold)
+3. (optionally) stays high/deflected for a given duration
+4. has a trailing/falling edge (crosses below threshold)
 
-- Index of the word in the stored data file
-- Primary TTL threshold-1 (V)
-- Optional more stringent threshold-2 (V)
-- Milliseconds duration
+The positive pulse extractors **{xa, xd}** make text files that report
+the times (seconds) of the leading edges of matched pulses.
+
+#### Extractors xa
+
+Following **-xa=js,ip,word**, these parameters are required:
+
+- Primary threshold-1 (V).
+- Optional more stringent threshold-2 (V).
+- Milliseconds duration.
 
 If your signal looks like clean square pulses, set threshold-2 to be closer
 to baseline than threshold-1 to ignore the threshold-2 level and run more
 efficiently. For noisy signals or for non-square pulses set threshold-2 to
 be farther from baseline than theshold-1 to ensure pulses attain a desired
 deflection amplitude. Using two separate threshold levels allows detecting
-the earliest time that pulse departs from baseline (threshold-1) and separately
-testing that the deflection is great enough to be considered a real event
-and not noise (threshold-2).
+the earliest time that pulse departs from baseline (threshold-1) and
+separately testing that the deflection is great enough to be considered a
+real event and not noise (threshold-2).
 
-> SpikeGLX MA channels can also be scanned with the `-XA` option.
+#### Extractors xd
 
-#### SY and XD channels
+Following **-xd=js,ip,word**, these parameters are required:
 
-SY (imec), XD (NI) are digital-type channels. The signal is parametrized by:
-
-- Index of the word in the stored data file (or -1, see below)
-- Index of the bit in the word
+- Index of the bit in the word.
 - Milliseconds duration.
 
->If the SY word is -1, the index of the last word in the stream is
-used because that's where the SYNC word appears in standard SpikeGLX
-binaries.
-
->If the XD word is -1, the index of the last word in the stream is
-used because that follows all of the analog channels, and most users
-have no more than 16 digital lines.
-
-#### **Common to all extractions**
+#### Extractors both xa and xd
 
 - All indexing is zero-based.
 
-- Milliseconds duration means the signal must remain deflected from baseline for that long.
+- Milliseconds duration means the signal must remain deflected from
+baseline for that long.
 
-- Milliseconds duration can be zero to specify detection of all leading edges regardless of pulse duration.
+- Milliseconds duration can be zero to specify detection of all leading
+edges regardless of pulse duration.
 
 - Milliseconds duration default precision (tolerance) is **+/- 20%**.
-    * Default tolerance can be overridden by appending it in milliseconds as the last parameter for that extractor.
+    * Default tolerance can be overridden by appending it in milliseconds
+    as the last parameter for that extractor.
     * Each extractor can have its own tolerance.
-    * E.g. `-XD=8,0,100`   seeks pulses with duration in default range [80,120] ms.
-    * E.g. `-XD=8,0,100,2` seeks pulses with duration in specified range [98,102] ms.
+    * E.g. -xd=js,ip,word,bit,100   seeks pulses with duration in default
+    range [80,120] ms.
+    * E.g. -xd=js,ip,word,bit,100,2 seeks pulses with duration in specified
+    range [98,102] ms.
 
 - A given channel or even bit could encode two or more types of pulse that
-have different durations, E.g... `-XD=8,0,10 -XD=8,0,20` scans and reports
-both 10 and 20 ms pulses on the same line.
+have different durations, E.g. `-xd=0,0,8,0,10 -xd=0,0,8,0,20` scans and
+reports both 10 and 20 ms pulses on the same line.
 
-- Each option, say `-SY=0,384,6,500`, creates an output file whose name
-reflects the parameters, e.g., `run_name_g0_tcat.imec0.ap.SY_384_6_500.txt`.
+- Each option, say `-xd=2,0,384,6,500`, creates an output file whose name
+reflects the parameters, e.g., `run_name_g0_tcat.imec0.ap.xd_384_6_500.txt`.
 
-- The threshold is not encoded in the `-XA` filename; just word and milliseconds.
+- The threshold is not encoded in the `-xa` filename; just word and
+milliseconds.
 
 - The files report the times (s) of leading edges of detected pulses;
 one time per line, `\n` line endings.
 
-- The time is relative to the start of the stream in which the pulse is detected (native time).
+- The time is relative to the start of the stream in which the pulse is
+detected (native time).
 
-#### inarow option
+#### Extractors inverted pulse
 
-All of the TTL extractors use edge detection. By default, when a signal
-crosses from low to high, it is required to stay high for at least 5
-samples. Similarly, when crossing from high to low the signal is required
-to stay low for at least 5 samples. This requirement is applied even when
-specifying a pulse duration of zero, that is, it is applied to any edge.
-This is done to guard against noise.
+1. starts at high **positive** baseline (above threshold)
+2. has a leading/falling edge (crosses below threshold)
+3. (optionally) stays low/deflected for a given duration
+4. has a trailing/rising edge (crosses above threshold)
+
+>*Although the shape is "inverted," these pulses are nevertheless entirely
+non-negative.*
+
+The inverted pulse extractors **{xia, xid}** make text files that report
+the times (seconds) of the leading edges of matched pulses.
+
+The inverted pulse versions work exactly the same way as their positive
+counterparts. Just keep in mind that inverted pulses have a high baseline
+level and deflect toward lower values.
+
+#### Extractors inarow option
+
+The pulse extractors **{xa,xd,xia,xid}** use edge detection. By default,
+when a signal crosses from low to high, it is required to stay high for
+at least 5 samples. Similarly, when crossing from high to low the signal
+is required to stay low for at least 5 samples. This requirement is applied
+even when specifying a pulse duration of zero, that is, it is applied to
+any edge. This is done to guard against noise.
 
 You can override the count giving any value >= 1.
 
-### Bit-field (BF) extraction
+#### Extractors bf (bit-field)
 
-The -XD and -iXD options treat each bit of an ni XD word as an individual
-line. In contrast, the -BF option interprets a contiguous group of XD bits
-as a non-negative n-bit binary number. The -BF extactor reports value
+The -xd and -xid options treat each bit of a digital word as an individual
+line. In contrast, the -bf option interprets a contiguous group of bits
+as a non-negative n-bit binary number. The -bf extactor reports value
 transitions: the newest value and the time it changed, in two separate files.
-The parameters are:
+Following **-xa=js,ip,word**, the parameters are:
 
-* **word**: the word to scan in the ni stream (or -1 for last word),
 * **startbit**: lowest order bit included in group (range [0..15]),
 * **nbits**: how many bits belong to group (range [1..<16-startbit>]).
 * **inarow**: a real value has to persist this many samples in a row (1 or higher).
 
-In the following examples we set inarow=3.
+In the following examples we set inarow=3:
 
-For example, to interpret all 16 bits of word 5 as a number, set -BF=5,0,16,3.
-To interpret the high-byte as a number, set -BF=5,8,8,3. To interpret bits
-{3,4,5,6} as a four-bit value, set -BF=5,3,4,3. You can specify multiple -BF
-options on the same command line. The words and bits can overlap.
+* To interpret all 16 bits of NI word 5 as a number, set
+-bf=0,0,5,0,16,3.
 
-Each -BF option generates two output files, named according to the
+* To interpret the high-byte as a number, set -bf=0,0,5,8,8,3.
+
+* To interpret bits {3,4,5,6} as a four-bit value, set -bf=0,0,5,3,4,3.
+
+You can specify multiple -bf options on the same command line. The words
+and bits can overlap.
+
+Each -bf option generates two output files, named according to the
 parameters (excluding inarow), for example:
 
-* `run_name_g0_tcat.imec0.ap.BFT_5_3_4.txt`,
-* `run_name_g0_tcat.imec0.ap.BFV_5_3_4.txt`.
+* `run_name_g0_tcat.nidq.bfv_5_3_4.txt`.
+* `run_name_g0_tcat.nidq.bft_5_3_4.txt`,
 
-The two files have paired entries. The `BFV` file contains the decoded
-values, and the `BFT` file contains the time (seconds from file start)
+The two files have paired entries. The `bfv` file contains the decoded
+values, and the `bft` file contains the time (seconds from file start)
 that the field switched to that value.
 
 ### -t=cat defer extraction to a later pass
 
 Option `-t=cat` allows you to concatenate/filter the data in a first pass
-and later extract TTL events from the output files which are now named
+and later extract nonneural events from the output files which are now named
 `tcat`.
 
 >NOTE: If the files to operate on are now in an output folder named
 `catgt_run_name` then *DO PUT* tag `catgt_` in the `-run` parameter
 like example (2) below:
 
->NOTE: Second pass is restricted to TTL/BF extraction. An error is flagged
+>NOTE: Second pass is restricted to event extraction. An error is flagged
 if the second pass specifies any concatenation or filter options.
 
 **Examples**
@@ -783,7 +812,7 @@ with the stream's binary files.
 >Note that to supercat lf files, we need their sync edges which can only
 >be extracted/derived from their ap counterparts:
 >
-> - Specify (-ap) and sync edge extraction (-SY) during pass 1.
+> - Specify (-ap) and sync edge extraction (-xd=2,ip,-1,6,500) during pass 1.
 
 ### supercat_skip_ni_ob_bin option & pass1_force_ni_ob_bin
 
@@ -839,13 +868,11 @@ Options:
 -gblcar                  ;ignored
 -gfix=0.40,0.10,0.02     ;ignored
 -chnexcl={prb;chans}     ;ignored
--SY=0,384,6,500          ;required if joining this extractor type
--XA=2,3.0,4.5,25         ;required if joining this extractor type
--XD=8,0,0                ;required if joining this extractor type
--iSY=0,384,6,500         ;required if joining this extractor type
--iXA=2,2.0,1.0,25        ;required if joining this extractor type
--iXD=8,0,0               ;required if joining this extractor type
--BF=8,2,4,3              ;required if joining this extractor type
+-xa=0,0,2,3.0,4.5,25     ;required if joining this extractor type
+-xd=2,0,384,6,500        ;required if joining this extractor type
+-xia=0,0,2,3.0,4.5,25    ;required if joining this extractor type
+-xid=2,0,384,6,500       ;required if joining this extractor type
+-bf=0,0,8,2,4,3          ;required if joining this extractor type
 -inarow=5                ;ignored
 -pass1_force_ni_ob_bin   ;ignored
 -dest=path               ;required
@@ -912,6 +939,8 @@ on that stream's clock.
 Version 3.0
 
 - Add obx file support.
+- Add extractors {xa,xd,ixa,ixd,bf}.
+- Retire extractors {SY,XA,XD,iSY,iXA,iXD,BF}.
 - Rename pass1_force_ni_ob_bin, supercat_skip_ni_ob_bin options.
 
 Version 2.5
@@ -1031,7 +1060,7 @@ Version 1.2.4
 
 - New bin/meta output only if concatenating or filtering.
 - Reuse output run folder if already exists.
-- Add option -t=cat to allow TTL extraction as a second pass.
+- Add option -t=cat to allow event extraction as a second pass.
 - Add option -exported to recognize FileViewer export files.
 
 Version 1.2.3
@@ -1041,7 +1070,7 @@ Version 1.2.3
 - Add option -loccar.
 - Rename option -gblexcl to -chnexcl.
 - More improvements to option -gfix.
-- TTL extractors handle smaller widths.
+- Event extractors handle smaller widths.
 
 Version 1.2.2
 
