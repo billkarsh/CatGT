@@ -86,45 +86,23 @@ void Pass2AP::close()
 
 void Pass2AP::initDigitalFields()
 {
-    for( int i = 0, n = GBL.SY.size(); i < n; ++i ) {
+    ex0 = GBL.myXrange( exLim, AP, ip );
 
-        TTLD    &T = GBL.SY[i];
-
-        if( T.ip == ip )
-            T.autoWord( meta.nC );
-    }
-
-    for( int i = 0, n = GBL.iSY.size(); i < n; ++i ) {
-
-        TTLD    &T = GBL.iSY[i];
-
-        if( T.ip == ip )
-            T.autoWord( meta.nC );
-    }
+    for( int i = ex0; i < exLim; ++i )
+        GBL.vX[i]->autoWord( meta.nC );
 }
 
 
 bool Pass2AP::openDigitalFiles( int g0 )
 {
-    for( int i = 0, n = GBL.SY.size(); i < n; ++i ) {
+    for( int i = ex0; i < exLim; ++i ) {
 
-        TTLD    &T = GBL.SY[i];
+        XTR *X = GBL.vX[i];
 
-        if( T.ip != ip || T.word >= meta.nC )
+        if( X->word >= meta.nC )
             continue;
 
-        if( !T.openOutTimesFile( GBL.imOutFile( g0, AP, ip, eSY, &T ) ) )
-            return false;
-    }
-
-    for( int i = 0, n = GBL.iSY.size(); i < n; ++i ) {
-
-        TTLD    &T = GBL.iSY[i];
-
-        if( T.ip != ip || T.word >= meta.nC )
-            continue;
-
-        if( !T.openOutTimesFile( GBL.imOutFile( g0, AP, ip, eiSY, &T ) ) )
+        if( !X->openOutFiles( g0, AP, ip ) )
             return false;
     }
 
@@ -134,25 +112,14 @@ bool Pass2AP::openDigitalFiles( int g0 )
 
 bool Pass2AP::copyDigitalFiles( int ie )
 {
-    for( int i = 0, n = GBL.SY.size(); i < n; ++i ) {
+    for( int i = ex0; i < exLim; ++i ) {
 
-        TTLD    &T = GBL.SY[i];
+        XTR *X = GBL.vX[i];
 
-        if( T.ip != ip || T.word >= meta.nC )
+        if( X->word >= meta.nC )
             continue;
 
-        if( !p2_openAndCopyFile( *T.f, meta, buf, samps, ie, AP, ip, eSY, &T ) )
-            return false;
-    }
-
-    for( int i = 0, n = GBL.iSY.size(); i < n; ++i ) {
-
-        TTLD    &T = GBL.iSY[i];
-
-        if( T.ip != ip || T.word >= meta.nC )
-            continue;
-
-        if( !p2_openAndCopyFile( *T.f, meta, buf, samps, ie, AP, ip, eiSY, &T ) )
+        if( !p2_openAndCopyFile( *X->f, meta, buf, samps, ie, AP, ip, X->ex, X ) )
             return false;
     }
 

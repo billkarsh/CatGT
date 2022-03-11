@@ -13,7 +13,9 @@ private:
     Pass1IO     io;
     QFileInfo   fim;
     Meta        meta;
-    int         ip;
+    int         ip,
+                ex0,
+                exLim;
 
 public:
     Pass1OB( int ip ) : io(*this, fim, meta), ip(ip)    {}

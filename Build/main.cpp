@@ -105,27 +105,10 @@ int main( int argc, char *argv[] )
     else
         supercatentrypoint();
 
-//@OBX universal extractor closure
-    foreach( TTLD T, GBL.SY )
-        T.close();
-
-    foreach( TTLA T, GBL.XA )
-        T.close();
-
-    foreach( TTLD T, GBL.XD )
-        T.close();
-
-    foreach( TTLD T, GBL.iSY )
-        T.close();
-
-    foreach( TTLA T, GBL.iXA )
-        T.close();
-
-    foreach( TTLD T, GBL.iXD )
-        T.close();
-
-    foreach( XBF B, GBL.BF )
-        B.close();
+    for( int i = 0, n = GBL.vX.size(); i < n; ++i ) {
+        GBL.vX[i]->close();
+        delete GBL.vX[i];
+    }
 
 //Log()<<"tot secs "<<getTime()-qq;
     Log();

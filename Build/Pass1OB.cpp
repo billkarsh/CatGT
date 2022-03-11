@@ -39,82 +39,42 @@ bool Pass1OB::go()
 
 void Pass1OB::digital( const qint16 *data, int ntpts )
 {
-//@OBX TODO need universal extractors
-    for( int i = 0, n = GBL.SY.size(); i < n; ++i ) {
+    for( int i = ex0; i < exLim; ++i ) {
 
-        TTLD    &T = GBL.SY[i];
+        XTR *X = GBL.vX[i];
 
-        if( T.ip != ip || T.word >= meta.nC )
-            continue;
-
-        T.XD( data, meta.smpInpSpan(), ntpts, meta.nC );
-    }
-
-    for( int i = 0, n = GBL.iSY.size(); i < n; ++i ) {
-
-        TTLD    &T = GBL.iSY[i];
-
-        if( T.ip != ip || T.word >= meta.nC )
-            continue;
-
-        T.iXD( data, meta.smpInpSpan(), ntpts, meta.nC );
+        if( X->word < meta.nC )
+            X->scan( data, meta.smpInpSpan(), ntpts, meta.nC );
     }
 }
 
 
 void Pass1OB::initDigitalFields()
 {
-//@OBX TODO need universal extractors
-    for( int i = 0, n = GBL.SY.size(); i < n; ++i ) {
+    ex0 = GBL.myXrange( exLim, OB, ip );
 
-        TTLD    &T = GBL.SY[i];
+    for( int i = ex0; i < exLim; ++i ) {
 
-        if( T.ip != ip )
-            continue;
+        XTR *X = GBL.vX[i];
 
-        T.autoWord( meta.nC );
+        X->autoWord( meta.nC );
 
-        if( T.word < meta.nC )
-            T.setTolerance( meta.srate );
-    }
-
-    for( int i = 0, n = GBL.iSY.size(); i < n; ++i ) {
-
-        TTLD    &T = GBL.iSY[i];
-
-        if( T.ip != ip )
-            continue;
-
-        T.autoWord( meta.nC );
-
-        if( T.word < meta.nC )
-            T.setTolerance( meta.srate );
+        if( X->word < meta.nC )
+            X->init( meta.srate, meta.kvp["obAiRangeMax"].toDouble() );
     }
 }
 
 
 bool Pass1OB::openDigitalFiles( int g0 )
 {
-//@OBX TODO need universal extractors
-    for( int i = 0, n = GBL.SY.size(); i < n; ++i ) {
+    for( int i = ex0; i < exLim; ++i ) {
 
-        TTLD    &T = GBL.SY[i];
+        XTR *X = GBL.vX[i];
 
-        if( T.ip != ip || T.word >= meta.nC )
+        if( X->word >= meta.nC )
             continue;
 
-        if( !T.openOutTimesFile( GBL.obOutFile( g0, ip, eSY, &T ) ) )
-            return false;
-    }
-
-    for( int i = 0, n = GBL.iSY.size(); i < n; ++i ) {
-
-        TTLD    &T = GBL.iSY[i];
-
-        if( T.ip != ip || T.word >= meta.nC )
-            continue;
-
-        if( !T.openOutTimesFile( GBL.obOutFile( g0, ip, eiSY, &T ) ) )
+        if( !X->openOutFiles( g0, OB, ip ) )
             return false;
     }
 

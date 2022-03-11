@@ -30,7 +30,9 @@ private:
     int                 nADC,
                         nGrp,
                         ip,
-                        maxInt;
+                        maxInt,
+                        ex0,
+                        exLim;
 
 public:
     Pass1AP( int ip )

@@ -121,8 +121,8 @@ struct Meta {
                 gLast,
                 tLast,
                 nFiles;
-    void write( const QString &outBin, int g0, int t0, t_js js, int ip );
     void read( t_js js, int ip );
+    void write( const QString &outBin, int g0, int t0, t_js js, int ip );
     qint64 smpInpSpan()     {return smpInpEOF - smp1st;}
     qint64 smpOutSpan()     {return smpOutEOF - smp1st;}
     qint64 pass1_sizeRead( int &ntpts, qint64 xferBytes, qint64 bufBytes );
@@ -172,7 +172,7 @@ int openInputFile(
     t_js        js,
     int         ip,
     t_ex        ex,
-    XCT         *X = 0 );
+    XTR         *X = 0 );
 
 int openInputBinary(
     QFile       &fin,
@@ -202,15 +202,15 @@ bool p2_openAndCopyFile(
     t_js                js,
     int                 ip,
     t_ex                ex,
-    XCT                 *X = 0 );
+    XTR                 *X = 0 );
 
 bool p2_openAndCopyBFFiles(
-    Meta    &meta,
-    qint64  samps,
-    int     ie,
-    t_js    js,
-    int     ip,
-    XBF     &B );
+    Meta        &meta,
+    qint64      samps,
+    int         ie,
+    t_js        js,
+    int         ip,
+    BitField    *B );
 
 #endif  // TOOL_H
 

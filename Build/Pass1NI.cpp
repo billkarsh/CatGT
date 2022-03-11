@@ -39,181 +39,42 @@ bool Pass1NI::go()
 
 void Pass1NI::digital( const qint16 *data, int ntpts )
 {
-    for( int i = 0, n = GBL.XA.size(); i < n; ++i ) {
+    for( int i = ex0; i < exLim; ++i ) {
 
-        TTLA    &T = GBL.XA[i];
+        XTR *X = GBL.vX[i];
 
-        if( T.word >= meta.nC )
-            continue;
-
-        T.XA( data, meta.smpInpSpan(), ntpts, meta.nC );
-    }
-
-    for( int i = 0, n = GBL.XD.size(); i < n; ++i ) {
-
-        TTLD    &T = GBL.XD[i];
-
-        if( T.word >= meta.nC )
-            continue;
-
-        T.XD( data, meta.smpInpSpan(), ntpts, meta.nC );
-    }
-
-    for( int i = 0, n = GBL.iXA.size(); i < n; ++i ) {
-
-        TTLA    &T = GBL.iXA[i];
-
-        if( T.word >= meta.nC )
-            continue;
-
-        T.iXA( data, meta.smpInpSpan(), ntpts, meta.nC );
-    }
-
-    for( int i = 0, n = GBL.iXD.size(); i < n; ++i ) {
-
-        TTLD    &T = GBL.iXD[i];
-
-        if( T.word >= meta.nC )
-            continue;
-
-        T.iXD( data, meta.smpInpSpan(), ntpts, meta.nC );
-    }
-
-    for( int i = 0, n = GBL.BF.size(); i < n; ++i ) {
-
-        XBF &B = GBL.BF[i];
-
-        if( B.word >= meta.nC )
-            continue;
-
-        B.BF( data, meta.smpInpSpan(), ntpts, meta.nC );
+        if( X->word < meta.nC )
+            X->scan( data, meta.smpInpSpan(), ntpts, meta.nC );
     }
 }
 
 
 void Pass1NI::initDigitalFields()
 {
-    for( int i = 0, n = GBL.XA.size(); i < n; ++i ) {
+    ex0 = GBL.myXrange( exLim, NI, 0 );
 
-        TTLA    &T = GBL.XA[i];
+    for( int i = ex0; i < exLim; ++i ) {
 
-        if( T.word >= meta.nC )
-            continue;
+        XTR *X = GBL.vX[i];
 
-        T.setTolerance( meta.srate );
+        X->autoWord( meta.nC );
 
-        // assume gain = 1
-
-        double  rangeMax = meta.kvp["niAiRangeMax"].toDouble();
-        T.T = SHRT_MAX * T.thresh / rangeMax;
-        T.V = SHRT_MAX * T.thrsh2 / rangeMax;
-    }
-
-    for( int i = 0, n = GBL.XD.size(); i < n; ++i ) {
-
-        TTLD    &T = GBL.XD[i];
-
-        T.autoWord( meta.nC );
-
-        if( T.word < meta.nC )
-            T.setTolerance( meta.srate );
-    }
-
-    for( int i = 0, n = GBL.iXA.size(); i < n; ++i ) {
-
-        TTLA    &T = GBL.iXA[i];
-
-        if( T.word >= meta.nC )
-            continue;
-
-        T.setTolerance( meta.srate );
-
-        // assume gain = 1
-
-        double  rangeMax = meta.kvp["niAiRangeMax"].toDouble();
-        T.T = SHRT_MAX * T.thresh / rangeMax;
-        T.V = SHRT_MAX * T.thrsh2 / rangeMax;
-    }
-
-    for( int i = 0, n = GBL.iXD.size(); i < n; ++i ) {
-
-        TTLD    &T = GBL.iXD[i];
-
-        T.autoWord( meta.nC );
-
-        if( T.word < meta.nC )
-            T.setTolerance( meta.srate );
-    }
-
-    for( int i = 0, n = GBL.BF.size(); i < n; ++i ) {
-
-        XBF &B = GBL.BF[i];
-
-        B.autoWord( meta.nC );
-
-        if( B.word < meta.nC )
-            B.initMask( meta.srate );
+        if( X->word < meta.nC )
+            X->init( meta.srate, meta.kvp["niAiRangeMax"].toDouble() );
     }
 }
 
 
 bool Pass1NI::openDigitalFiles( int g0 )
 {
-    for( int i = 0, n = GBL.XA.size(); i < n; ++i ) {
+    for( int i = ex0; i < exLim; ++i ) {
 
-        TTLA    &T = GBL.XA[i];
+        XTR *X = GBL.vX[i];
 
-        if( T.word >= meta.nC )
+        if( X->word >= meta.nC )
             continue;
 
-        if( !T.openOutTimesFile( GBL.niOutFile( g0, eXA, &T ) ) )
-            return false;
-    }
-
-    for( int i = 0, n = GBL.XD.size(); i < n; ++i ) {
-
-        TTLD    &T = GBL.XD[i];
-
-        if( T.word >= meta.nC )
-            continue;
-
-        if( !T.openOutTimesFile( GBL.niOutFile( g0, eXD, &T ) ) )
-            return false;
-    }
-
-    for( int i = 0, n = GBL.iXA.size(); i < n; ++i ) {
-
-        TTLA    &T = GBL.iXA[i];
-
-        if( T.word >= meta.nC )
-            continue;
-
-        if( !T.openOutTimesFile( GBL.niOutFile( g0, eiXA, &T ) ) )
-            return false;
-    }
-
-    for( int i = 0, n = GBL.iXD.size(); i < n; ++i ) {
-
-        TTLD    &T = GBL.iXD[i];
-
-        if( T.word >= meta.nC )
-            continue;
-
-        if( !T.openOutTimesFile( GBL.niOutFile( g0, eiXD, &T ) ) )
-            return false;
-    }
-
-    for( int i = 0, n = GBL.BF.size(); i < n; ++i ) {
-
-        XBF &B = GBL.BF[i];
-
-        if( B.word >= meta.nC )
-            continue;
-
-        if( !B.openOutTimesFile( GBL.niOutFile( g0, eBFT, &B ) ) )
-            return false;
-
-        if( !B.openOutValsFile( GBL.niOutFile( g0, eBFV, &B ) ) )
+        if( !X->openOutFiles( g0, NI, 0 ) )
             return false;
     }
 

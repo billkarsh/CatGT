@@ -73,74 +73,23 @@ void Pass2NI::close()
 
 void Pass2NI::initDigitalFields()
 {
-    for( int i = 0, n = GBL.XD.size(); i < n; ++i )
-        GBL.XD[i].autoWord( meta.nC );
+    ex0 = GBL.myXrange( exLim, NI, 0 );
 
-    for( int i = 0, n = GBL.iXD.size(); i < n; ++i )
-        GBL.iXD[i].autoWord( meta.nC );
-
-    for( int i = 0, n = GBL.BF.size(); i < n; ++i )
-        GBL.BF[i].autoWord( meta.nC );
+    for( int i = ex0; i < exLim; ++i )
+        GBL.vX[i]->autoWord( meta.nC );
 }
 
 
 bool Pass2NI::openDigitalFiles( int g0 )
 {
-    for( int i = 0, n = GBL.XA.size(); i < n; ++i ) {
+    for( int i = ex0; i < exLim; ++i ) {
 
-        TTLA    &T = GBL.XA[i];
+        XTR *X = GBL.vX[i];
 
-        if( T.word >= meta.nC )
+        if( X->word >= meta.nC )
             continue;
 
-        if( !T.openOutTimesFile( GBL.niOutFile( g0, eXA, &T ) ) )
-            return false;
-    }
-
-    for( int i = 0, n = GBL.XD.size(); i < n; ++i ) {
-
-        TTLD    &T = GBL.XD[i];
-
-        if( T.word >= meta.nC )
-            continue;
-
-        if( !T.openOutTimesFile( GBL.niOutFile( g0, eXD, &T ) ) )
-            return false;
-    }
-
-    for( int i = 0, n = GBL.iXA.size(); i < n; ++i ) {
-
-        TTLA    &T = GBL.iXA[i];
-
-        if( T.word >= meta.nC )
-            continue;
-
-        if( !T.openOutTimesFile( GBL.niOutFile( g0, eiXA, &T ) ) )
-            return false;
-    }
-
-    for( int i = 0, n = GBL.iXD.size(); i < n; ++i ) {
-
-        TTLD    &T = GBL.iXD[i];
-
-        if( T.word >= meta.nC )
-            continue;
-
-        if( !T.openOutTimesFile( GBL.niOutFile( g0, eiXD, &T ) ) )
-            return false;
-    }
-
-    for( int i = 0, n = GBL.BF.size(); i < n; ++i ) {
-
-        XBF &B = GBL.BF[i];
-
-        if( B.word >= meta.nC )
-            continue;
-
-        if( !B.openOutTimesFile( GBL.niOutFile( g0, eBFT, &B ) ) )
-            return false;
-
-        if( !B.openOutValsFile( GBL.niOutFile( g0, eBFV, &B ) ) )
+        if( !X->openOutFiles( g0, NI, 0 ) )
             return false;
     }
 
@@ -150,58 +99,26 @@ bool Pass2NI::openDigitalFiles( int g0 )
 
 bool Pass2NI::copyDigitalFiles( int ie )
 {
-    for( int i = 0, n = GBL.XA.size(); i < n; ++i ) {
+    for( int i = ex0; i < exLim; ++i ) {
 
-        TTLA    &T = GBL.XA[i];
+        XTR *X = GBL.vX[i];
 
-        if( T.word >= meta.nC )
+        if( X->word >= meta.nC )
             continue;
 
-        if( !p2_openAndCopyFile( *T.f, meta, buf, samps, ie, NI, 0, eXA, &T ) )
-            return false;
-    }
+        bool    ok;
 
-    for( int i = 0, n = GBL.XD.size(); i < n; ++i ) {
+        if( X->ex == eBFT ) {
+            ok = p2_openAndCopyBFFiles(
+                    meta, samps, ie, NI, 0,
+                    reinterpret_cast<BitField*>(X) );
+        }
+        else {
+            ok = p2_openAndCopyFile(
+                    *X->f, meta, buf, samps, ie, NI, 0, X->ex, X );
+        }
 
-        TTLD    &T = GBL.XD[i];
-
-        if( T.word >= meta.nC )
-            continue;
-
-        if( !p2_openAndCopyFile( *T.f, meta, buf, samps, ie, NI, 0, eXD, &T ) )
-            return false;
-    }
-
-    for( int i = 0, n = GBL.iXA.size(); i < n; ++i ) {
-
-        TTLA    &T = GBL.iXA[i];
-
-        if( T.word >= meta.nC )
-            continue;
-
-        if( !p2_openAndCopyFile( *T.f, meta, buf, samps, ie, NI, 0, eiXA, &T ) )
-            return false;
-    }
-
-    for( int i = 0, n = GBL.iXD.size(); i < n; ++i ) {
-
-        TTLD    &T = GBL.iXD[i];
-
-        if( T.word >= meta.nC )
-            continue;
-
-        if( !p2_openAndCopyFile( *T.f, meta, buf, samps, ie, NI, 0, eiXD, &T ) )
-            return false;
-    }
-
-    for( int i = 0, n = GBL.BF.size(); i < n; ++i ) {
-
-        XBF &B = GBL.BF[i];
-
-        if( B.word >= meta.nC )
-            continue;
-
-        if( !p2_openAndCopyBFFiles( meta, samps, ie, NI, 0, B ) )
+        if( !ok )
             return false;
     }
 

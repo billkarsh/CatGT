@@ -13,6 +13,8 @@ private:
     Pass1IO     io;
     QFileInfo   fim;
     Meta        meta;
+    int         ex0,
+                exLim;
 
 public:
     Pass1NI() : io(*this, fim, meta)                {}

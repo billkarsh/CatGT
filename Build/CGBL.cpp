@@ -99,11 +99,20 @@ bool Filter::parse( const QString &s )
 }
 
 /* --------------------------------------------------------------- */
-/* TTL ----------------------------------------------------------- */
+/* Extractors ---------------------------------------------------- */
 /* --------------------------------------------------------------- */
 
-bool XCT::openOutTimesFile( const QString &file )
+bool XTR::openOutTimesFile( int g0, t_js js, int ip, t_ex ex )
 {
+    QString file;
+
+    switch( js ) {
+        case NI: file = GBL.niOutFile( g0, ex, this ); break;
+        case OB: file = GBL.obOutFile( g0, ip, ex, this ); break;
+        case AP:
+        case LF: file = GBL.imOutFile( g0, AP, ip, ex, this ); break;
+    }
+
     f = new QFile( file );
 
     if( !f->open( QIODevice::WriteOnly | QIODevice::Text ) ) {
@@ -117,7 +126,13 @@ bool XCT::openOutTimesFile( const QString &file )
 }
 
 
-void XCT::close()
+bool XTR::openOutFiles( int g0, t_js js, int ip )
+{
+    return openOutTimesFile( g0, js, ip, ex );
+}
+
+
+void XTR::close() const
 {
     if( ts )
         ts->flush();
@@ -127,7 +142,7 @@ void XCT::close()
 }
 
 
-QString TTL::sSpan()
+QString Pulse::sSpan() const
 {
     QString s = QString("%1").arg( span );
     s.replace( ".", "p" );
@@ -135,7 +150,7 @@ QString TTL::sSpan()
 }
 
 
-void TTL::setTolerance( double rate )
+void Pulse::setTolerance( double rate )
 {
     srate = rate;
 
@@ -150,10 +165,23 @@ void TTL::setTolerance( double rate )
 }
 
 
-QString TTLA::sparam( const QString &stype )
+void A_Pulse::init( double rate, double rangeMax )
 {
-    QString s = QString(" -%1=%2,%3,%4,%5").arg( stype )
-                    .arg( word ).arg( thresh ).arg( thrsh2 ).arg( span );
+    setTolerance( rate );
+
+// assume unity gain
+
+    T = SHRT_MAX * thresh / rangeMax;
+    V = SHRT_MAX * thrsh2 / rangeMax;
+}
+
+
+QString A_Pulse::sparam() const
+{
+    QString s = QString(" -%1=%2,%3,%4,%5,%6,%7")
+                    .arg( ex == eXA ? "xa" : "xia" )
+                    .arg( js ).arg( ip ).arg( word )
+                    .arg( thresh ).arg( thrsh2 ).arg( span );
 
     if( tol >= 0 )
         s += QString(",%1").arg( tol );
@@ -162,14 +190,14 @@ QString TTLA::sparam( const QString &stype )
 }
 
 
-QString TTLA::suffix( const QString &stype )
+QString A_Pulse::suffix( const QString &stype ) const
 {
     return QString(".%1_%2_%3.txt")
             .arg( stype ).arg( word ).arg( sSpan() );
 }
 
 
-void TTLA::XA( const qint16 *data, qint64 t0, int ntpts, int nC )
+void A_Pulse::pos( const qint16 *data, qint64 t0, int ntpts, int nC )
 {
 // -------------------
 // Must start on a low
@@ -357,7 +385,7 @@ write:
 }
 
 
-void TTLA::iXA( const qint16 *data, qint64 t0, int ntpts, int nC )
+void A_Pulse::inv( const qint16 *data, qint64 t0, int ntpts, int nC )
 {
 // --------------------
 // Must start on a high
@@ -545,19 +573,29 @@ write:
 }
 
 
-QString TTLD::sparam( const QString &stype )
+void A_Pulse::scan( const qint16 *data, qint64 t0, int ntpts, int nC )
 {
-    QString s;
+    if( ex == eXA )
+        pos( data, t0, ntpts, nC );
+    else
+        inv( data, t0, ntpts, nC );
+}
 
-    if( stype.contains( "SY" ) ) {
-        s = QString(" -%1=%2,%3,%4,%5").arg( stype )
-                .arg( ip )
-                .arg( word ).arg( bit ).arg( span );
-    }
-    else {
-        s = QString(" -%1=%2,%3,%4").arg( stype )
-                .arg( word ).arg( bit ).arg( span );
-    }
+
+void D_Pulse::init( double rate, double rangeMax )
+{
+    Q_UNUSED( rangeMax )
+
+    setTolerance( rate );
+}
+
+
+QString D_Pulse::sparam() const
+{
+    QString s = QString(" -%1=%2,%3,%4,%5,%6")
+                    .arg( ex == eXD ? "xd" : "xid" )
+                    .arg( js ).arg( ip ).arg( word )
+                    .arg( bit ).arg( span );
 
     if( tol >= 0 )
         s += QString(",%1").arg( tol );
@@ -566,14 +604,14 @@ QString TTLD::sparam( const QString &stype )
 }
 
 
-QString TTLD::suffix( const QString &stype )
+QString D_Pulse::suffix( const QString &stype ) const
 {
     return QString(".%1_%2_%3_%4.txt")
             .arg( stype ).arg( word ).arg( bit ).arg( sSpan() );
 }
 
 
-void TTLD::XD( const qint16 *data, qint64 t0, int ntpts, int nC )
+void D_Pulse::pos( const qint16 *data, qint64 t0, int ntpts, int nC )
 {
 // -------------------
 // Must start on a low
@@ -701,7 +739,7 @@ write:
 }
 
 
-void TTLD::iXD( const qint16 *data, qint64 t0, int ntpts, int nC )
+void D_Pulse::inv( const qint16 *data, qint64 t0, int ntpts, int nC )
 {
 // --------------------
 // Must start on a high
@@ -829,8 +867,19 @@ write:
 }
 
 
-void XBF::initMask( double rate )
+void D_Pulse::scan( const qint16 *data, qint64 t0, int ntpts, int nC )
 {
+    if( ex == eXD )
+        pos( data, t0, ntpts, nC );
+    else
+        inv( data, t0, ntpts, nC );
+}
+
+
+void BitField::init( double rate, double rangeMax )
+{
+    Q_UNUSED( rangeMax )
+
     srate = rate;
 
 // mask = 2^nb - 1
@@ -842,21 +891,49 @@ void XBF::initMask( double rate )
 }
 
 
-QString XBF::sparam()
+QString BitField::sparam() const
 {
-    return QString(" -BF=%1,%2,%3,%4")
-            .arg( word ).arg( b0 ).arg( nb ).arg( inarow );
+    return QString(" -bf=%1,%2,%3,%4,%5,%6")
+            .arg( js ).arg( ip ).arg( word )
+            .arg( b0 ).arg( nb ).arg( inarow );
 }
 
 
-QString XBF::suffix( const QString &stype )
+QString BitField::suffix( const QString &stype ) const
 {
     return QString(".%1_%2_%3_%4.txt")
             .arg( stype ).arg( word ).arg( b0 ).arg( nb );
 }
 
 
-void XBF::BF( const qint16 *data, qint64 t0, int ntpts, int nC )
+bool BitField::openOutFiles( int g0, t_js js, int ip )
+{
+    if( !openOutTimesFile( g0, js, ip, eBFT ) )
+        return false;
+
+    QString file;
+
+    switch( js ) {
+        case NI: file = GBL.niOutFile( g0, eBFV, this ); break;
+        case OB: file = GBL.obOutFile( g0, ip, eBFV, this ); break;
+        case AP:
+        case LF: file = GBL.imOutFile( g0, AP, ip, eBFV, this ); break;
+    }
+
+    fv = new QFile( file );
+
+    if( !fv->open( QIODevice::WriteOnly | QIODevice::Text ) ) {
+        Log() << QString("Error opening '%1'.").arg( file );
+        return false;
+    }
+
+    fv->resize( 0 );
+    tsv = new QTextStream( fv );
+    return true;
+}
+
+
+void BitField::scan( const qint16 *data, qint64 t0, int ntpts, int nC )
 {
     const short *d = &data[word];
 
@@ -898,22 +975,7 @@ void XBF::BF( const qint16 *data, qint64 t0, int ntpts, int nC )
 }
 
 
-bool XBF::openOutValsFile( const QString &file )
-{
-    fv = new QFile( file );
-
-    if( !fv->open( QIODevice::WriteOnly | QIODevice::Text ) ) {
-        Log() << QString("Error opening '%1'.").arg( file );
-        return false;
-    }
-
-    fv->resize( 0 );
-    tsv = new QTextStream( fv );
-    return true;
-}
-
-
-void XBF::close()
+void BitField::close() const
 {
     if( tsv )
         tsv->flush();
@@ -921,7 +983,7 @@ void XBF::close()
     if( fv )
         fv->close();
 
-    XCT::close();
+    XTR::close();
 }
 
 /* --------------------------------------------------------------- */
@@ -954,7 +1016,7 @@ static void PrintUsage()
     Log() << "+ Optionally apply band-pass and global CAR filters.";
     Log() << "+ Optionally edit out saturation artifacts.";
     Log() << "+ Optionally extract tables of sync waveform edge times to drive TPrime.";
-    Log() << "+ Optionally extract tables of any other TTL event times to be aligned with spikes.";
+    Log() << "+ Optionally extract tables of other nonneural event times to be aligned with spikes.";
     Log() << "+ Optionally join the above outputs across different runs (supercat feature).\n";
     Log() << "Output:";
     Log() << "+ Results are placed next to source, named like this, with t-index = tcat:";
@@ -975,7 +1037,7 @@ static void PrintUsage()
     Log() << "-prb_fld                 ;use folder-per-probe organization";
     Log() << "-prb_miss_ok             ;instead of stopping, silently skip missing probes";
     Log() << "-gtlist={gj,tja,tjb}     ;override {-g,-t} giving each listed g-index its own t-range";
-    Log() << "-t=cat                   ;extract TTL from CatGT output files (instead of -t=ta,tb)";
+    Log() << "-t=cat                   ;extract events from CatGT output files (instead of -t=ta,tb)";
     Log() << "-exported                ;apply FileViewer 'exported' tag to in/output filenames";
     Log() << "-t_miss_ok               ;instead of stopping, zero-fill if trial missing";
     Log() << "-zerofillmax=500         ;set a maximum zero-fill span (millisec)";
@@ -987,14 +1049,12 @@ static void PrintUsage()
     Log() << "-gblcar                  ;apply ap global CAR filter over all channels";
     Log() << "-gfix=0.40,0.10,0.02     ;rmv ap artifacts: ||amp(mV)||, ||slope(mV/sample)||, ||noise(mV)||";
     Log() << "-chnexcl={prb;chans}     ;this probe, exclude listed chans from ap loccar, gblcar, gfix";
-    Log() << "-SY=0,384,6,10           ;extract TTL signal from imec SY (probe,word,bit,millisec)";
-    Log() << "-XA=2,3.0,4.5,25         ;extract TTL signal from nidq XA (word,thresh1(v),thresh2(V),millisec)";
-    Log() << "-XD=8,0,0                ;extract TTL signal from nidq XD (word,bit,millisec)";
-    Log() << "-iSY=0,384,6,10          ;extract inverted TTL signal from imec SY (probe,word,bit,millisec)";
-    Log() << "-iXA=2,2.0,1.0,25        ;extract inverted TTL signal from nidq XA (word,thresh1(v),thresh2(V),millisec)";
-    Log() << "-iXD=8,0,0               ;extract inverted TTL signal from nidq XD (word,bit,millisec)";
-    Log() << "-BF=8,2,4,3              ;extract numeric bit-field from nidq XD (word,startbit,nbits,inarow)";
-    Log() << "-inarow=5                ;extractor antibounce stay high/low sample count";
+    Log() << "-xa=0,0,2,3.0,4.5,25     ;extract pulse signal from analog chan (js,ip,word,thresh1(V),thresh2(V),millisec)";
+    Log() << "-xd=2,0,384,6,500        ;extract pulse signal from digital chan (js,ip,word,bit,millisec)";
+    Log() << "-xia=0,0,2,3.0,4.5,2     ;inverted version of xa";
+    Log() << "-xid=2,0,384,6,50        ;inverted version of xd";
+    Log() << "-bf=0,0,8,2,4,3          ;extract numeric bit-field from digital chan (js,ip,word,startbit,nbits,inarow)";
+    Log() << "-inarow=5                ;extractor {xa,xd,xia,xid} antibounce stay high/low sample count";
     Log() << "-pass1_force_ni_ob_bin   ;write pass one ni/ob binary tcat file even if not changed";
     Log() << "-supercat={dir,run_ga}   ;concatenate existing output files across runs (see ReadMe)";
     Log() << "-supercat_trim_edges     ;supercat after trimming each stream to matched sync edges";
@@ -1008,13 +1068,13 @@ static void PrintUsage()
 /* CGBL ----------------------------------------------------------- */
 /* ---------------------------------------------------------------- */
 
-
 bool CGBL::SetCmdLine( int argc, char* argv[] )
 {
 // Parse args
 
     QString     ssupercat;
-    const char  *sarg = 0;
+    const char  *sarg   = 0;
+    int         usrord  = 0;
 
     for( int i = 1; i < argc; ++i ) {
 
@@ -1143,110 +1203,117 @@ bool CGBL::SetCmdLine( int argc, char* argv[] )
             if( !parseChnexcl( sarg ) )
                 return false;
         }
-        else if( GetArgList( vd, "-SY=", argv[i] )
-                && (vd.size() == 4 || vd.size() == 5) ) {
+        else if( GetArgList( vd, "-xa=", argv[i] )
+                && (vd.size() == 6 || vd.size() == 7) ) {
 
-            TTLD    T;
-            T.ip        = vd[0];
-            T.word      = vd[1];
-            T.bit       = vd[2];
-            T.span      = vd[3];
+            A_Pulse *X = new A_Pulse;
+            X->ex       = eXA;
+            X->usrord   = usrord++;
+            X->js       = t_js(vd[0]);
+            X->ip       = vd[1];
+            X->word     = vd[2];
+            X->thresh   = vd[3];
+            X->thrsh2   = vd[4];
+            X->span     = vd[5];
 
-            if( vd.size() == 5 )
-                T.tol = vd[4];
+            if( vd.size() == 7 )
+                X->tol = vd[6];
 
-            SY.push_back( T );
-        }
-        else if( GetArgList( vd, "-iSY=", argv[i] )
-                && (vd.size() == 4 || vd.size() == 5) ) {
-
-            TTLD    T;
-            T.ip        = vd[0];
-            T.word      = vd[1];
-            T.bit       = vd[2];
-            T.span      = vd[3];
-
-            if( vd.size() == 5 )
-                T.tol = vd[4];
-
-            iSY.push_back( T );
-        }
-        else if( GetArgList( vd, "-XA=", argv[i] )
-                && (vd.size() == 4 || vd.size() == 5) ) {
-
-            TTLA    T;
-            T.word      = vd[0];
-            T.thresh    = vd[1];
-            T.thrsh2    = vd[2];
-            T.span      = vd[3];
-
-            if( vd.size() == 5 )
-                T.tol = vd[4];
-
-            XA.push_back( T );
-        }
-        else if( GetArgList( vd, "-iXA=", argv[i] )
-                && (vd.size() == 4 || vd.size() == 5) ) {
-
-            TTLA    T;
-            T.word      = vd[0];
-            T.thresh    = vd[1];
-            T.thrsh2    = vd[2];
-            T.span      = vd[3];
-
-            if( vd.size() == 5 )
-                T.tol = vd[4];
-
-            iXA.push_back( T );
-        }
-        else if( GetArgList( vd, "-XD=", argv[i] )
-                && (vd.size() == 3 || vd.size() == 4) ) {
-
-            TTLD    T;
-            T.word      = vd[0];
-            T.bit       = vd[1];
-            T.span      = vd[2];
-
-            if( vd.size() == 4 )
-                T.tol = vd[3];
-
-            XD.push_back( T );
-        }
-        else if( GetArgList( vd, "-iXD=", argv[i] )
-                && (vd.size() == 3 || vd.size() == 4) ) {
-
-            TTLD    T;
-            T.word      = vd[0];
-            T.bit       = vd[1];
-            T.span      = vd[2];
-
-            if( vd.size() == 4 )
-                T.tol = vd[3];
-
-            iXD.push_back( T );
-        }
-        else if( GetArgList( vd, "-BF=", argv[i] )
-                && (vd.size() == 4) ) {
-
-            XBF B;
-            B.word      = vd[0];
-            B.b0        = vd[1];
-            B.nb        = vd[2];
-            B.inarow    = vd[3];
-
-            if( B.b0 < 0 || B.b0 > 15 || B.nb < 1 || B.nb > 16 - B.b0 ) {
-
-                Log() <<
-                "BF startbit must be in range [0..15], nbits in range [1..16-startbit].";
+            if( X->js == AP ) {
+                Log() << "xa extractor not legal for AP stream.";
                 return false;
             }
 
-            if( B.inarow < 1 ) {
-                B.inarow = 1;
-                Log() << "Warning: BF inarow must be >= 1.";
+            vX.push_back( X );
+        }
+        else if( GetArgList( vd, "-xia=", argv[i] )
+                && (vd.size() == 6 || vd.size() == 7) ) {
+
+            A_Pulse *X = new A_Pulse;
+            X->ex       = eXIA;
+            X->usrord   = usrord++;
+            X->js       = t_js(vd[0]);
+            X->ip       = vd[1];
+            X->word     = vd[2];
+            X->thresh   = vd[3];
+            X->thrsh2   = vd[4];
+            X->span     = vd[5];
+
+            if( vd.size() == 7 )
+                X->tol = vd[6];
+
+            if( X->js == AP ) {
+                Log() << "xia extractor not legal for AP stream.";
+                return false;
             }
 
-            BF.push_back( B );
+            vX.push_back( X );
+        }
+        else if( GetArgList( vd, "-xd=", argv[i] )
+                && (vd.size() == 5 || vd.size() == 6) ) {
+
+            D_Pulse *X = new D_Pulse;
+            X->ex       = eXD;
+            X->usrord   = usrord++;
+            X->js       = t_js(vd[0]);
+            X->ip       = vd[1];
+            X->word     = vd[2];
+            X->bit      = vd[3];
+            X->span     = vd[4];
+
+            if( vd.size() == 5 )
+                X->tol = vd[4];
+
+            vX.push_back( X );
+        }
+        else if( GetArgList( vd, "-xid=", argv[i] )
+                && (vd.size() == 5 || vd.size() == 6) ) {
+
+            D_Pulse *X = new D_Pulse;
+            X->ex       = eXID;
+            X->usrord   = usrord++;
+            X->js       = t_js(vd[0]);
+            X->ip       = vd[1];
+            X->word     = vd[2];
+            X->bit      = vd[3];
+            X->span     = vd[4];
+
+            if( vd.size() == 5 )
+                X->tol = vd[4];
+
+            vX.push_back( X );
+        }
+        else if( GetArgList( vd, "-bf=", argv[i] )
+                && (vd.size() == 6) ) {
+
+            BitField    *X = new BitField;
+            X->ex       = eBFT;
+            X->js       = t_js(vd[0]);
+            X->usrord   = usrord++;
+            X->ip       = vd[1];
+            X->word     = vd[2];
+            X->b0       = vd[3];
+            X->nb       = vd[4];
+            X->inarow   = vd[5];
+
+            if( X->js == AP ) {
+                Log() << "bf extractor not legal for AP stream.";
+                return false;
+            }
+
+            if( X->b0 < 0 || X->b0 > 15 || X->nb < 1 || X->nb > 16 - X->b0 ) {
+
+                Log() <<
+                "bf startbit must be in range [0..15], nbits in range [1..16-startbit].";
+                return false;
+            }
+
+            if( X->inarow < 1 ) {
+                X->inarow = 1;
+                Log() << "Warning: bf inarow must be >= 1.";
+            }
+
+            vX.push_back( X );
         }
         else if( IsArg( "-pass1_force_ni_ob_bin", argv[i] ) )
             force_ni_ob = true;
@@ -1332,6 +1399,10 @@ error:
         return false;
     }
 
+// sort extractors : js -> ip -> usrord
+
+    qSort( vX.begin(), vX.end(), XTR::pointerCompare() );
+
 // Echo
 
     QString sreq        = "",
@@ -1346,13 +1417,7 @@ error:
             sloccar     = "",
             sgfix       = "",
             schnexc     = "",
-            sSY         = "",
-            sXA         = "",
-            sXD         = "",
-            siSY        = "",
-            siXA        = "",
-            siXD        = "",
-            sBF         = "",
+            sXTR        = "",
             sinarow     = "",
             ssuper      = "",
             sodir       = "";
@@ -1394,26 +1459,8 @@ error:
     if( mexc.size() )
         schnexc = QString(" -chnexcl=%1").arg( formatChnexcl() );
 
-    foreach( TTLD T, SY )
-        sSY += T.sparam( "SY" );
-
-    foreach( TTLD T, iSY )
-        siSY += T.sparam( "iSY" );
-
-    foreach( TTLA T, XA )
-        sXA += T.sparam( "XA" );
-
-    foreach( TTLA T, iXA )
-        siXA += T.sparam( "iXA" );
-
-    foreach( TTLD T, XD )
-        sXD += T.sparam( "XD" );
-
-    foreach( TTLD T, iXD )
-        siXD += T.sparam( "iXD" );
-
-    foreach( XBF B, BF )
-        sBF += B.sparam();
+    foreach( const XTR *X, vX )
+        sXTR += X->sparam();
 
     if( inarow >= 0 ) {
 
@@ -1433,8 +1480,8 @@ error:
 
     sCmd =
         QString(
-            "CatGT%1%2%3%4%5%6%7%8%9%10%11%12%13%14%15%16%17%18%19"
-            "%20%21%22%23%24%25%26%27%28%29%30%31%32%33%34%35%36%37")
+            "CatGT%1%2%3%4%5%6%7%8%9%10%11%12%13%14%15%16"
+            "%17%18%19%20%21%22%23%24%25%26%27%28%29%30%31")
         .arg( sreq )
         .arg( sgt )
         .arg( no_run_fld ? " -no_run_fld" : "" )
@@ -1458,13 +1505,7 @@ error:
         .arg( gblcar ? " -gblcar" : "" )
         .arg( sgfix )
         .arg( schnexc )
-        .arg( sSY )
-        .arg( sXA )
-        .arg( sXD )
-        .arg( siSY )
-        .arg( siXA )
-        .arg( siXD )
-        .arg( sBF )
+        .arg( sXTR )
         .arg( sinarow )
         .arg( force_ni_ob ? " -pass1_force_ni_ob_bin" : "" )
         .arg( ssuper )
@@ -1653,6 +1694,34 @@ int CGBL::gt_nIndices() const
 }
 
 
+int CGBL::myXrange( int &lim, t_js js, int ip ) const
+{
+    lim = vX.size();
+
+    for( int i = 0; i < lim; ++i ) {
+
+        XTR *iX = vX[i];
+
+        if( iX->js == js && iX->ip == ip ) {
+
+            for( int j = i + 1; j < lim; ++j ) {
+
+                XTR *jX = vX[j];
+
+                if( jX->js != js || jX->ip != ip ) {
+                    lim = j;
+                    break;
+                }
+            }
+
+            return i;
+        }
+    }
+
+    return lim;
+}
+
+
 bool CGBL::makeOutputProbeFolder( int g0, int ip )
 {
     prb_obase = im_obase;
@@ -1677,7 +1746,7 @@ bool CGBL::makeOutputProbeFolder( int g0, int ip )
 }
 
 
-QString CGBL::inFile( int g, int t, t_js js, int ip, t_ex ex, XCT *X )
+QString CGBL::inFile( int g, int t, t_js js, int ip, t_ex ex, XTR *X )
 {
     QString s = inPathUpTo_t( g, js, ip );
 
@@ -1694,7 +1763,7 @@ QString CGBL::inFile( int g, int t, t_js js, int ip, t_ex ex, XCT *X )
 }
 
 
-QString CGBL::niOutFile( int g0, t_ex ex, XCT *X )
+QString CGBL::niOutFile( int g0, t_ex ex, XTR *X )
 {
     QString s;
 
@@ -1707,7 +1776,7 @@ QString CGBL::niOutFile( int g0, t_ex ex, XCT *X )
 }
 
 
-QString CGBL::obOutFile( int g0, int ip, t_ex ex, XCT *X )
+QString CGBL::obOutFile( int g0, int ip, t_ex ex, XTR *X )
 {
     QString s;
 
@@ -1720,7 +1789,7 @@ QString CGBL::obOutFile( int g0, int ip, t_ex ex, XCT *X )
 }
 
 
-QString CGBL::imOutFile( int g0, t_js js, int ip, t_ex ex, XCT *X )
+QString CGBL::imOutFile( int g0, t_js js, int ip, t_ex ex, XTR *X )
 {
     QString s;
 
@@ -2011,7 +2080,7 @@ QString CGBL::inPathUpTo_t( int g, t_js js, int ip )
 }
 
 
-QString CGBL::suffix( t_js js, int ip, t_ex ex, XCT *X )
+QString CGBL::suffix( t_js js, int ip, t_ex ex, XTR *X )
 {
     QString suf;
 
@@ -2032,14 +2101,12 @@ QString CGBL::suffix( t_js js, int ip, t_ex ex, XCT *X )
     switch( ex ) {
         case eBIN: suf += ".bin";  break;
         case eMETA: suf += ".meta"; break;
-        case eSY: suf += X->suffix( "SY" ); break;
-        case eXD: suf += X->suffix( "XD" ); break;
-        case eXA: suf += X->suffix( "XA" ); break;
-        case eiSY: suf += X->suffix( "iSY" ); break;
-        case eiXD: suf += X->suffix( "iXD" ); break;
-        case eiXA: suf += X->suffix( "iXA" ); break;
-        case eBFT: suf += X->suffix( "BFT" ); break;
-        case eBFV: suf += X->suffix( "BFV" ); break;
+        case eXA: suf += X->suffix( "xa" ); break;
+        case eXD: suf += X->suffix( "xd" ); break;
+        case eXIA: suf += X->suffix( "xia" ); break;
+        case eXID: suf += X->suffix( "xid" ); break;
+        case eBFT: suf += X->suffix( "bft" ); break;
+        case eBFV: suf += X->suffix( "bfv" ); break;
     }
 
     return suf;

@@ -1217,9 +1217,8 @@ static bool _supercat_streamSelectEdges( int ie, t_js js, int ip )
                 fim;
     QFile       fin;
     KVParams    kvp;
-    TTL         *T = 0;
+    XTR         *X = 0;
     int         nC;
-    t_ex        ex = eBIN; // not found
     bool        canSkip = (js == AP ? GBL.prb_miss_ok : false);
 
 // ---------------------
@@ -1234,33 +1233,53 @@ static bool _supercat_streamSelectEdges( int ie, t_js js, int ip )
 
     nC = kvp["nSavedChans"].toInt();
 
-// ------------------------------------------
-// Find the TTL and the (ex) code for this ip
-// ------------------------------------------
+// ------------------------------
+// Find the extractor for this ip
+// ------------------------------
 
     if( js == AP ) {
 
-        for( int i = 0, n = GBL.SY.size(); i < n; ++i ) {
+        for( int i = 0, n = GBL.vX.size(); i < n; ++i ) {
 
-            TTLD    &D = GBL.SY[i];
+            XTR *iX = GBL.vX[i];
 
-            if( D.ip == ip && D.word < nC ) {
+            if( iX->js == AP  && iX->ip == ip &&
+                iX->ex == eXD && iX->word < nC ) {
 
-                D.autoWord( nC );
-                T  = &D;
-                ex = eSY;
+                iX->autoWord( nC );
+                X = iX;
                 break;
             }
         }
 
-        if( !ex ) {
-            Log() << QString("Can't find SY spec for probe %1 sync.")
-                        .arg( ip );
+        if( !X ) {
+            Log() <<
+            QString("Can't find xd extractor spec for probe %1 sync.")
+                .arg( ip );
             return false;
         }
     }
     else if( js == OB ) {
-        //@OBX TODO
+
+        for( int i = 0, n = GBL.vX.size(); i < n; ++i ) {
+
+            XTR *iX = GBL.vX[i];
+
+            if( iX->js == OB  && iX->ip == ip &&
+                iX->ex == eXD && iX->word < nC ) {
+
+                iX->autoWord( nC );
+                X = iX;
+                break;
+            }
+        }
+
+        if( !X ) {
+            Log() <<
+            QString("Can't find xd extractor spec for obx %1 sync.")
+                .arg( ip );
+            return false;
+        }
     }
     else if( js == NI ) {
 
@@ -1275,19 +1294,24 @@ static bool _supercat_streamSelectEdges( int ie, t_js js, int ip )
 
             iword = chanIds.indexOf( iword );
 
-            for( int i = 0, n = GBL.XA.size(); i < n; ++i ) {
+            for( int i = 0, n = GBL.vX.size(); i < n; ++i ) {
 
-                T = &GBL.XA[i];
+                XTR *iX = GBL.vX[i];
 
-                if( T->word == iword ) {
-                    ex = eXA;
+                iX->autoWord( nC );
+
+                if( iX->js == NI  && iX->ip == 0 &&
+                    iX->ex == eXA && iX->word == iword ) {
+
+                    X = iX;
                     break;
                 }
             }
 
-            if( !ex ) {
-                Log() << QString("Can't find XA spec for ni sync (word %1).")
-                            .arg( iword );
+            if( !X ) {
+                Log() <<
+                QString("Can't find xa extractor spec for ni sync (word %1).")
+                    .arg( iword );
                 return false;
             }
         }
@@ -1300,20 +1324,26 @@ static bool _supercat_streamSelectEdges( int ie, t_js js, int ip )
             iword   = niCumTypCnt[CniCfg::niSumAnalog] + iword / 16;
             iword   = chanIds.indexOf( iword );
 
-            for( int i = 0, n = GBL.XD.size(); i < n; ++i ) {
+            for( int i = 0, n = GBL.vX.size(); i < n; ++i ) {
 
-                TTLD    &D = GBL.XD[i];
+                XTR *iX = GBL.vX[i];
 
-                if( D.word == iword && D.bit == bit ) {
-                    T  = &D;
-                    ex = eXD;
+                iX->autoWord( nC );
+
+                if( iX->js == NI  && iX->ip == 0 &&
+                    iX->ex == eXD && iX->word == iword &&
+                    reinterpret_cast<D_Pulse*>(iX)->bit == bit ) {
+
+                    X = iX;
                     break;
                 }
             }
 
-            if( !ex ) {
-                Log() << QString("Can't find XD spec for ni sync (word %1 bit %2).")
-                            .arg( iword ).arg( bit );
+            if( !X ) {
+                Log() <<
+                QString(
+                "Can't find xd extractor spec for ni sync (word %1 bit %2).")
+                    .arg( iword ).arg( bit );
                 return false;
             }
         }
@@ -1323,7 +1353,7 @@ static bool _supercat_streamSelectEdges( int ie, t_js js, int ip )
 // Open edge file
 // --------------
 
-    if( openInputFile( fin, fib, GBL.ga, -1, js, ip, ex, T ) )
+    if( openInputFile( fin, fib, GBL.ga, -1, js, ip, X->ex, X ) )
         return false;
 
 // ---------
@@ -1684,7 +1714,7 @@ int openInputFile(
     t_js        js,
     int         ip,
     t_ex        ex,
-    XCT         *X )
+    XTR         *X )
 {
     QString inBin = GBL.inFile( g, t, js, ip, ex, X );
 
@@ -1909,7 +1939,7 @@ static void p2_copyOffsetTimes(
     int     ie,
     t_js    js,
     int     ip,
-    XCT     *X )
+    XTR     *X )
 {
     double  t,
             head = GBL.velem[ie].head( js, ip ),
@@ -1934,7 +1964,7 @@ static void p2_copyOffsetTimes(
 }
 
 
-static void p2_copyOffsetTimes( QFile &fin, double secs, XCT *X )
+static void p2_copyOffsetTimes( QFile &fin, double secs, XTR *X )
 {
     double  t;
     QString line;
@@ -1961,7 +1991,7 @@ bool p2_openAndCopyFile(
     t_js                js,
     int                 ip,
     t_ex                ex,
-    XCT                 *X )
+    XTR                 *X )
 {
     QFile       fin;
     QFileInfo   fib;
@@ -1989,20 +2019,20 @@ bool p2_openAndCopyFile(
 
 
 bool p2_openAndCopyBFFiles(
-    Meta    &meta,
-    qint64  samps,
-    int     ie,
-    t_js    js,
-    int     ip,
-    XBF     &B )
+    Meta        &meta,
+    qint64      samps,
+    int         ie,
+    t_js        js,
+    int         ip,
+    BitField    *B )
 {
     QFile       ftin, fvin;
     QFileInfo   ftib, fvib;
 
-    if( openInputFile( ftin, ftib, GBL.ga, -1, js, ip, eBFT, &B ) )
+    if( openInputFile( ftin, ftib, GBL.ga, -1, js, ip, eBFT, B ) )
         return false;
 
-    if( openInputFile( fvin, fvib, GBL.ga, -1, js, ip, eBFV, &B ) )
+    if( openInputFile( fvin, fvib, GBL.ga, -1, js, ip, eBFV, B ) )
         return false;
 
     if( GBL.sc_trim ) { // tandem trim and copy
@@ -2024,25 +2054,25 @@ bool p2_openAndCopyBFFiles(
 
             if( ok ) {
                 if( t > head && t <= tail ) {
-                    *B.ts  << QString("%1\n").arg( t + secs, 0, 'f', 6 );
-                    *B.tsv << LV;
+                    *B->ts  << QString("%1\n").arg( t + secs, 0, 'f', 6 );
+                    *B->tsv << LV;
                 }
             }
             else {
-                *B.ts  << LT;
-                *B.tsv << LV;
+                *B->ts  << LT;
+                *B->tsv << LV;
             }
         }
     }
     else {
 
         // offet times
-        p2_copyOffsetTimes( ftin, samps / meta.srate, &B );
+        p2_copyOffsetTimes( ftin, samps / meta.srate, B );
 
         // append unmodified values
         QString line;
         while( !(line = fvin.readLine()).isEmpty() )
-            *B.tsv << line;
+            *B->tsv << line;
     }
 
     return true;

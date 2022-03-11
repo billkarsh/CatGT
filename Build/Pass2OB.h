@@ -16,7 +16,9 @@ private:
     Meta                meta;
     std::vector<BTYPE>  &buf;
     int                 ip,
-                        closedIP;
+                        closedIP,
+                        ex0,
+                        exLim;
 
 public:
     Pass2OB( std::vector<BTYPE> &buf ) : buf(buf), closedIP(-9) {}

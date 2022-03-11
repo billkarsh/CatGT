@@ -74,47 +74,23 @@ void Pass2OB::close()
 
 void Pass2OB::initDigitalFields()
 {
-//@OBX TODO need universal extractors
-    for( int i = 0, n = GBL.SY.size(); i < n; ++i ) {
+    ex0 = GBL.myXrange( exLim, OB, ip );
 
-        TTLD    &T = GBL.SY[i];
-
-        if( T.ip == ip )
-            T.autoWord( meta.nC );
-    }
-
-    for( int i = 0, n = GBL.iSY.size(); i < n; ++i ) {
-
-        TTLD    &T = GBL.iSY[i];
-
-        if( T.ip == ip )
-            T.autoWord( meta.nC );
-    }
+    for( int i = ex0; i < exLim; ++i )
+        GBL.vX[i]->autoWord( meta.nC );
 }
 
 
 bool Pass2OB::openDigitalFiles( int g0 )
 {
-//@OBX TODO need universal extractors
-    for( int i = 0, n = GBL.SY.size(); i < n; ++i ) {
+    for( int i = ex0; i < exLim; ++i ) {
 
-        TTLD    &T = GBL.SY[i];
+        XTR *X = GBL.vX[i];
 
-        if( T.ip != ip || T.word >= meta.nC )
+        if( X->word >= meta.nC )
             continue;
 
-        if( !T.openOutTimesFile( GBL.obOutFile( g0, ip, eSY, &T ) ) )
-            return false;
-    }
-
-    for( int i = 0, n = GBL.iSY.size(); i < n; ++i ) {
-
-        TTLD    &T = GBL.iSY[i];
-
-        if( T.ip != ip || T.word >= meta.nC )
-            continue;
-
-        if( !T.openOutTimesFile( GBL.obOutFile( g0, ip, eiSY, &T ) ) )
+        if( !X->openOutFiles( g0, OB, ip ) )
             return false;
     }
 
@@ -124,26 +100,26 @@ bool Pass2OB::openDigitalFiles( int g0 )
 
 bool Pass2OB::copyDigitalFiles( int ie )
 {
-//@OBX TODO need universal extractors
-    for( int i = 0, n = GBL.SY.size(); i < n; ++i ) {
+    for( int i = ex0; i < exLim; ++i ) {
 
-        TTLD    &T = GBL.SY[i];
+        XTR *X = GBL.vX[i];
 
-        if( T.ip != ip || T.word >= meta.nC )
+        if( X->word >= meta.nC )
             continue;
 
-        if( !p2_openAndCopyFile( *T.f, meta, buf, samps, ie, OB, ip, eSY, &T ) )
-            return false;
-    }
+        bool    ok;
 
-    for( int i = 0, n = GBL.iSY.size(); i < n; ++i ) {
+        if( X->ex == eBFT ) {
+            ok = p2_openAndCopyBFFiles(
+                    meta, samps, ie, OB, ip,
+                    reinterpret_cast<BitField*>(X) );
+        }
+        else {
+            ok = p2_openAndCopyFile(
+                    *X->f, meta, buf, samps, ie, OB, ip, X->ex, X );
+        }
 
-        TTLD    &T = GBL.iSY[i];
-
-        if( T.ip != ip || T.word >= meta.nC )
-            continue;
-
-        if( !p2_openAndCopyFile( *T.f, meta, buf, samps, ie, OB, ip, eiSY, &T ) )
+        if( !ok )
             return false;
     }
 

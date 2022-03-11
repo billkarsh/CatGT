@@ -15,6 +15,8 @@ private:
     QFile               fout;
     Meta                meta;
     std::vector<BTYPE>  &buf;
+    int                 ex0,
+                        exLim;
     bool                closed;
 
 public:
