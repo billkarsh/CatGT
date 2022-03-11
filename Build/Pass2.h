@@ -1,5 +1,5 @@
-#ifndef PASS2AP_H
-#define PASS2AP_H
+#ifndef PASS2_H
+#define PASS2_H
 
 #include "Tool.h"
 
@@ -7,7 +7,7 @@
 /* Types ---------------------------------------------------------- */
 /* ---------------------------------------------------------------- */
 
-class Pass2AP
+class Pass2
 {
 private:
     qint64              samps;
@@ -19,10 +19,13 @@ private:
                         closedIP,
                         ex0,
                         exLim;
+    t_js                js;
+    bool                miss_ok,
+                        do_bin;
 
 public:
-    Pass2AP( std::vector<BTYPE> &buf ) : buf(buf), closedIP(-9) {}
-    virtual ~Pass2AP()                                          {}
+    Pass2( std::vector<BTYPE> &buf, t_js js );
+    virtual ~Pass2()    {}
 
     int first( int ip );
     bool next( int ie );
@@ -32,8 +35,13 @@ private:
     void initDigitalFields();
     bool openDigitalFiles( int g0 );
     bool copyDigitalFiles( int ie );
+
+    qint64 checkCounts( int ie );
+
+    bool copyFile( QFile &fout, int ie, t_ex ex, XTR *X = 0 );
+    bool copyFilesBF( int ie, BitField *B );
 };
 
-#endif  // PASS2AP_H
+#endif  // PASS2_H
 
 

@@ -191,27 +191,6 @@ int openInputMeta(
     int         ip,
     bool        canSkip );
 
-qint64 p2_checkCounts( const Meta &meta, int ie, t_js js, int ip );
-
-bool p2_openAndCopyFile(
-    QFile               &fout,
-    Meta                &meta,
-    std::vector<BTYPE>  &buf,
-    qint64              samps,
-    int                 ie,
-    t_js                js,
-    int                 ip,
-    t_ex                ex,
-    XTR                 *X = 0 );
-
-bool p2_openAndCopyBFFiles(
-    Meta        &meta,
-    qint64      samps,
-    int         ie,
-    t_js        js,
-    int         ip,
-    BitField    *B );
-
 #endif  // TOOL_H
 
 

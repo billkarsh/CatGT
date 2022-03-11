@@ -7,15 +7,12 @@
 #include "Pass1LF.h"
 #include "Pass1NI.h"
 #include "Pass1OB.h"
-#include "Pass2AP.h"
-#include "Pass2LF.h"
-#include "Pass2NI.h"
-#include "Pass2OB.h"
+#include "Pass2.h"
 #include "Biquad.h"
 #include "SGLTypes.h"
 #include "Subset.h"
 
-#include    <math.h>
+#include <math.h>
 
 
 
@@ -1219,13 +1216,13 @@ static bool _supercat_streamSelectEdges( int ie, t_js js, int ip )
     KVParams    kvp;
     XTR         *X = 0;
     int         nC;
-    bool        canSkip = (js == AP ? GBL.prb_miss_ok : false);
+    bool        miss_ok = (js == AP ? GBL.prb_miss_ok : false);
 
 // ---------------------
 // Get common meta items
 // ---------------------
 
-    switch( openInputMeta( fim, kvp, GBL.ga, -1, js, ip, canSkip ) ) {
+    switch( openInputMeta( fim, kvp, GBL.ga, -1, js, ip, miss_ok ) ) {
         case 0: break;
         case 1: return true;
         case 2: return false;
@@ -1435,13 +1432,11 @@ static bool _supercat_runSelectEdges( int ie )
         return false;
 
     foreach( uint ip, GBL.vobx ) {
-
         if( !_supercat_streamSelectEdges( ie, OB, ip ) )
             return false;
     }
 
     foreach( uint ip, GBL.vprb ) {
-
         if( !_supercat_streamSelectEdges( ie, AP, ip ) )
             return false;
     }
@@ -1479,51 +1474,11 @@ static bool _supercat_runSelectEdges( int ie )
 }
 
 
-static bool _supercatNI( Pass2NI *NI )
+static bool _supercat( Pass2 *H, int ip )
 {
     GBL.velem[0].unpack();
 
-    if( !NI->first() )
-        return false;
-
-    for( int ie = 1, ne = GBL.velem.size(); ie < ne; ++ie ) {
-
-        GBL.velem[ie].unpack();
-
-        if( !NI->next( ie ) )
-            return false;
-    }
-
-    NI->close();
-    return true;
-}
-
-
-static bool _supercatOB( Pass2OB *OB, int ip )
-{
-    GBL.velem[0].unpack();
-
-    if( !OB->first( ip ) )
-        return false;
-
-    for( int ie = 1, ne = GBL.velem.size(); ie < ne; ++ie ) {
-
-        GBL.velem[ie].unpack();
-
-        if( !OB->next( ie ) )
-            return false;
-    }
-
-    OB->close();
-    return true;
-}
-
-
-static bool _supercatAP( Pass2AP *AP, int ip )
-{
-    GBL.velem[0].unpack();
-
-    switch( AP->first( ip ) ) {
+    switch( H->first( ip ) ) {
         case 0: break;
         case 1: return true;
         case 2: return false;
@@ -1533,34 +1488,11 @@ static bool _supercatAP( Pass2AP *AP, int ip )
 
         GBL.velem[ie].unpack();
 
-        if( !AP->next( ie ) )
+        if( !H->next( ie ) )
             return false;
     }
 
-    AP->close();
-    return true;
-}
-
-
-static bool _supercatLF( Pass2LF *LF, int ip )
-{
-    GBL.velem[0].unpack();
-
-    switch( LF->first( ip ) ) {
-        case 0: break;
-        case 1: return true;
-        case 2: return false;
-    }
-
-    for( int ie = 1, ne = GBL.velem.size(); ie < ne; ++ie ) {
-
-        GBL.velem[ie].unpack();
-
-        if( !LF->next( ie ) )
-            return false;
-    }
-
-    LF->close();
+    H->close();
     return true;
 }
 
@@ -1580,56 +1512,47 @@ void supercatentrypoint()
 
     std::vector<BTYPE>  buf( 32*1024*1024 / sizeof(BTYPE) );
 
-    Pass2NI *NI = (GBL.ni ? new Pass2NI( buf ) : 0);
-    Pass2OB *OB = (GBL.ob ? new Pass2OB( buf ) : 0);
-    Pass2AP *AP = (GBL.ap ? new Pass2AP( buf ) : 0);
-    Pass2LF *LF = (GBL.lf ? new Pass2LF( buf ) : 0);
+    Pass2 *hNI = (GBL.ni ? new Pass2( buf, NI ) : 0);
+    Pass2 *hOB = (GBL.ob ? new Pass2( buf, OB ) : 0);
+    Pass2 *hAP = (GBL.ap ? new Pass2( buf, AP ) : 0);
+    Pass2 *hLF = (GBL.lf ? new Pass2( buf, LF ) : 0);
 
-    if( GBL.ni ) {
-        if( !_supercatNI( NI ) )
-            goto done;
-    }
+    if( GBL.ni && !_supercat( hNI, 0 ) )
+        goto done;
 
     foreach( uint ip, GBL.vobx ) {
-
-        if( !_supercatOB( OB, ip ) )
+        if( !_supercat( hOB, ip ) )
             goto done;
     }
 
     foreach( uint ip, GBL.vprb ) {
-
-        if( GBL.ap ) {
-            if( !_supercatAP( AP, ip ) )
-                goto done;
-        }
-
-        if( GBL.lf ) {
-            if( !_supercatLF( LF, ip ) )
-                goto done;
-        }
+        if( GBL.ap && !_supercat( hAP, ip ) )
+            goto done;
+        if( GBL.lf && !_supercat( hLF, ip ) )
+            goto done;
     }
 
 done:
     gFOff.sc_write();
 
-    if( LF ) {
-        LF->close();
-        delete LF;
+    if( hLF ) {
+        hLF->close();
+        delete hLF;
     }
 
-    if( AP ) {
-        AP->close();
-        delete AP;
+    if( hAP ) {
+        hAP->close();
+        delete hAP;
     }
 
-    if( OB ) {
-        OB->close();
-        delete OB;
+    if( hOB ) {
+        hOB->close();
+        delete hOB;
     }
 
-    if( NI ) {
-        NI->close();
-        delete NI;
+    if( hNI ) {
+        hNI->close();
+        delete hNI;
     }
 }
 
@@ -1791,291 +1714,6 @@ int openInputMeta(
     }
 
     return 0;
-}
-
-
-// - Check channel count matches first run.
-// - Return sample count, or zero if error.
-//
-qint64 p2_checkCounts( const Meta &meta, int ie, t_js js, int ip )
-{
-    QFileInfo   fim;
-    KVParams    kvpn;
-    int         chans;
-
-    if( openInputMeta( fim, kvpn, GBL.ga, -1, js, ip, false ) )
-        return 0;
-
-    chans = kvpn["nSavedChans"].toInt();
-
-    if( chans != meta.nC ) {
-        Log() <<
-        QString("Error at supercat run '%1': Channel count [%2]"
-        " does not match run-zero count [%3].")
-        .arg( ie ).arg( chans ).arg( meta.nC );
-        return 0;
-    }
-
-    if( GBL.sc_trim ) {
-        Elem    &E = GBL.velem[ie];
-        return  qint64(E.tail( js, ip ) * meta.srate + 1)
-                - qint64(E.head( js, ip ) * meta.srate)
-                - (ie ? 1 : 0);
-    }
-
-    return kvpn["fileSizeBytes"].toLongLong() / (sizeof(qint16) * meta.nC);
-}
-
-
-// Trimming version.
-//
-static bool p2_copyBinary(
-    QFile               &fout,
-    QFile               &fin,
-    const QFileInfo     &fib,
-    Meta                &meta,
-    std::vector<BTYPE>  &buf,
-    int                 ie,
-    t_js                js,
-    int                 ip )
-{
-    qint64  head     = GBL.velem[ie].head( js, ip ) * meta.srate,
-            tail     = GBL.velem[ie].tail( js, ip ) * meta.srate + 1,
-            bufBytes = sizeof(BTYPE) * buf.size(),
-            finBytes = fin.size();
-
-    if( finBytes % meta.smpBytes ) {
-
-        finBytes = (finBytes / meta.smpBytes) * meta.smpBytes;
-
-        Log() <<
-        QString("Warning: Untrimmed binary file not a multiple of sample size '%1'.")
-        .arg( fib.filePath() );
-    }
-
-    if( ie ) {
-        ++head;
-        fin.seek( head * meta.smpBytes );
-    }
-
-    finBytes = qMin( finBytes, (tail - head) * meta.smpBytes );
-
-    while( finBytes > 0 ) {
-
-        int cpySamps,
-            cpyBytes = qMin( bufBytes, finBytes );
-
-        cpySamps = cpyBytes / meta.smpBytes;
-        cpyBytes = cpySamps * meta.smpBytes;
-
-        if( cpyBytes != fin.read( (char*)&buf[0], cpyBytes ) ) {
-            Log() << QString("Read failed for file '%1'.").arg( fib.filePath() );
-            return false;
-        }
-
-        if( cpyBytes != fout.write( (char*)&buf[0], cpyBytes ) ) {
-            Log() << QString("Write failed (error %1) for file '%2'.")
-                        .arg( fout.error() )
-                        .arg( fib.filePath() );
-            return false;
-        }
-
-        finBytes       -= cpyBytes;
-        meta.smpOutEOF += cpySamps;
-    }
-
-    return true;
-}
-
-
-static bool p2_copyBinary(
-    QFile               &fout,
-    QFile               &fin,
-    const QFileInfo     &fib,
-    Meta                &meta,
-    std::vector<BTYPE>  &buf )
-{
-    qint64  bufBytes = sizeof(BTYPE) * buf.size(),
-            finBytes = fin.size();
-
-    if( finBytes % meta.smpBytes ) {
-        Log() << QString("Binary file not a multiple of sample size '%1'.").arg( fib.filePath() );
-        return false;
-    }
-
-    while( finBytes > 0 ) {
-
-        int cpySamps,
-            cpyBytes = qMin( bufBytes, finBytes );
-
-        cpySamps = cpyBytes / meta.smpBytes;
-        cpyBytes = cpySamps * meta.smpBytes;
-
-        if( cpyBytes != fin.read( (char*)&buf[0], cpyBytes ) ) {
-            Log() << QString("Read failed for file '%1'.").arg( fib.filePath() );
-            return false;
-        }
-
-        if( cpyBytes != fout.write( (char*)&buf[0], cpyBytes ) ) {
-            Log() << QString("Write failed (error %1) for file '%2'.")
-                        .arg( fout.error() )
-                        .arg( fib.filePath() );
-            return false;
-        }
-
-        finBytes       -= cpyBytes;
-        meta.smpOutEOF += cpySamps;
-    }
-
-    return true;
-}
-
-
-// Trimming version.
-//
-static void p2_copyOffsetTimes(
-    QFile   &fin,
-    double  secs,
-    int     ie,
-    t_js    js,
-    int     ip,
-    XTR     *X )
-{
-    double  t,
-            head = GBL.velem[ie].head( js, ip ),
-            tail = GBL.velem[ie].tail( js, ip );
-    QString line;
-    bool    ok;
-
-    if( ie )
-        secs -= head;
-
-    while( !(line = fin.readLine()).isEmpty() ) {
-
-        t = line.toDouble( &ok );
-
-        if( ok ) {
-            if( t > head && t <= tail )
-                *X->ts << QString("%1\n").arg( t + secs, 0, 'f', 6 );
-        }
-        else
-            *X->ts << line;
-    }
-}
-
-
-static void p2_copyOffsetTimes( QFile &fin, double secs, XTR *X )
-{
-    double  t;
-    QString line;
-    bool    ok;
-
-    while( !(line = fin.readLine()).isEmpty() ) {
-
-        t = line.toDouble( &ok );
-
-        if( ok )
-            *X->ts << QString("%1\n").arg( t + secs, 0, 'f', 6 );
-        else
-            *X->ts << line;
-    }
-}
-
-
-bool p2_openAndCopyFile(
-    QFile               &fout,
-    Meta                &meta,
-    std::vector<BTYPE>  &buf,
-    qint64              samps,
-    int                 ie,
-    t_js                js,
-    int                 ip,
-    t_ex                ex,
-    XTR                 *X )
-{
-    QFile       fin;
-    QFileInfo   fib;
-
-    if( openInputFile( fin, fib, GBL.ga, -1, js, ip, ex, X ) )
-        return false;
-
-    if( !X ) {
-
-        if( GBL.sc_trim ) {
-
-            if( !p2_copyBinary( fout, fin, fib, meta, buf, ie, js, ip ) )
-                return false;
-        }
-        else if( !p2_copyBinary( fout, fin, fib, meta, buf ) )
-            return false;
-    }
-    else if( GBL.sc_trim )
-        p2_copyOffsetTimes( fin, samps / meta.srate, ie, js, ip, X );
-    else
-        p2_copyOffsetTimes( fin, samps / meta.srate, X );
-
-    return true;
-}
-
-
-bool p2_openAndCopyBFFiles(
-    Meta        &meta,
-    qint64      samps,
-    int         ie,
-    t_js        js,
-    int         ip,
-    BitField    *B )
-{
-    QFile       ftin, fvin;
-    QFileInfo   ftib, fvib;
-
-    if( openInputFile( ftin, ftib, GBL.ga, -1, js, ip, eBFT, B ) )
-        return false;
-
-    if( openInputFile( fvin, fvib, GBL.ga, -1, js, ip, eBFV, B ) )
-        return false;
-
-    if( GBL.sc_trim ) { // tandem trim and copy
-
-        double  t,
-                secs = samps / meta.srate,
-                head = GBL.velem[ie].head( js, ip ),
-                tail = GBL.velem[ie].tail( js, ip );
-        QString LT, LV;
-        bool    ok;
-
-        if( ie )
-            secs -= head;
-
-        while( !(LT = ftin.readLine()).isEmpty() ) {
-
-            LV = fvin.readLine();
-            t  = LT.toDouble( &ok );
-
-            if( ok ) {
-                if( t > head && t <= tail ) {
-                    *B->ts  << QString("%1\n").arg( t + secs, 0, 'f', 6 );
-                    *B->tsv << LV;
-                }
-            }
-            else {
-                *B->ts  << LT;
-                *B->tsv << LV;
-            }
-        }
-    }
-    else {
-
-        // offet times
-        p2_copyOffsetTimes( ftin, samps / meta.srate, B );
-
-        // append unmodified values
-        QString line;
-        while( !(line = fvin.readLine()).isEmpty() )
-            *B->tsv << line;
-    }
-
-    return true;
 }
 
 
