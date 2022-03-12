@@ -282,6 +282,7 @@ private:
     bool parseElems( const QString &s );
     QString formatChnexcl();
     QString formatElems();
+    bool checkExtractors();
     bool pass1FromCatGT();
     bool makeTaggedDest();
     QString trim_adjust_slashes( const QString &dir );

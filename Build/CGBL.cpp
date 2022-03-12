@@ -1219,11 +1219,6 @@ bool CGBL::SetCmdLine( int argc, char* argv[] )
             if( vd.size() == 7 )
                 X->tol = vd[6];
 
-            if( X->js == AP ) {
-                Log() << "xa extractor not legal for AP stream.";
-                return false;
-            }
-
             vX.push_back( X );
         }
         else if( GetArgList( vd, "-xia=", argv[i] )
@@ -1241,11 +1236,6 @@ bool CGBL::SetCmdLine( int argc, char* argv[] )
 
             if( vd.size() == 7 )
                 X->tol = vd[6];
-
-            if( X->js == AP ) {
-                Log() << "xia extractor not legal for AP stream.";
-                return false;
-            }
 
             vX.push_back( X );
         }
@@ -1295,23 +1285,6 @@ bool CGBL::SetCmdLine( int argc, char* argv[] )
             X->b0       = vd[3];
             X->nb       = vd[4];
             X->inarow   = vd[5];
-
-            if( X->js == AP ) {
-                Log() << "bf extractor not legal for AP stream.";
-                return false;
-            }
-
-            if( X->b0 < 0 || X->b0 > 15 || X->nb < 1 || X->nb > 16 - X->b0 ) {
-
-                Log() <<
-                "bf startbit must be in range [0..15], nbits in range [1..16-startbit].";
-                return false;
-            }
-
-            if( X->inarow < 1 ) {
-                X->inarow = 1;
-                Log() << "Warning: bf inarow must be >= 1.";
-            }
 
             vX.push_back( X );
         }
@@ -1399,9 +1372,10 @@ error:
         return false;
     }
 
-// sort extractors : js -> ip -> usrord
+// check and sort extractors : js -> ip -> usrord
 
-    qSort( vX.begin(), vX.end(), XTR::pointerCompare() );
+    if( !checkExtractors() )
+        return false;
 
 // Echo
 
@@ -1954,6 +1928,77 @@ QString CGBL::formatElems()
     }
 
     return s;
+}
+
+
+bool CGBL::checkExtractors()
+{
+    qSort( vX.begin(), vX.end(), XTR::pointerCompare() );
+
+    bool ok = true;
+
+    foreach( XTR *X, vX ) {
+
+        if( X->js < 0 || X->js > AP ) {
+            Log() <<
+            QString("Error: extractor js must be in range [0..2]: %1.")
+            .arg( X->sparam() );
+            ok = false;
+        }
+
+        switch( X->js ) {
+            case NI:
+                if( X->ip != 0 ) {
+                    Log() <<
+                    QString("Warning: extractor ip should be zero for ni stream: %1.")
+                    .arg( X->sparam() );
+                }
+                break;
+            case OB:
+                if( !vobx.contains( X->ip ) ) {
+                    Log() <<
+                    QString("Warning: extractor ip not among -obx=list: %1.")
+                    .arg( X->sparam() );
+                }
+                break;
+            case AP:
+                if( X->ex == eXA || X->ex == eXIA || X->ex == eBFT ) {
+                    Log() <<
+                    QString("Error: illegal extractor type for AP stream: %1.")
+                    .arg( X->sparam() );
+                    ok = false;
+                }
+                if( !vprb.contains( X->ip ) ) {
+                    Log() <<
+                    QString("Warning: extractor ip not among -prb=list: %1.")
+                    .arg( X->sparam() );
+                }
+                break;
+            default:;
+        }
+
+        if( X->ex == eBFT ) {
+
+            BitField *B = reinterpret_cast<BitField*>(X);
+
+            if( B->b0 < 0 || B->b0 > 15 || B->nb < 1 || B->nb > 16 - B->b0 ) {
+
+                Log() <<
+                QString("Error: extractor bf startbit must be in range [0..15],"
+                " nbits in range [1..16-startbit]: %1.")
+                .arg( X->sparam() );
+                ok = false;
+            }
+
+            if( B->inarow < 1 ) {
+                B->inarow = 1;
+                Log() << QString("Warning: extractor bf inarow must be >= 1: %1.")
+                .arg( X->sparam() );
+            }
+        }
+    }
+
+    return ok;
 }
 
 
