@@ -10,6 +10,7 @@
 #include <QFileInfo>
 
 struct Meta;
+class Pass1;
 class Biquad;
 
 /* ---------------------------------------------------------------- */
@@ -30,13 +31,6 @@ struct CniCfg
         niSumAll    = 3,
         niNTypes    = 4
     };
-};
-
-class IOClient {
-public:
-    virtual ~IOClient() {}
-    virtual void digital( const qint16 *data, int ntpts ) = 0;
-    virtual void neural( qint16 *data, int ntpts ) = 0;
 };
 
 struct FFT {
@@ -67,47 +61,6 @@ private:
     void timeShiftChannel( int igrp );
 };
 
-struct Pass1IO {
-    IOClient            &client;
-    QFileInfo           &fim;
-    Meta                &meta;
-    QFileInfo           i_fi;
-    QString             o_name;
-    QFile               i_f,
-                        o_f;
-    std::vector<qint16> i_buf,
-                        o_buf;
-    Biquad              *hipass,
-                        *lopass;
-    FFT                 fft;
-    t_js                js_in,
-                        js_out;
-    int                 maxInt,
-                        ip,
-                        i_nxt,  // next input middle (samples)
-                        i_lim,  // input count (samples)
-                        gfix0;  // cur o_buf start in i_buf
-    bool                doWrite;
-    Pass1IO( IOClient &client, QFileInfo &fim, Meta &meta )
-        :   client(client), fim(fim), meta(meta),
-            hipass(0), lopass(0),
-            i_nxt(0), i_lim(0), doWrite(false)  {}
-    virtual ~Pass1IO();
-    bool o_open( int g0, t_js js_in, t_js js_out, int ip );
-    void alloc();
-    void set_maxInt( int _maxInt )  {maxInt = _maxInt;}
-    char* o_buf8()                  {return (char*)&o_buf[0];}
-    void run();
-    int inputSizeAndOverlap( qint64 &xferBytes, int g, int t );
-    bool load( qint64 &xferBytes );
-    bool push();
-    int rem();
-    bool flush();
-    bool write( qint64 bytes );
-    virtual qint64 _write( qint64 bytes );
-    virtual bool zero( qint64 gapBytes, qint64 zfBytes );
-};
-
 struct Meta {
     double      srate;
     qint64      smp1st,
@@ -126,7 +79,7 @@ struct Meta {
     qint64 smpInpSpan()     {return smpInpEOF - smp1st;}
     qint64 smpOutSpan()     {return smpOutEOF - smp1st;}
     qint64 pass1_sizeRead( int &ntpts, qint64 xferBytes, qint64 bufBytes );
-    bool pass1_zeroFill( Pass1IO &io, qint64 gapBytes );
+    bool pass1_zeroFill( Pass1 &H, qint64 gapBytes );
     void pass1_fileDone( int g, int t, t_js js, int ip );
     void pass2_runDone()    {++nFiles;}
 private:

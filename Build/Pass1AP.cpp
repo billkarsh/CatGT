@@ -22,7 +22,7 @@ bool Pass1AP::go()
 {
     int t0, g0 = GBL.gt_get_first( &t0 );
 
-    io.doWrite = GBL.gt_nIndices() > 1
+    doWrite = GBL.gt_nIndices() > 1
                     || GBL.apflt.isenabled() || GBL.tshift
                     || GBL.locout || GBL.gblcar || GBL.gfixdo;
 
@@ -35,7 +35,7 @@ bool Pass1AP::go()
     if( !GBL.makeOutputProbeFolder( g0, ip ) )
         return false;
 
-    if( !io.o_open( g0, AP, AP, ip ) )
+    if( !o_open( g0 ) )
         return false;
 
     meta.read( AP, ip );
@@ -43,40 +43,28 @@ bool Pass1AP::go()
     if( !filtersAndScaling() )
         return false;
 
-    initDigitalFields();
+    initDigitalFields( 0.0001 );
 
     if( !openDigitalFiles( g0 ) )
         return false;
 
     gFOff.init( meta.srate, AP, ip );
 
-    io.alloc();
+    alloc();
 
     if( GBL.gfixdo )
         gfixbuf.resize( GFIXBUFSMP * meta.nC );
 
-    io.run();
+    fileLoop();
 
     if( shankMap )
         meta.kvp["~snsShankMap"] = shankMap->toString();
 
-    meta.write( io.o_name, g0, t0, AP, ip );
+    meta.write( o_name, g0, t0, AP, ip );
 
     gfixEdits();
 
     return true;
-}
-
-
-void Pass1AP::digital( const qint16 *data, int ntpts )
-{
-    for( int i = ex0; i < exLim; ++i ) {
-
-        XTR *X = GBL.vX[i];
-
-        if( X->word < meta.nC )
-            X->scan( data, meta.smpInpSpan(), ntpts, meta.nC );
-    }
 }
 
 
@@ -142,8 +130,6 @@ bool Pass1AP::filtersAndScaling()
                     .arg( fim.fileName() );
         return false;
     }
-
-    io.set_maxInt( maxInt );
 
 // ---------------
 // Channel mapping
@@ -237,39 +223,6 @@ bool Pass1AP::filtersAndScaling()
 }
 
 
-void Pass1AP::initDigitalFields()
-{
-    ex0 = GBL.myXrange( exLim, AP, ip );
-
-    for( int i = ex0; i < exLim; ++i ) {
-
-        XTR *X = GBL.vX[i];
-
-        X->autoWord( meta.nC );
-
-        if( X->word < meta.nC )
-            X->init( meta.srate, 0.0001 );
-    }
-}
-
-
-bool Pass1AP::openDigitalFiles( int g0 )
-{
-    for( int i = ex0; i < exLim; ++i ) {
-
-        XTR *X = GBL.vX[i];
-
-        if( X->word >= meta.nC )
-            continue;
-
-        if( !X->openOutFiles( g0, AP, ip ) )
-            return false;
-    }
-
-    return true;
-}
-
-
 void Pass1AP::gfixEdits()
 {
     int g0 = GBL.gt_get_first( 0 );
@@ -287,7 +240,7 @@ void Pass1AP::gfixEdits()
     QMap<qint64,LR>::iterator   it_fix  = TLR.begin(), end = TLR.end();
     qint64                      smpFLen = meta.smpOutSpan(),
                                 nedit   = 0;
-    int                         bufWid  = io.o_buf.size()/meta.nC - 1;
+    int                         bufWid  = o_buf.size()/meta.nC - 1;
 
     for( ; it_fix != end; ++it_fix ) {
 
@@ -325,17 +278,17 @@ void Pass1AP::gfixEdits()
         L = qMax( L, qint64(0) );
         R = qMin( R, smpFLen - 1 ); // EOF limit
 
-        d = &io.o_buf[0];
+        d = &o_buf[0];
         N = qMin( R - L + 1, qint64(bufWid) );
 
-        io.o_f.seek( meta.smpBytes * L );
-        io.o_f.read( io.o_buf8(), meta.smpBytes * N );
+        o_f.seek( meta.smpBytes * L );
+        o_f.read( o_buf8(), meta.smpBytes * N );
 
         for( int it = 0; it < N; ++it, d += meta.nC )
             memset( d, 0, meta.nN*sizeof(qint16) );
 
-        io.o_f.seek( meta.smpBytes * L );
-        io._write( meta.smpBytes * N );
+        o_f.seek( meta.smpBytes * L );
+        _write( meta.smpBytes * N );
         ++nedit;
     }
 
@@ -1032,14 +985,14 @@ void Pass1AP::gFixDetect(
                     // BN       = count of B samples.
                     // IT       = position in B.
 
-                    int     i_it  = io.gfix0 + it,
+                    int     i_it  = gfix0 + it,
                             lmarg = qMin( i_it, GFIXOFF ),
                             ibuf0 = i_it - lmarg;
 
                     B0 = it - lmarg;
-                    BN = qMin( io.i_lim - ibuf0, GFIXBUFSMP );
+                    BN = qMin( i_lim - ibuf0, GFIXBUFSMP );
 
-                    memcpy( &B[0], &io.i_buf[ibuf0 * nC], BN * meta.smpBytes );
+                    memcpy( &B[0], &i_buf[ibuf0 * nC], BN * meta.smpBytes );
                     loaded = true;
 
                     if( hp_gfix ) {

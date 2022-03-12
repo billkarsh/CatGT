@@ -1,7 +1,7 @@
 #ifndef PASS1AP_H
 #define PASS1AP_H
 
-#include "Tool.h"
+#include "Pass1.h"
 
 struct LR;
 struct ShankMap;
@@ -11,13 +11,10 @@ class Biquad;
 /* Types ---------------------------------------------------------- */
 /* ---------------------------------------------------------------- */
 
-class Pass1AP : public IOClient
+class Pass1AP : public Pass1
 {
 private:
     double              Tmul;
-    Pass1IO             io;
-    QFileInfo           fim;
-    Meta                meta;
     ShankMap            *shankMap;
     Biquad              *hp_gfix;
     std::vector<qint16> gfixbuf;
@@ -28,26 +25,18 @@ private:
     std::vector<std::vector<int> >  TSM;
     std::vector<int>    muxTbl;
     int                 nADC,
-                        nGrp,
-                        ip,
-                        maxInt,
-                        ex0,
-                        exLim;
+                        nGrp;
 
 public:
-    Pass1AP( int ip )
-    :   io(*this, fim, meta), shankMap(0), hp_gfix(0), ip(ip)   {}
+    Pass1AP( int ip ) : Pass1( AP, AP, ip ), shankMap(0), hp_gfix(0)    {}
     virtual ~Pass1AP();
 
     bool go();
 
-    virtual void digital( const qint16 *data, int ntpts );
     virtual void neural( qint16 *data, int ntpts );
 
 private:
     bool filtersAndScaling();
-    void initDigitalFields();
-    bool openDigitalFiles( int g0 );
     void gfixEdits();
     void sAveTable( int nAP );
     void sAveApplyLocal(

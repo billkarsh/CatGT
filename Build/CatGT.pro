@@ -31,6 +31,7 @@ HEADERS +=              \
     IMROTbl_T24.h       \
     IMROTbl_T3A.h       \
     KVParams.h          \
+    Pass1.h             \
     Pass1AP.h           \
     Pass1AP2LF.h        \
     Pass1LF.h           \
@@ -57,6 +58,7 @@ SOURCES +=              \
     IMROTbl_T3A.cpp     \
     KVParams.cpp        \
     main.cpp            \
+    Pass1.cpp           \
     Pass1AP.cpp         \
     Pass1AP2LF.cpp      \
     Pass1LF.cpp         \

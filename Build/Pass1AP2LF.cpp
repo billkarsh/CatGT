@@ -7,9 +7,42 @@
 
 
 
-/* ---------------------------------------------------------------- */
-/* Dwn1IO --------------------------------------------------------- */
-/* ---------------------------------------------------------------- */
+bool Pass1AP2LF::go()
+{
+    int t0, g0 = GBL.gt_get_first( &t0 );
+
+    doWrite = GBL.gt_nIndices() > 1 || GBL.lfflt.isenabled() || GBL.tshift;
+
+    switch( openInputMeta( fim, meta.kvp, g0, t0, AP, ip, GBL.prb_miss_ok ) ) {
+        case 0: break;
+        case 1: return true;
+        case 2: return false;
+    }
+
+    if( !GBL.makeOutputProbeFolder( g0, ip ) )
+        return false;
+
+    if( !o_open( g0 ) )
+        return false;
+
+    meta.read( AP, ip );
+
+    filtersAndScaling();
+
+    gFOff.init( meta.srate / 12, LF, ip );
+
+    alloc();
+
+    fileLoop();
+
+    adjustMeta();
+    meta.write( o_name, g0, t0, LF, ip );
+
+    gFOff.dwnSmp( ip );
+
+    return true;
+}
+
 
 // All EOF tracking done at 30 kHz. Only thing different
 // is this function will only write every twelfth sample.
@@ -39,7 +72,7 @@
 // (J) 12 - (I)     : remainder in last buffer
 // (J) 11 - offset' : remainder from last file
 //
-qint64 Dwn1IO::_write( qint64 bytes )
+qint64 Pass1AP2LF::_write( qint64 bytes )
 {
     int nC          = meta.nC,
         smpBytes    = nC * sizeof(qint16),
@@ -78,7 +111,7 @@ qint64 Dwn1IO::_write( qint64 bytes )
 }
 
 
-bool Dwn1IO::zero( qint64 gapBytes, qint64 zfBytes )
+bool Pass1AP2LF::zero( qint64 gapBytes, qint64 zfBytes )
 {
     gapBytes = meta.smpBytes * (11 - offset + gapBytes/meta.smpBytes) / 12;
     zfBytes  = meta.smpBytes * (11 - offset + zfBytes /meta.smpBytes) / 12;
@@ -102,7 +135,7 @@ bool Dwn1IO::zero( qint64 gapBytes, qint64 zfBytes )
 
         qint64  cpyBytes = qMin( zfBytes, o_bufBytes );
 
-        if( cpyBytes != Pass1IO::_write( cpyBytes ) ) {
+        if( cpyBytes != Pass1::_write( cpyBytes ) ) {
             Log() << QString("Zero fill failed (error %1); input file '%2'.")
                         .arg( o_f.error() )
                         .arg( i_fi.fileName() );
@@ -117,46 +150,6 @@ bool Dwn1IO::zero( qint64 gapBytes, qint64 zfBytes )
     return true;
 }
 
-/* ---------------------------------------------------------------- */
-/* Pass1AP2LF ----------------------------------------------------- */
-/* ---------------------------------------------------------------- */
-
-bool Pass1AP2LF::go()
-{
-    int t0, g0 = GBL.gt_get_first( &t0 );
-
-    io.doWrite = GBL.gt_nIndices() > 1 || GBL.lfflt.isenabled() || GBL.tshift;
-
-    switch( openInputMeta( fim, meta.kvp, g0, t0, AP, ip, GBL.prb_miss_ok ) ) {
-        case 0: break;
-        case 1: return true;
-        case 2: return false;
-    }
-
-    if( !GBL.makeOutputProbeFolder( g0, ip ) )
-        return false;
-
-    if( !io.o_open( g0, AP, LF, ip ) )
-        return false;
-
-    meta.read( AP, ip );
-
-    filtersAndScaling();
-
-    gFOff.init( meta.srate / 12, LF, ip );
-
-    io.alloc();
-
-    io.run();
-
-    adjustMeta();
-    meta.write( io.o_name, g0, t0, LF, ip );
-
-    gFOff.dwnSmp( ip );
-
-    return true;
-}
-
 
 void Pass1AP2LF::filtersAndScaling()
 {
@@ -166,7 +159,7 @@ void Pass1AP2LF::filtersAndScaling()
 
 // 3A default
 
-    int maxInt = MAX10BIT;
+    maxInt = MAX10BIT;
 
 // Get actual
 
@@ -176,8 +169,6 @@ void Pass1AP2LF::filtersAndScaling()
         maxInt = R->maxInt();
         delete R;
     }
-
-    io.set_maxInt( maxInt );
 }
 
 
@@ -194,7 +185,7 @@ void Pass1AP2LF::adjustMeta()
 
     meta.kvp["firstSample"] = meta.smp1st /= 12;
 
-    meta.smpOutEOF = meta.smp1st + io.o_f.size() / meta.smpBytes;
+    meta.smpOutEOF = meta.smp1st + o_f.size() / meta.smpBytes;
 
 // imSampleRate
 
