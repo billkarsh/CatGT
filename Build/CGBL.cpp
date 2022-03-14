@@ -1251,8 +1251,8 @@ bool CGBL::SetCmdLine( int argc, char* argv[] )
             X->bit      = vd[3];
             X->span     = vd[4];
 
-            if( vd.size() == 5 )
-                X->tol = vd[4];
+            if( vd.size() == 6 )
+                X->tol = vd[5];
 
             vX.push_back( X );
         }
@@ -1268,8 +1268,8 @@ bool CGBL::SetCmdLine( int argc, char* argv[] )
             X->bit      = vd[3];
             X->span     = vd[4];
 
-            if( vd.size() == 5 )
-                X->tol = vd[4];
+            if( vd.size() == 6 )
+                X->tol = vd[5];
 
             vX.push_back( X );
         }

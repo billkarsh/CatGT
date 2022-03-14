@@ -55,7 +55,7 @@ bool Pass1::o_open( int g0 )
 
 void Pass1::initDigitalFields( double rngMax )
 {
-    ex0 = GBL.myXrange( exLim, NI, 0 );
+    ex0 = GBL.myXrange( exLim, js_in, ip );
 
     for( int i = ex0; i < exLim; ++i ) {
 
