@@ -170,7 +170,7 @@ bool IMROTbl_T24::fromString( QString *msg, const QString &s )
     for( int i = 1; i < n; ++i )
         e.push_back( IMRODesc_T24::fromString( sl[i] ) );
 
-    if( e.size() != imType24Type ) {
+    if( e.size() != imType24Chan ) {
         if( msg ) {
             *msg = QString("Wrong imro entry count [%1] (should be %2)")
                     .arg( e.size() ).arg( imType24Type );
