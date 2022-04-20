@@ -287,7 +287,7 @@ int Pass1::inputSizeAndOverlap( qint64 &xferBytes, int g, int t )
             if( xferBytes < meta.smpBytes ) {
                 Log() <<
                     QString("Skipping tiny content"
-                    " (olap: %1, rem: %2, bps: %3) file '%4'.")
+                    " ([as bytes] olap: %1, rem: %2, perSamp: %3) file '%4'.")
                     .arg( olapBytes )
                     .arg( xferBytes )
                     .arg( meta.smpBytes )

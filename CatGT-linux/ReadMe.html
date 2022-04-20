@@ -17,7 +17,7 @@
 <li>Optionally apply demultiplexing corrections.</li>
 <li>Optionally apply band-pass and global CAR filters.</li>
 <li>Optionally edit out saturation artifacts.</li>
-<li>Optionally extract tables of sync waveform edge times to drive TPrime.</li>
+<li>By default extract tables of sync waveform edge times to drive TPrime.</li>
 <li>Optionally extract tables of other nonneural event times to be aligned with spikes.</li>
 <li>Optionally join the above outputs across different runs (supercat feature).</li>
 </ul>
@@ -106,6 +106,7 @@ Options:
 -xid=2,0,384,6,50        ;inverted version of xd
 -bf=0,0,8,2,4,3          ;extract numeric bit-field from digital chan (js,ip,word,startbit,nbits,inarow)
 -inarow=5                ;extractor {xa,xd,xia,xid} antibounce stay high/low sample count
+-no_auto_sync            ;disable the automatic extraction of sync edges in all streams
 -pass1_force_ni_ob_bin   ;write pass one ni/ob binary tcat file even if not changed
 -supercat={dir,run_ga}   ;concatenate existing output files across runs (see ReadMe)
 -supercat_trim_edges     ;supercat after trimming each stream to matched sync edges
@@ -122,7 +123,7 @@ Options:
 <li>Apply any specified Butterworth filtering</li>
 <li>Transform back to time domain</li>
 <li>Detect gfix transients for later file editing</li>
-<li>Loccar, Gblcar</li>
+<li>Loccar, gblcar</li>
 <li>Write file</li>
 <li>Apply gfix transient edits to file</li>
 </ul>
@@ -298,16 +299,25 @@ ls -s &lt;path/myoriginalname.meta&gt; &lt;...ZZZ/goodname_g0_t0.imec0.ap.meta&g
 <h3 id="loccar-option">loccar option</h3>
 <ul>
 <li>Do CAR common average referencing on an annular area about each site.</li>
-<li>Specify an excluded inner radius (in sites) and an outer radius.</li>
+<li>The average is shank-specific, including only channels/sites on the same shank as the center site.</li>
+<li>Specify an excluded inner radius (in sites) and an outer averaging radius.</li>
 <li>Use a high-pass filter also, to remove DC offsets.</li>
 </ul>
+<blockquote>
+<p><em>Use the SpikeGLX FileViewer to look at traces pre- and post-CAR to see if this filter option is working for your data. A danger of loccar is excessive reduction of the amplitude of large-footprint spikes.</em></p>
+</blockquote>
 <h3 id="gblcar-option">gblcar option</h3>
 <ul>
 <li>Do CAR common average referencing using all channels.</li>
+<li>The average is probe-wide, including channels/sites on all shanks.</li>
 <li>Note that <code>-gblcar</code> tends to cancel LFP band signal.</li>
+<li>Note that <code>-gblcar</code> assumes fairly uniform background across all channels.</li>
 <li>Use a high-pass filter also, to remove DC offsets.</li>
 <li>No, filter options <code>-loccar</code> and <code>-gblcar</code> don't make sense together.</li>
 </ul>
+<blockquote>
+<p><em>Use the SpikeGLX FileViewer to look at traces pre- and post-CAR to see if this filter option is working for your data. A danger of gblcar is that the probe is sampling tissue layers with two or more distinct backgrounds. That can create artifacts that look like small amplitude spikes. If that is happening, instead of <code>-gblcar</code>, try a more localized but still large averaging area using <code>-loccar=4,32</code> for example. Think of this geometry not as a small ring, but as a 65-row averaging block about each site. Choose a block size that works best for the layer thickness. Note too that we suggested an inner exclusion radius larger than 1 to avoid including the spike, itself, in the averaging block.</em></p>
+</blockquote>
 <h3 id="gfix-option">gfix option</h3>
 <p>Light or chewing artifacts often make large amplitude excursions on a majority of channels. This tool identifies them and cuts them out, replacing with zeros. You specify three things.</p>
 <ol style="list-style-type: decimal">
@@ -323,8 +333,11 @@ ls -s &lt;path/myoriginalname.meta&gt; &lt;...ZZZ/goodname_g0_t0.imec0.ap.meta&g
 <h3 id="chnexcl-option">chnexcl option</h3>
 <p>Use this option to prevent bad channels from corrupting calculations over mixtures of channels, such as the spatial filters {loccar, gblcar, gfix}.</p>
 <p>The option <code>-chnexcl={probe;chan_list}{probe;chan_list}...</code> takes a list of elements <em>(include the curly braces)</em> that specify a probe index; and a list of channels to exclude for that probe. Channel lists are specified like page lists in a printer dialog, <code>1,10,40:51</code> for example. Be careful to use a semicolon (;) between probe and channel list, and use only commas and colons (,:) within your channel lists.</p>
-<p>Note that the CatGT spatial filters honor the metadata item <code>~snsShankMap</code>. The shank map has an entry for each saved channel that describes the (shank, col, row) where its electrode resides on the shank, and a fourth 0/1 value, <code>use flag</code>, indicating if the channel should be used in spatial filtering. The chnexcl data force the corresponding use flags to zero before the filters are applied, and the modified <code>~snsShankMap</code> is written to the CatGT output metadata.</p>
+<p>Note that the CatGT spatial filters honor the metadata item <code>~snsShankMap</code>. The shank map has an entry for each saved channel that describes the (shank, col, row) where its electrode resides on the shank, and a fourth 0/1 value, <code>use flag</code>, indicating if the channel should be used in spatial filtering. By default, SpikeGLX marks known on-shank reference channels with zeroes. Your chnexcl data force the corresponding use flags to zero before the filters are applied, and the modified <code>~snsShankMap</code> is written to the CatGT output metadata.</p>
 <h3 id="extractors">Extractors</h3>
+<blockquote>
+<p><em>Starting with version 3.0, CatGT extracts sync edges from all streams by default, unless you specify the <code>-no_auto_sync</code> option (see below).</em></p>
+</blockquote>
 <p>There are five extractors for scanning and decoding nonneural data channels in any data stream. They differ in the data types they operate upon:</p>
 <ul>
 <li>xa: Finds positive pulses in any analog channel.</li>
@@ -408,9 +421,6 @@ ls -s &lt;path/myoriginalname.meta&gt; &lt;...ZZZ/goodname_g0_t0.imec0.ap.meta&g
 </blockquote>
 <p>The inverted pulse extractors <strong>{xia, xid}</strong> make text files that report the times (seconds) of the leading edges of matched pulses.</p>
 <p>The inverted pulse versions work exactly the same way as their positive counterparts. Just keep in mind that inverted pulses have a high baseline level and deflect toward lower values.</p>
-<h4 id="extractors-inarow-option">Extractors inarow option</h4>
-<p>The pulse extractors <strong>{xa,xd,xia,xid}</strong> use edge detection. By default, when a signal crosses from low to high, it is required to stay high for at least 5 samples. Similarly, when crossing from high to low the signal is required to stay low for at least 5 samples. This requirement is applied even when specifying a pulse duration of zero, that is, it is applied to any edge. This is done to guard against noise.</p>
-<p>You can override the count giving any value &gt;= 1.</p>
 <h4 id="extractors-bf-bit-field">Extractors bf (bit-field)</h4>
 <p>The -xd and -xid options treat each bit of a digital word as an individual line. In contrast, the -bf option interprets a contiguous group of bits as a non-negative n-bit binary number. The -bf extactor reports value transitions: the newest value and the time it changed, in two separate files. Following <strong>-xa=js,ip,word</strong>, the parameters are:</p>
 <ul>
@@ -431,8 +441,15 @@ ls -s &lt;path/myoriginalname.meta&gt; &lt;...ZZZ/goodname_g0_t0.imec0.ap.meta&g
 <li><code>run_name_g0_tcat.nidq.bft_5_3_4.txt</code>,</li>
 </ul>
 <p>The two files have paired entries. The <code>bfv</code> file contains the decoded values, and the <code>bft</code> file contains the time (seconds from file start) that the field switched to that value.</p>
+<h4 id="extractors-inarow-option">Extractors inarow option</h4>
+<p>The pulse extractors <strong>{xa,xd,xia,xid}</strong> use edge detection. By default, when a signal crosses from low to high, it is required to stay high for at least 5 samples. Similarly, when crossing from high to low the signal is required to stay low for at least 5 samples. This requirement is applied even when specifying a pulse duration of zero, that is, it is applied to any edge. This is done to guard against noise.</p>
+<p>You can override the count giving any value &gt;= 1.</p>
+<h4 id="extractors-no_auto_sync-option">Extractors no_auto_sync option</h4>
+<p>Starting with version 3.0, CatGT automatically extracts sync edges from all streams unless you turn that off using <code>-no_auto_sync</code>.</p>
+<p>For an NI stream, CatGT reads the metadata to see which analog or digital word contains the sync waveform and builds the corresponding extractor for you, either <code>-xa=0,0,word,thresh,0,500</code> or <code>-xd=0,0,word,bit,500</code>.</p>
+<p>For OB and AP streams, CatGT seeks edges in bit #6 of the SY word, as if you had specified <code>-xd=1,ip,-1,6,500</code> and/or <code>-xd=2,ip,-1,6,500</code>.</p>
 <h3 id="tcat-defer-extraction-to-a-later-pass">-t=cat defer extraction to a later pass</h3>
-<p>Option <code>-t=cat</code> allows you to concatenate/filter the data in a first pass and later extract nonneural events from the output files which are now named <code>tcat</code>.</p>
+<p>You might want to concatenate/filter the data in a first pass, and later extract nonneural events from the ensuing output files which are now named <code>tcat</code>. Do that by specifying <code>-t=tcat</code> in the second pass.</p>
 <blockquote>
 <p>NOTE: If the files to operate on are now in an output folder named <code>catgt_run_name</code> then <em>DO PUT</em> tag <code>catgt_</code> in the <code>-run</code> parameter like example (2) below:</p>
 </blockquote>
@@ -512,7 +529,7 @@ ls -s &lt;path/myoriginalname.meta&gt; &lt;...ZZZ/goodname_g0_t0.imec0.ap.meta&g
 <blockquote>
 <p>Note that to supercat lf files, we need their sync edges which can only be extracted/derived from their ap counterparts:</p>
 <ul>
-<li>Specify (-ap) and sync edge extraction (-xd=2,ip,-1,6,500) during pass 1.</li>
+<li>During pass 1, specify (-ap); do not specify -no_auto_sync.</li>
 </ul>
 </blockquote>
 <h3 id="supercat_skip_ni_ob_bin-option-pass1_force_ni_ob_bin">supercat_skip_ni_ob_bin option &amp; pass1_force_ni_ob_bin</h3>
@@ -563,6 +580,7 @@ Options:
 -xid=2,0,384,6,500       ;required if joining this extractor type
 -bf=0,0,8,2,4,3          ;required if joining this extractor type
 -inarow=5                ;ignored
+-no_auto_sync            ;forbidden with supercat_trim_edges
 -pass1_force_ni_ob_bin   ;ignored
 -dest=path               ;required
 -out_prb_fld             ;create output subfolder per probe</code></pre>
@@ -603,6 +621,7 @@ Options:
 <li>Add obx file support.</li>
 <li>Add extractors {xa,xd,ixa,ixd,bf}.</li>
 <li>Retire extractors {SY,XA,XD,iSY,iXA,iXD,BF}.</li>
+<li>Sync extraction in all streams is automatic; disable with -no_auto_sync.</li>
 <li>Rename pass1_force_ni_ob_bin, supercat_skip_ni_ob_bin options.</li>
 </ul>
 <p>Version 2.5</p>

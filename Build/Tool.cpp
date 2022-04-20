@@ -753,34 +753,6 @@ done:
 }
 
 
-// acqMnMaXaDw = acquired stream channel counts.
-//
-static void _supercat_parseNiChanCounts(
-    int             (&niCumTypCnt)[CniCfg::niNTypes],
-    const KVParams  &kvp )
-{
-    const QStringList   sl = kvp["acqMnMaXaDw"].toString().split(
-                                QRegExp("^\\s+|\\s*,\\s*"),
-                                QString::SkipEmptyParts );
-
-// --------------------------------
-// First count each type separately
-// --------------------------------
-
-    niCumTypCnt[CniCfg::niTypeMN] = sl[0].toInt();
-    niCumTypCnt[CniCfg::niTypeMA] = sl[1].toInt();
-    niCumTypCnt[CniCfg::niTypeXA] = sl[2].toInt();
-    niCumTypCnt[CniCfg::niTypeXD] = sl[3].toInt();
-
-// ---------
-// Integrate
-// ---------
-
-    for( int i = 1; i < CniCfg::niNTypes; ++i )
-        niCumTypCnt[i] += niCumTypCnt[i - 1];
-}
-
-
 // Decrement tail edge if beyond span of lf file.
 //
 static bool _supercat_checkLF( double &tlast, double apsrate, int ip )
@@ -816,17 +788,13 @@ static bool _supercat_checkLF( double &tlast, double apsrate, int ip )
 //
 static bool _supercat_streamSelectEdges( int ie, t_js js, int ip )
 {
-    QFileInfo   fib,
-                fim;
-    QFile       fin;
-    KVParams    kvp;
-    XTR         *X = 0;
-    int         nC;
-    bool        miss_ok = (js == AP ? GBL.prb_miss_ok : false);
-
 // ---------------------
 // Get common meta items
 // ---------------------
+
+    QFileInfo   fim;
+    KVParams    kvp;
+    bool        miss_ok = (js == AP ? GBL.prb_miss_ok : false);
 
     switch( openInputMeta( fim, kvp, GBL.ga, -1, js, ip, miss_ok ) ) {
         case 0: break;
@@ -834,127 +802,32 @@ static bool _supercat_streamSelectEdges( int ie, t_js js, int ip )
         case 2: return false;
     }
 
-    nC = kvp["nSavedChans"].toInt();
+// -------------------
+// Find sync extractor
+// -------------------
 
-// ------------------------------
-// Find the extractor for this ip
-// ------------------------------
+    XTR *X  = 0;
+    int exLim,
+        ex0 = GBL.myXrange( exLim, js, ip ),
+        nC  = kvp["nSavedChans"].toInt();
 
-    if( js == AP ) {
+    for( int i = ex0; i < exLim; ++i ) {
 
-        for( int i = 0, n = GBL.vX.size(); i < n; ++i ) {
+        XTR *iX = GBL.vX[i];
 
-            XTR *iX = GBL.vX[i];
-
-            if( iX->js == AP  && iX->ip == ip &&
-                iX->ex == eXD && iX->word < nC ) {
-
-                iX->autoWord( nC );
-                X = iX;
-                break;
-            }
-        }
-
-        if( !X ) {
-            Log() <<
-            QString("Can't find xd extractor spec for probe %1 sync.")
-                .arg( ip );
-            return false;
-        }
-    }
-    else if( js == OB ) {
-
-        for( int i = 0, n = GBL.vX.size(); i < n; ++i ) {
-
-            XTR *iX = GBL.vX[i];
-
-            if( iX->js == OB  && iX->ip == ip &&
-                iX->ex == eXD && iX->word < nC ) {
-
-                iX->autoWord( nC );
-                X = iX;
-                break;
-            }
-        }
-
-        if( !X ) {
-            Log() <<
-            QString("Can't find xd extractor spec for obx %1 sync.")
-                .arg( ip );
-            return false;
-        }
-    }
-    else if( js == NI ) {
-
-        QVector<uint>   chanIds;
-        int             iword = kvp["syncNiChan"].toInt(),
-                        bit;
-
-        if( !getSavedChannels( chanIds, kvp, fim ) )
-            return false;
-
-        if( kvp["syncNiChanType"].toInt() == 1 ) {  // Analog
-
-            iword = chanIds.indexOf( iword );
-
-            for( int i = 0, n = GBL.vX.size(); i < n; ++i ) {
-
-                XTR *iX = GBL.vX[i];
-
-                iX->autoWord( nC );
-
-                if( iX->js == NI  && iX->ip == 0 &&
-                    iX->ex == eXA && iX->word == iword ) {
-
-                    X = iX;
-                    break;
-                }
-            }
-
-            if( !X ) {
-                Log() <<
-                QString("Can't find xa extractor spec for ni sync (word %1).")
-                    .arg( iword );
-                return false;
-            }
-        }
-        else {  // Digital
-
-            int     niCumTypCnt[CniCfg::niNTypes];
-            _supercat_parseNiChanCounts( niCumTypCnt, kvp );
-
-            bit     = iword % 16;
-            iword   = niCumTypCnt[CniCfg::niSumAnalog] + iword / 16;
-            iword   = chanIds.indexOf( iword );
-
-            for( int i = 0, n = GBL.vX.size(); i < n; ++i ) {
-
-                XTR *iX = GBL.vX[i];
-
-                iX->autoWord( nC );
-
-                if( iX->js == NI  && iX->ip == 0 &&
-                    iX->ex == eXD && iX->word == iword &&
-                    reinterpret_cast<D_Pulse*>(iX)->bit == bit ) {
-
-                    X = iX;
-                    break;
-                }
-            }
-
-            if( !X ) {
-                Log() <<
-                QString(
-                "Can't find xd extractor spec for ni sync (word %1 bit %2).")
-                    .arg( iword ).arg( bit );
-                return false;
-            }
+        if( iX->usrord == -1 ) {
+            iX->autoWord( nC );
+            X = iX;
+            break;
         }
     }
 
 // --------------
 // Open edge file
 // --------------
+
+    QFileInfo   fib;
+    QFile       fin;
 
     if( openInputFile( fin, fib, GBL.ga, -1, js, ip, X->ex, X ) )
         return false;

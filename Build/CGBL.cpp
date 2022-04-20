@@ -2,6 +2,7 @@
 #include "CGBL.h"
 #include "Cmdline.h"
 #include "Util.h"
+#include "Tool.h"
 #include "Subset.h"
 
 #include <QDir>
@@ -178,6 +179,9 @@ void A_Pulse::init( double rate, double rangeMax )
 
 QString A_Pulse::sparam() const
 {
+    if( usrord == -1 )
+        return QString();
+
     QString s = QString(" -%1=%2,%3,%4,%5,%6,%7")
                     .arg( ex == eXA ? "xa" : "xia" )
                     .arg( js ).arg( ip ).arg( word )
@@ -592,6 +596,9 @@ void D_Pulse::init( double rate, double rangeMax )
 
 QString D_Pulse::sparam() const
 {
+    if( usrord == -1 )
+        return QString();
+
     QString s = QString(" -%1=%2,%3,%4,%5,%6")
                     .arg( ex == eXD ? "xd" : "xid" )
                     .arg( js ).arg( ip ).arg( word )
@@ -1055,6 +1062,7 @@ static void PrintUsage()
     Log() << "-xid=2,0,384,6,50        ;inverted version of xd";
     Log() << "-bf=0,0,8,2,4,3          ;extract numeric bit-field from digital chan (js,ip,word,startbit,nbits,inarow)";
     Log() << "-inarow=5                ;extractor {xa,xd,xia,xid} antibounce stay high/low sample count";
+    Log() << "-no_auto_sync            ;disable the automatic extraction of sync edges in all streams";
     Log() << "-pass1_force_ni_ob_bin   ;write pass one ni/ob binary tcat file even if not changed";
     Log() << "-supercat={dir,run_ga}   ;concatenate existing output files across runs (see ReadMe)";
     Log() << "-supercat_trim_edges     ;supercat after trimming each stream to matched sync edges";
@@ -1288,6 +1296,8 @@ bool CGBL::SetCmdLine( int argc, char* argv[] )
 
             vX.push_back( X );
         }
+        else if( IsArg( "-no_auto_sync", argv[i] ) )
+            auto_sync = false;
         else if( IsArg( "-pass1_force_ni_ob_bin", argv[i] ) )
             force_ni_ob = true;
         else if( GetArgStr( sarg, "-supercat=", argv[i] ) )
@@ -1318,6 +1328,11 @@ bad_param:
 
         if( opar.isEmpty() ) {
             Log() << "Error: Supercat requires -dest option.";
+            goto error;
+        }
+
+        if( sc_trim && !auto_sync ) {
+            Log() << "Error: Supercat edge trimming requires auto sync extraction.";
             goto error;
         }
 
@@ -1373,7 +1388,7 @@ error:
         return false;
     }
 
-// check and sort extractors : js -> ip -> usrord
+// Check and sort extractors : js -> ip -> usrord
 
     if( !checkExtractors() )
         return false;
@@ -1455,8 +1470,8 @@ error:
 
     sCmd =
         QString(
-            "CatGT%1%2%3%4%5%6%7%8%9%10%11%12%13%14%15%16"
-            "%17%18%19%20%21%22%23%24%25%26%27%28%29%30%31")
+            "CatGT%1%2%3%4%5%6%7%8%9%10%11%12%13%14%15%16%17"
+            "%18%19%20%21%22%23%24%25%26%27%28%29%30%31%32")
         .arg( sreq )
         .arg( sgt )
         .arg( no_run_fld ? " -no_run_fld" : "" )
@@ -1482,6 +1497,7 @@ error:
         .arg( schnexc )
         .arg( sXTR )
         .arg( sinarow )
+        .arg( auto_sync ? "" : " -no_auto_sync" )
         .arg( force_ni_ob ? " -pass1_force_ni_ob_bin" : "" )
         .arg( ssuper )
         .arg( sc_trim ? " -supercat_trim_edges" : "" )
@@ -1501,16 +1517,26 @@ error:
     if( inarow < 0 )
         inarow = 5;
 
-// Pass-1 specific finish
+// Inpath adjustments
 
-    if( velem.isEmpty() )
-        return pass1FromCatGT() && makeTaggedDest();
+    if( velem.isEmpty() ) {
+        // Pass-1 specific
+        if( !pass1FromCatGT() )
+            return false;
+    }
+    else {
+        // Pass-2 specific
+        velem[0].unpack();
+    }
 
-// Pass-2 finish
+// Outpath adjustments
 
-    velem[0].unpack();
+    if( !makeTaggedDest() )
+        return false;
 
-    return makeTaggedDest();
+// Create auto_sync extractors
+
+    return addAutoExtractors();
 }
 
 
@@ -1896,42 +1922,6 @@ bool CGBL::parseElems( const QString &s )
 }
 
 
-QString CGBL::formatChnexcl()
-{
-    QString s;
-
-    QMap<int,QVector<uint>>::const_iterator it  = mexc.begin(),
-                                            end = mexc.end();
-
-    for( ; it != end; ++it ) {
-
-        s += QString("{%1;%2}")
-                .arg( it.key() )
-                .arg( Subset::vec2RngStr( it.value() ) );
-    }
-
-    return s;
-}
-
-
-QString CGBL::formatElems()
-{
-    QString s;
-
-    for( int ie = 0, ne = velem.size(); ie < ne; ++ie ) {
-
-        const Elem &E = velem[ie];
-
-        s += QString("{%1,%2%3_g%4}")
-                .arg( E.dir )
-                .arg( E.catgt_fld ? "catgt_" : "" )
-                .arg( E.run ).arg( E.g );
-    }
-
-    return s;
-}
-
-
 bool CGBL::checkExtractors()
 {
     qSort( vX.begin(), vX.end(), XTR::pointerCompare() );
@@ -2000,6 +1990,42 @@ bool CGBL::checkExtractors()
     }
 
     return ok;
+}
+
+
+QString CGBL::formatChnexcl()
+{
+    QString s;
+
+    QMap<int,QVector<uint>>::const_iterator it  = mexc.begin(),
+                                            end = mexc.end();
+
+    for( ; it != end; ++it ) {
+
+        s += QString("{%1;%2}")
+                .arg( it.key() )
+                .arg( Subset::vec2RngStr( it.value() ) );
+    }
+
+    return s;
+}
+
+
+QString CGBL::formatElems()
+{
+    QString s;
+
+    for( int ie = 0, ne = velem.size(); ie < ne; ++ie ) {
+
+        const Elem &E = velem[ie];
+
+        s += QString("{%1,%2%3_g%4}")
+                .arg( E.dir )
+                .arg( E.catgt_fld ? "catgt_" : "" )
+                .arg( E.run ).arg( E.g );
+    }
+
+    return s;
 }
 
 
@@ -2082,6 +2108,130 @@ bool CGBL::makeTaggedDest()
         if( !out_prb_fld )
             im_obase = aux_obase;
     }
+
+    return true;
+}
+
+
+// acqMnMaXaDw = acquired stream channel counts.
+//
+static void _autosync_parseNiChanCounts(
+    int             (&niCumTypCnt)[CniCfg::niNTypes],
+    const KVParams  &kvp )
+{
+    const QStringList   sl = kvp["acqMnMaXaDw"].toString().split(
+                                QRegExp("^\\s+|\\s*,\\s*"),
+                                QString::SkipEmptyParts );
+
+// --------------------------------
+// First count each type separately
+// --------------------------------
+
+    niCumTypCnt[CniCfg::niTypeMN] = sl[0].toInt();
+    niCumTypCnt[CniCfg::niTypeMA] = sl[1].toInt();
+    niCumTypCnt[CniCfg::niTypeXA] = sl[2].toInt();
+    niCumTypCnt[CniCfg::niTypeXD] = sl[3].toInt();
+
+// ---------
+// Integrate
+// ---------
+
+    for( int i = 1; i < CniCfg::niNTypes; ++i )
+        niCumTypCnt[i] += niCumTypCnt[i - 1];
+}
+
+
+bool CGBL::addAutoExtractors()
+{
+    if( !auto_sync )
+        return true;
+
+// NI
+
+    if( ni ) {
+
+        QFileInfo   fim;
+        KVParams    kvp;
+        int         t0, g0 = gt_get_first( &t0 );
+
+        if( catgt_fld || velem.size() )
+            t0 = -1;
+
+        if( openInputMeta( fim, kvp, g0, t0, NI, 0, false ) )
+            return false;
+
+        QVector<uint>   chanIds;
+        int             iword = kvp["syncNiChan"].toInt(),
+                        bit;
+
+        if( !getSavedChannels( chanIds, kvp, fim ) )
+            return false;
+
+        if( kvp["syncNiChanType"].toInt() == 1 ) {  // Analog
+
+            A_Pulse *X = new A_Pulse;
+            X->ex       = eXA;
+            X->usrord   = -1;
+            X->js       = NI;
+            X->ip       = 0;
+            X->word     = chanIds.indexOf( iword );
+            X->thresh   = kvp["syncNiThresh"].toDouble();
+            X->thrsh2   = 0;
+            X->span     = 500;
+            vX.push_back( X );
+        }
+        else {  // Digital
+
+            int     niCumTypCnt[CniCfg::niNTypes];
+            _autosync_parseNiChanCounts( niCumTypCnt, kvp );
+
+            bit     = iword % 16;
+            iword   = niCumTypCnt[CniCfg::niSumAnalog] + iword / 16;
+            iword   = chanIds.indexOf( iword );
+
+            D_Pulse *X = new D_Pulse;
+            X->ex       = eXD;
+            X->usrord   = -1;
+            X->js       = NI;
+            X->ip       = 0;
+            X->word     = iword;
+            X->bit      = bit;
+            X->span     = 500;
+            vX.push_back( X );
+        }
+    }
+
+// OB
+
+    foreach( uint ip, vobx ) {
+        D_Pulse *X = new D_Pulse;
+        X->ex       = eXD;
+        X->usrord   = -1;
+        X->js       = OB;
+        X->ip       = ip;
+        X->word     = -1;
+        X->bit      = 6;
+        X->span     = 500;
+        vX.push_back( X );
+    }
+
+// AP
+
+    foreach( uint ip, vprb ) {
+        D_Pulse *X = new D_Pulse;
+        X->ex       = eXD;
+        X->usrord   = -1;
+        X->js       = AP;
+        X->ip       = ip;
+        X->word     = -1;
+        X->bit      = 6;
+        X->span     = 500;
+        vX.push_back( X );
+    }
+
+// Re-sort
+
+    qSort( vX.begin(), vX.end(), XTR::pointerCompare() );
 
     return true;
 }

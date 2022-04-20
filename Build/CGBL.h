@@ -74,7 +74,7 @@ struct XTR {
     t_js        js;     // cmdline
     int         ip,     // cmdline
                 word,   // cmdline
-                usrord, // cmdline
+                usrord, // cmdline, -1=autosync
                 nrun;   // working inarow count
     XTR() : f(0), ts(0), nrun(0)    {}
     virtual ~XTR()                  {}
@@ -240,6 +240,7 @@ public:
                     tshift,
                     gblcar,
                     gfixdo,
+                    auto_sync,
                     force_ni_ob,
                     sc_trim,
                     sc_skipbin,
@@ -254,7 +255,7 @@ public:
             no_run_fld(false), prb_fld(false), prb_miss_ok(false),
             exported(false), catgt_fld(false), t_miss_ok(false),
             ni(false), ob(false), ap(false), lf(false), prb_3A(false),
-            tshift(true), gblcar(false), gfixdo(false),
+            tshift(true), gblcar(false), gfixdo(false), auto_sync(true),
             force_ni_ob(false), sc_trim(false), sc_skipbin(false),
             out_prb_fld(false)  {}
 
@@ -280,11 +281,12 @@ public:
 private:
     bool parseChnexcl( const QString &s );
     bool parseElems( const QString &s );
+    bool checkExtractors();
     QString formatChnexcl();
     QString formatElems();
-    bool checkExtractors();
     bool pass1FromCatGT();
     bool makeTaggedDest();
+    bool addAutoExtractors();
     QString trim_adjust_slashes( const QString &dir );
     QString inPathUpTo_t( int g, t_js js, int ip );
     QString suffix( t_js js, int ip, t_ex ex, XTR *X = 0 );

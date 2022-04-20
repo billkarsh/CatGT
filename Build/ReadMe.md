@@ -7,7 +7,7 @@
 + Optionally apply demultiplexing corrections.
 + Optionally apply band-pass and global CAR filters.
 + Optionally edit out saturation artifacts.
-+ Optionally extract tables of sync waveform edge times to drive TPrime.
++ By default extract tables of sync waveform edge times to drive TPrime.
 + Optionally extract tables of other nonneural event times to be aligned with spikes.
 + Optionally join the above outputs across different runs (supercat feature).
 
@@ -109,6 +109,7 @@ Options:
 -xid=2,0,384,6,50        ;inverted version of xd
 -bf=0,0,8,2,4,3          ;extract numeric bit-field from digital chan (js,ip,word,startbit,nbits,inarow)
 -inarow=5                ;extractor {xa,xd,xia,xid} antibounce stay high/low sample count
+-no_auto_sync            ;disable the automatic extraction of sync edges in all streams
 -pass1_force_ni_ob_bin   ;write pass one ni/ob binary tcat file even if not changed
 -supercat={dir,run_ga}   ;concatenate existing output files across runs (see ReadMe)
 -supercat_trim_edges     ;supercat after trimming each stream to matched sync edges
@@ -130,7 +131,7 @@ applies filter operations in this order:
 - Apply any specified Butterworth filtering
 - Transform back to time domain
 - Detect gfix transients for later file editing
-- Loccar, Gblcar
+- Loccar, gblcar
 - Write file
 - Apply gfix transient edits to file
 
@@ -479,15 +480,34 @@ other component of your analysis pipeline.
 ### loccar option
 
 - Do CAR common average referencing on an annular area about each site.
-- Specify an excluded inner radius (in sites) and an outer radius.
+- The average is shank-specific, including only channels/sites on the same
+shank as the center site.
+- Specify an excluded inner radius (in sites) and an outer averaging radius.
 - Use a high-pass filter also, to remove DC offsets.
+
+>*Use the SpikeGLX FileViewer to look at traces pre- and post-CAR to
+see if this filter option is working for your data. A danger of loccar
+is excessive reduction of the amplitude of large-footprint spikes.*
 
 ### gblcar option
 
 - Do CAR common average referencing using all channels.
+- The average is probe-wide, including channels/sites on all shanks.
 - Note that `-gblcar` tends to cancel LFP band signal.
+- Note that `-gblcar` assumes fairly uniform background across all channels.
 - Use a high-pass filter also, to remove DC offsets.
 - No, filter options `-loccar` and `-gblcar` don't make sense together.
+
+>*Use the SpikeGLX FileViewer to look at traces pre- and post-CAR to
+see if this filter option is working for your data. A danger of gblcar
+is that the probe is sampling tissue layers with two or more distinct
+backgrounds. That can create artifacts that look like small amplitude
+spikes. If that is happening, instead of `-gblcar`, try a more localized
+but still large averaging area using `-loccar=4,32` for example. Think of
+this geometry not as a small ring, but as a 65-row averaging block about
+each site. Choose a block size that works best for the layer thickness.
+Note too that we suggested an inner exclusion radius larger than 1 to
+avoid including the spike, itself, in the averaging block.*
 
 ### gfix option
 
@@ -531,19 +551,23 @@ Note that the CatGT spatial filters honor the metadata item `~snsShankMap`.
 The shank map has an entry for each saved channel that describes the
 (shank, col, row) where its electrode resides on the shank, and a fourth
 0/1 value, `use flag`, indicating if the channel should be used in spatial
-filtering. The chnexcl data force the corresponding use flags to zero
+filtering. By default, SpikeGLX marks known on-shank reference channels
+with zeroes. Your chnexcl data force the corresponding use flags to zero
 before the filters are applied, and the modified `~snsShankMap` is written
 to the CatGT output metadata.
 
 ### Extractors
 
+>*Starting with version 3.0, CatGT extracts sync edges from all streams
+by default, unless you specify the `-no_auto_sync` option (see below).*
+
 There are five extractors for scanning and decoding nonneural data
 channels in any data stream. They differ in the data types they operate
 upon:
 
-- xa: Finds positive pulses in any analog  channel.
+- xa: Finds positive pulses in any analog channel.
 - xd: Finds positive pulses in any digital channel.
-- xia: Finds inverted pulses in any analog  channel.
+- xia: Finds inverted pulses in any analog channel.
 - xid: Finds inverted pulses in any digital channel.
 - bf: Decodes positive bitfields in any digital channel.
 
@@ -664,17 +688,6 @@ The inverted pulse versions work exactly the same way as their positive
 counterparts. Just keep in mind that inverted pulses have a high baseline
 level and deflect toward lower values.
 
-#### Extractors inarow option
-
-The pulse extractors **{xa,xd,xia,xid}** use edge detection. By default,
-when a signal crosses from low to high, it is required to stay high for
-at least 5 samples. Similarly, when crossing from high to low the signal
-is required to stay low for at least 5 samples. This requirement is applied
-even when specifying a pulse duration of zero, that is, it is applied to
-any edge. This is done to guard against noise.
-
-You can override the count giving any value >= 1.
-
 #### Extractors bf (bit-field)
 
 The -xd and -xid options treat each bit of a digital word as an individual
@@ -709,11 +722,34 @@ The two files have paired entries. The `bfv` file contains the decoded
 values, and the `bft` file contains the time (seconds from file start)
 that the field switched to that value.
 
+#### Extractors inarow option
+
+The pulse extractors **{xa,xd,xia,xid}** use edge detection. By default,
+when a signal crosses from low to high, it is required to stay high for
+at least 5 samples. Similarly, when crossing from high to low the signal
+is required to stay low for at least 5 samples. This requirement is applied
+even when specifying a pulse duration of zero, that is, it is applied to
+any edge. This is done to guard against noise.
+
+You can override the count giving any value >= 1.
+
+#### Extractors no_auto_sync option
+
+Starting with version 3.0, CatGT automatically extracts sync edges
+from all streams unless you turn that off using `-no_auto_sync`.
+
+For an NI stream, CatGT reads the metadata to see which analog or digital
+word contains the sync waveform and builds the corresponding extractor for
+you, either `-xa=0,0,word,thresh,0,500` or `-xd=0,0,word,bit,500`.
+
+For OB and AP streams, CatGT seeks edges in bit #6 of the SY word, as if
+you had specified `-xd=1,ip,-1,6,500` and/or `-xd=2,ip,-1,6,500`.
+
 ### -t=cat defer extraction to a later pass
 
-Option `-t=cat` allows you to concatenate/filter the data in a first pass
-and later extract nonneural events from the output files which are now named
-`tcat`.
+You might want to concatenate/filter the data in a first pass, and later
+extract nonneural events from the ensuing output files which are now named
+`tcat`. Do that by specifying `-t=tcat` in the second pass.
 
 >NOTE: If the files to operate on are now in an output folder named
 `catgt_run_name` then *DO PUT* tag `catgt_` in the `-run` parameter
@@ -812,7 +848,7 @@ with the stream's binary files.
 >Note that to supercat lf files, we need their sync edges which can only
 >be extracted/derived from their ap counterparts:
 >
-> - Specify (-ap) and sync edge extraction (-xd=2,ip,-1,6,500) during pass 1.
+> - During pass 1, specify (-ap); do not specify -no_auto_sync.
 
 ### supercat_skip_ni_ob_bin option & pass1_force_ni_ob_bin
 
@@ -874,6 +910,7 @@ Options:
 -xid=2,0,384,6,500       ;required if joining this extractor type
 -bf=0,0,8,2,4,3          ;required if joining this extractor type
 -inarow=5                ;ignored
+-no_auto_sync            ;forbidden with supercat_trim_edges
 -pass1_force_ni_ob_bin   ;ignored
 -dest=path               ;required
 -out_prb_fld             ;create output subfolder per probe
@@ -941,6 +978,7 @@ Version 3.0
 - Add obx file support.
 - Add extractors {xa,xd,ixa,ixd,bf}.
 - Retire extractors {SY,XA,XD,iSY,iXA,iXD,BF}.
+- Sync extraction in all streams is automatic; disable with -no_auto_sync.
 - Rename pass1_force_ni_ob_bin, supercat_skip_ni_ob_bin options.
 
 Version 2.5
