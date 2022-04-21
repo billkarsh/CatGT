@@ -26,7 +26,7 @@ bool Pass1AP::go()
                     || GBL.apflt.isenabled() || GBL.tshift
                     || GBL.locout || GBL.gblcar || GBL.gfixdo;
 
-    switch( openInputMeta( fim, meta.kvp, g0, t0, AP, ip, GBL.prb_miss_ok ) ) {
+    switch( GBL.openInputMeta( fim, meta.kvp, g0, t0, AP, ip, GBL.prb_miss_ok ) ) {
         case 0: break;
         case 1: return true;
         case 2: return false;
@@ -115,7 +115,7 @@ bool Pass1AP::filtersAndScaling()
 
 // Get actual
 
-    IMROTbl *R = getProbe( meta.kvp );
+    IMROTbl *R = GBL.getProbe( meta.kvp );
 
     if( R ) {
         R->fromString( 0, meta.kvp["~imroTbl"].toString() );
@@ -143,7 +143,7 @@ bool Pass1AP::filtersAndScaling()
 
         QVector<uint>   chanIds;
 
-        if( !getSavedChannels( chanIds, meta.kvp, fim ) )
+        if( !GBL.getSavedChannels( chanIds, meta.kvp, fim ) )
             return false;
 
         // ---------------------------------------------

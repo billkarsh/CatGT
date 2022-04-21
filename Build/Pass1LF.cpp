@@ -13,7 +13,7 @@ bool Pass1LF::go()
 
     doWrite = GBL.gt_nIndices() > 1 || GBL.lfflt.isenabled() || GBL.tshift;
 
-    switch( openInputMeta( fim, meta.kvp, g0, t0, LF, ip, GBL.prb_miss_ok ) ) {
+    switch( GBL.openInputMeta( fim, meta.kvp, g0, t0, LF, ip, GBL.prb_miss_ok ) ) {
         case 0: break;
         case 1: return true;
         case 2: return false;
@@ -53,7 +53,7 @@ void Pass1LF::filtersAndScaling()
 
 // Get actual
 
-    IMROTbl *R = getProbe( meta.kvp );
+    IMROTbl *R = GBL.getProbe( meta.kvp );
 
     if( R ) {
         maxInt = R->maxInt();

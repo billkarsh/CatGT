@@ -1,10 +1,12 @@
 #ifndef CGBL_H
 #define CGBL_H
 
-#include <QMap>
+#include "IMROTbl.h"
+#include "KVParams.h"
+
+#include <QFileInfo>
 #include <QVector>
 
-class QFile;
 class QTextStream;
 
 /* ---------------------------------------------------------------- */
@@ -28,6 +30,20 @@ typedef enum {
     eBFT,
     eBFV
 } t_ex;
+
+struct CniCfg
+{
+    enum niTypeId {
+        niTypeMN    = 0,
+        niTypeMA    = 1,
+        niTypeXA    = 2,
+        niTypeXD    = 3,
+        niSumNeural = 0,
+        niSumAnalog = 2,
+        niSumAll    = 3,
+        niNTypes    = 4
+    };
+};
 
 struct GT3 {
     int g, ta, tb;
@@ -278,6 +294,47 @@ public:
     QString obOutFile( int g0, int ip, t_ex ex, XTR *X = 0 );
     QString imOutFile( int g0, t_js js, int ip, t_ex ex, XTR *X = 0 );
 
+    bool openOutputBinary(
+        QFile       &fout,
+        QString     &outBin,
+        int         g0,
+        t_js        js,
+        int         ip );
+
+    int openInputFile(
+        QFile       &fin,
+        QFileInfo   &fib,
+        int         g,
+        int         t,
+        t_js        js,
+        int         ip,
+        t_ex        ex,
+        XTR         *X = 0 );
+
+    int openInputBinary(
+        QFile       &fin,
+        QFileInfo   &fib,
+        int         g,
+        int         t,
+        t_js        js,
+        int         ip );
+
+    int openInputMeta(
+        QFileInfo   &fim,
+        KVParams    &kvp,
+        int         g,
+        int         t,
+        t_js        js,
+        int         ip,
+        bool        canSkip );
+
+    IMROTbl *getProbe( const KVParams &kvp );
+
+    bool getSavedChannels(
+        QVector<uint>   &chanIds,
+        const KVParams  &kvp,
+        const QFileInfo &fim );
+
 private:
     bool parseChnexcl( const QString &s );
     bool parseElems( const QString &s );
@@ -286,6 +343,9 @@ private:
     QString formatElems();
     bool pass1FromCatGT();
     bool makeTaggedDest();
+    void parseNiChanCounts(
+        int             (&niCumTypCnt)[CniCfg::niNTypes],
+        const KVParams  &kvp );
     bool addAutoExtractors();
     QString trim_adjust_slashes( const QString &dir );
     QString inPathUpTo_t( int g, t_js js, int ip );

@@ -49,7 +49,7 @@ bool Pass1::o_open( int g0 )
     if( !doWrite )
         return true;
 
-    return openOutputBinary( o_f, o_name, g0, js_out, ip );
+    return GBL.openOutputBinary( o_f, o_name, g0, js_out, ip );
 }
 
 
@@ -126,7 +126,7 @@ void Pass1::fileLoop()
         // Open binary
         // -----------
 
-        switch( openInputBinary( i_f, i_fi, g, t, js_in, ip ) ) {
+        switch( GBL.openInputBinary( i_f, i_fi, g, t, js_in, ip ) ) {
             case 0: break;
             case 1: continue;
             case 2: return;
@@ -268,7 +268,7 @@ int Pass1::inputSizeAndOverlap( qint64 &xferBytes, int g, int t )
 
         QFileInfo   fim;
         KVParams    kvp;
-        int         ret = openInputMeta( fim, kvp, g, t, js_in, ip, GBL.t_miss_ok );
+        int         ret = GBL.openInputMeta( fim, kvp, g, t, js_in, ip, GBL.t_miss_ok );
 
         if( ret )
             return ret;

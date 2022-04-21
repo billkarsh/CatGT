@@ -29,7 +29,7 @@ int Pass2::first( int ip )
 
     {
         QFileInfo   fim;
-        int         ret = openInputMeta( fim, meta.kvp, g0, -1, js, ip, miss_ok );
+        int         ret = GBL.openInputMeta( fim, meta.kvp, g0, -1, js, ip, miss_ok );
 
         if( ret )
             return ret;
@@ -38,7 +38,7 @@ int Pass2::first( int ip )
     if( js >= AP && !GBL.makeOutputProbeFolder( g0, ip ) )
         return 2;
 
-    if( do_bin && !openOutputBinary( fout, outBin, g0, js, ip ) )
+    if( do_bin && !GBL.openOutputBinary( fout, outBin, g0, js, ip ) )
         return 2;
 
     meta.read( js, ip );
@@ -155,7 +155,7 @@ qint64 Pass2::checkCounts( int ie )
     KVParams    kvpn;
     int         chans;
 
-    if( openInputMeta( fim, kvpn, GBL.ga, -1, js, ip, false ) )
+    if( GBL.openInputMeta( fim, kvpn, GBL.ga, -1, js, ip, false ) )
         return 0;
 
     chans = kvpn["nSavedChans"].toInt();
@@ -339,7 +339,7 @@ bool Pass2::copyFile( QFile &fout, int ie, t_ex ex, XTR *X )
     QFile       fin;
     QFileInfo   fib;
 
-    if( openInputFile( fin, fib, GBL.ga, -1, js, ip, ex, X ) )
+    if( GBL.openInputFile( fin, fib, GBL.ga, -1, js, ip, ex, X ) )
         return false;
 
     if( !X ) {
@@ -366,10 +366,10 @@ bool Pass2::copyFilesBF( int ie, BitField *B )
     QFile       ftin, fvin;
     QFileInfo   ftib, fvib;
 
-    if( openInputFile( ftin, ftib, GBL.ga, -1, js, ip, eBFT, B ) )
+    if( GBL.openInputFile( ftin, ftib, GBL.ga, -1, js, ip, eBFT, B ) )
         return false;
 
-    if( openInputFile( fvin, fvib, GBL.ga, -1, js, ip, eBFV, B ) )
+    if( GBL.openInputFile( fvin, fvib, GBL.ga, -1, js, ip, eBFV, B ) )
         return false;
 
     if( GBL.sc_trim ) { // tandem trim and copy

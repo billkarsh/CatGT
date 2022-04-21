@@ -2,7 +2,6 @@
 #include "CGBL.h"
 #include "Cmdline.h"
 #include "Util.h"
-#include "Tool.h"
 #include "Subset.h"
 
 #include <QDir>
@@ -1803,6 +1802,174 @@ QString CGBL::imOutFile( int g0, t_js js, int ip, t_ex ex, XTR *X )
 }
 
 
+bool CGBL::openOutputBinary(
+    QFile       &fout,
+    QString     &outBin,
+    int         g0,
+    t_js        js,
+    int         ip )
+{
+    if( !velem.size() && gt_is_tcat() ) {
+        Log() <<
+        "Error: Secondary extraction pass (-t=cat) must not"
+        " concatenate, tshift or filter.";
+        return false;
+    }
+
+    switch( js ) {
+        case NI: outBin = niOutFile( g0, eBIN ); break;
+        case OB: outBin = obOutFile( g0, ip, eBIN ); break;
+        case AP:
+        case LF: outBin = imOutFile( g0, js, ip, eBIN ); break;
+    }
+
+    fout.setFileName( outBin );
+
+    if( !fout.open( QIODevice::ReadWrite ) ) {
+        Log() << QString("Error opening '%1'.").arg( outBin );
+        return false;
+    }
+
+    fout.resize( 0 );
+
+    return true;
+}
+
+
+// Return:
+// 0 - ok.
+// 1 - skip.
+// 2 - fail.
+//
+int CGBL::openInputFile(
+    QFile       &fin,
+    QFileInfo   &fib,
+    int         g,
+    int         t,
+    t_js        js,
+    int         ip,
+    t_ex        ex,
+    XTR         *X )
+{
+    QString inBin = inFile( g, t, js, ip, ex, X );
+
+    fib.setFile( inBin );
+
+    if( !fib.exists() ) {
+        Log() << QString("File not found '%1'.").arg( fib.filePath() );
+        if( t_miss_ok )
+            return 1;
+        return 2;
+    }
+
+    fin.setFileName( inBin );
+
+    QIODevice::OpenMode mode = QIODevice::ReadOnly;
+
+    if( X )
+        mode |= QIODevice::Text;
+
+    if( !fin.open( mode ) ) {
+        Log() << QString("Error opening file '%1'.").arg( fib.filePath() );
+        return 2;
+    }
+
+    return 0;
+}
+
+
+// Return:
+// 0 - ok.
+// 1 - skip.
+// 2 - fail.
+//
+int CGBL::openInputBinary(
+    QFile       &fin,
+    QFileInfo   &fib,
+    int         g,
+    int         t,
+    t_js        js,
+    int         ip )
+{
+    return openInputFile( fin, fib, g, t, js, ip, eBIN );
+}
+
+
+// Return:
+// 0 - ok.
+// 1 - skip.
+// 2 - fail.
+//
+int CGBL::openInputMeta(
+    QFileInfo   &fim,
+    KVParams    &kvp,
+    int         g,
+    int         t,
+    t_js        js,
+    int         ip,
+    bool        canSkip )
+{
+    QString inMeta = inFile( g, t, js, ip, eMETA );
+
+    fim.setFile( inMeta );
+
+    if( !fim.exists() ) {
+        Log() << QString("Meta file not found '%1'.").arg( fim.filePath() );
+        if( canSkip )
+            return 1;
+        return 2;
+    }
+
+    if( !kvp.fromMetaFile( inMeta ) ) {
+        Log() << QString("Meta file is corrupt '%1'.").arg( fim.fileName() );
+        return 2;
+    }
+
+    return 0;
+}
+
+
+// Return allocated probe class, or, 0.
+//
+IMROTbl *CGBL::getProbe( const KVParams &kvp )
+{
+    IMROTbl                     *R      = 0;
+    KVParams::const_iterator    it_kvp  = kvp.find( "imDatPrb_type" );
+    int                         prbType = -999;
+
+    if( it_kvp != kvp.end() )
+        prbType = it_kvp.value().toInt();
+    else if( kvp.contains( "imProbeOpt" ) )
+        prbType = -3;
+
+    if( prbType != -999 )
+        R = IMROTbl::alloc( prbType );
+
+    return R;
+}
+
+
+bool CGBL::getSavedChannels(
+    QVector<uint>   &chanIds,
+    const KVParams  &kvp,
+    const QFileInfo &fim )
+{
+    QString chnstr = kvp["snsSaveChanSubset"].toString();
+
+    if( Subset::isAllChansStr( chnstr ) )
+        Subset::defaultVec( chanIds, kvp["nSavedChans"].toInt() );
+    else if( !Subset::rngStr2Vec( chanIds, chnstr ) ) {
+        Log() << QString("Bad snsSaveChanSubset tag '%1'.").arg( fim.fileName() );
+        return false;
+    }
+
+    return true;
+}
+
+/* --------------------------------------------------------------- */
+/* Private ------------------------------------------------------- */
+/* --------------------------------------------------------------- */
+
 // Carve chnexcl into {prb;chn}.
 //
 bool CGBL::parseChnexcl( const QString &s )
@@ -2115,7 +2282,7 @@ bool CGBL::makeTaggedDest()
 
 // acqMnMaXaDw = acquired stream channel counts.
 //
-static void _autosync_parseNiChanCounts(
+void CGBL::parseNiChanCounts(
     int             (&niCumTypCnt)[CniCfg::niNTypes],
     const KVParams  &kvp )
 {
@@ -2183,7 +2350,7 @@ bool CGBL::addAutoExtractors()
         else {  // Digital
 
             int     niCumTypCnt[CniCfg::niNTypes];
-            _autosync_parseNiChanCounts( niCumTypCnt, kvp );
+            parseNiChanCounts( niCumTypCnt, kvp );
 
             bit     = iword % 16;
             iword   = niCumTypCnt[CniCfg::niSumAnalog] + iword / 16;

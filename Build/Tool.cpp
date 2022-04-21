@@ -6,9 +6,7 @@
 #include "Pass1NI.h"
 #include "Pass1OB.h"
 #include "Pass2.h"
-#include "Biquad.h"
 #include "SGLTypes.h"
-#include "Subset.h"
 
 #include <math.h>
 
@@ -68,7 +66,7 @@ void FFT::init(
 
         // Mux table
 
-        IMROTbl *R = getProbe( meta.kvp );
+        IMROTbl *R = GBL.getProbe( meta.kvp );
 
         if( R ) {
 
@@ -680,7 +678,7 @@ static int lfCase( int ip )
     if( !kvp.fromMetaFile( inMeta ) )
         return 0;
 
-    IMROTbl *R = getProbe( kvp );
+    IMROTbl *R = GBL.getProbe( kvp );
 
     if( !R )
         return 0;
@@ -761,7 +759,7 @@ static bool _supercat_checkLF( double &tlast, double apsrate, int ip )
     KVParams    kvp;
     qint64      lfsamp;
 
-    switch( openInputMeta( fim, kvp, GBL.ga, -1, LF, ip, GBL.prb_miss_ok ) ) {
+    switch( GBL.openInputMeta( fim, kvp, GBL.ga, -1, LF, ip, GBL.prb_miss_ok ) ) {
         case 0: break;
         case 1: return true;
         case 2: return false;
@@ -796,7 +794,7 @@ static bool _supercat_streamSelectEdges( int ie, t_js js, int ip )
     KVParams    kvp;
     bool        miss_ok = (js == AP ? GBL.prb_miss_ok : false);
 
-    switch( openInputMeta( fim, kvp, GBL.ga, -1, js, ip, miss_ok ) ) {
+    switch( GBL.openInputMeta( fim, kvp, GBL.ga, -1, js, ip, miss_ok ) ) {
         case 0: break;
         case 1: return true;
         case 2: return false;
@@ -829,7 +827,7 @@ static bool _supercat_streamSelectEdges( int ie, t_js js, int ip )
     QFileInfo   fib;
     QFile       fin;
 
-    if( openInputFile( fin, fib, GBL.ga, -1, js, ip, X->ex, X ) )
+    if( GBL.openInputFile( fin, fib, GBL.ga, -1, js, ip, X->ex, X ) )
         return false;
 
 // ---------
@@ -1033,166 +1031,6 @@ done:
         hNI->close();
         delete hNI;
     }
-}
-
-
-// Return allocated probe class, or, 0.
-//
-IMROTbl *getProbe( const KVParams &kvp )
-{
-    IMROTbl                     *R      = 0;
-    KVParams::const_iterator    it_kvp  = kvp.find( "imDatPrb_type" );
-    int                         prbType = -999;
-
-    if( it_kvp != kvp.end() )
-        prbType = it_kvp.value().toInt();
-    else if( kvp.contains( "imProbeOpt" ) )
-        prbType = -3;
-
-    if( prbType != -999 )
-        R = IMROTbl::alloc( prbType );
-
-    return R;
-}
-
-
-bool getSavedChannels(
-    QVector<uint>   &chanIds,
-    const KVParams  &kvp,
-    const QFileInfo &fim )
-{
-    QString chnstr = kvp["snsSaveChanSubset"].toString();
-
-    if( Subset::isAllChansStr( chnstr ) )
-        Subset::defaultVec( chanIds, kvp["nSavedChans"].toInt() );
-    else if( !Subset::rngStr2Vec( chanIds, chnstr ) ) {
-        Log() << QString("Bad snsSaveChanSubset tag '%1'.").arg( fim.fileName() );
-        return false;
-    }
-
-    return true;
-}
-
-
-bool openOutputBinary( QFile &fout, QString &outBin, int g0, t_js js, int ip )
-{
-    if( !GBL.velem.size() && GBL.gt_is_tcat() ) {
-        Log() <<
-        "Error: Secondary extraction pass (-t=cat) must not"
-        " concatenate, tshift or filter.";
-        return false;
-    }
-
-    switch( js ) {
-        case NI: outBin = GBL.niOutFile( g0, eBIN ); break;
-        case OB: outBin = GBL.obOutFile( g0, ip, eBIN ); break;
-        case AP:
-        case LF: outBin = GBL.imOutFile( g0, js, ip, eBIN ); break;
-    }
-
-    fout.setFileName( outBin );
-
-    if( !fout.open( QIODevice::ReadWrite ) ) {
-        Log() << QString("Error opening '%1'.").arg( outBin );
-        return false;
-    }
-
-    fout.resize( 0 );
-
-    return true;
-}
-
-
-// Return:
-// 0 - ok.
-// 1 - skip.
-// 2 - fail.
-//
-int openInputFile(
-    QFile       &fin,
-    QFileInfo   &fib,
-    int         g,
-    int         t,
-    t_js        js,
-    int         ip,
-    t_ex        ex,
-    XTR         *X )
-{
-    QString inBin = GBL.inFile( g, t, js, ip, ex, X );
-
-    fib.setFile( inBin );
-
-    if( !fib.exists() ) {
-        Log() << QString("File not found '%1'.").arg( fib.filePath() );
-        if( GBL.t_miss_ok )
-            return 1;
-        return 2;
-    }
-
-    fin.setFileName( inBin );
-
-    QIODevice::OpenMode mode = QIODevice::ReadOnly;
-
-    if( X )
-        mode |= QIODevice::Text;
-
-    if( !fin.open( mode ) ) {
-        Log() << QString("Error opening file '%1'.").arg( fib.filePath() );
-        return 2;
-    }
-
-    return 0;
-}
-
-
-// Return:
-// 0 - ok.
-// 1 - skip.
-// 2 - fail.
-//
-int openInputBinary(
-    QFile       &fin,
-    QFileInfo   &fib,
-    int         g,
-    int         t,
-    t_js        js,
-    int         ip )
-{
-    return openInputFile( fin, fib, g, t, js, ip, eBIN );
-}
-
-
-// Return:
-// 0 - ok.
-// 1 - skip.
-// 2 - fail.
-//
-int openInputMeta(
-    QFileInfo   &fim,
-    KVParams    &kvp,
-    int         g,
-    int         t,
-    t_js        js,
-    int         ip,
-    bool        canSkip )
-{
-    QString inMeta = GBL.inFile( g, t, js, ip, eMETA );
-
-    fim.setFile( inMeta );
-
-    if( !fim.exists() ) {
-        Log() << QString("Meta file not found '%1'.").arg( fim.filePath() );
-        if( canSkip )
-            return 1;
-        return 2;
-    }
-
-    if( !kvp.fromMetaFile( inMeta ) ) {
-        Log() << QString("Meta file is corrupt '%1'.").arg( fim.fileName() );
-        return 2;
-    }
-
-    return 0;
 }
 
 

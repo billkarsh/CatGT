@@ -2,36 +2,17 @@
 #define TOOL_H
 
 #include "CGBL.h"
-#include "IMROTbl.h"
-#include "KVParams.h"
 
 #include "fftw3.h"
 
-#include <QFileInfo>
-
 struct Meta;
 class Pass1;
-class Biquad;
 
 /* ---------------------------------------------------------------- */
 /* Types ---------------------------------------------------------- */
 /* ---------------------------------------------------------------- */
 
 typedef long double  BTYPE;
-
-struct CniCfg
-{
-    enum niTypeId {
-        niTypeMN    = 0,
-        niTypeMA    = 1,
-        niTypeXA    = 2,
-        niTypeXD    = 3,
-        niSumNeural = 0,
-        niSumAnalog = 2,
-        niSumAll    = 3,
-        niNTypes    = 4
-    };
-};
 
 struct FFT {
     double              delT;
@@ -107,42 +88,6 @@ extern FOffsets gFOff;
 
 void pass1entrypoint();
 void supercatentrypoint();
-
-IMROTbl *getProbe( const KVParams &kvp );
-
-bool getSavedChannels(
-    QVector<uint>   &chanIds,
-    const KVParams  &kvp,
-    const QFileInfo &fim );
-
-bool openOutputBinary( QFile &fout, QString &outBin, int g0, t_js js, int ip );
-
-int openInputFile(
-    QFile       &fin,
-    QFileInfo   &fib,
-    int         g,
-    int         t,
-    t_js        js,
-    int         ip,
-    t_ex        ex,
-    XTR         *X = 0 );
-
-int openInputBinary(
-    QFile       &fin,
-    QFileInfo   &fib,
-    int         g,
-    int         t,
-    t_js        js,
-    int         ip );
-
-int openInputMeta(
-    QFileInfo   &fim,
-    KVParams    &kvp,
-    int         g,
-    int         t,
-    t_js        js,
-    int         ip,
-    bool        canSkip );
 
 #endif  // TOOL_H
 
