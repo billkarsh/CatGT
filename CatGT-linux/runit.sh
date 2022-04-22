@@ -35,7 +35,7 @@ then
     SRC=/groups/apig/apig/Austin_Graves/CatGT_C_Waves_test/SC_artifact_test_data
     DST=$SRC/SC011_OUT
     ARGS="-dir=$SRC -run=SC011_022319 -g=0 -t=0,1 -prb_fld -prb=3"
-    ARGS="$ARGS -ap -apfilter=butter,12,300,9000 -gfix=0,0.1,0.02 -xd=2,3,-1,6,500"
+    ARGS="$ARGS -ap -apfilter=butter,12,300,9000 -gfix=0,0.1,0.02"
     ARGS="$ARGS -dest=$DST -out_prb_fld"
 else
     ARGS=$@
