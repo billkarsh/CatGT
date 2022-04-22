@@ -104,13 +104,23 @@ bool Filter::parse( const QString &s )
 
 bool XTR::openOutTimesFile( int g0, t_js js, int ip, t_ex ex )
 {
-    QString file;
+    QString file,
+            strm;
 
     switch( js ) {
-        case NI: file = GBL.niOutFile( g0, ex, this ); break;
-        case OB: file = GBL.obOutFile( g0, ip, ex, this ); break;
+        case NI:
+            file = GBL.niOutFile( g0, ex, this );
+            strm = "ni";
+            break;
+        case OB:
+            file = GBL.obOutFile( g0, ip, ex, this );
+            strm = QString("obx%1").arg( ip );
+            break;
         case AP:
-        case LF: file = GBL.imOutFile( g0, AP, ip, ex, this ); break;
+        case LF:
+            file = GBL.imOutFile( g0, AP, ip, ex, this );
+            strm = QString("imec%1").arg( ip );
+            break;
     }
 
     f = new QFile( file );
@@ -122,6 +132,34 @@ bool XTR::openOutTimesFile( int g0, t_js js, int ip, t_ex ex )
 
     f->resize( 0 );
     ts = new QTextStream( f );
+
+// fyi entry
+
+    if( usrord == -1 )
+        GBL.fyi[QString("sync_%1").arg( strm )] = file;
+    else {
+        XTR *X0;
+        // find first XTR for the stream (i)
+        for( int i = 0, n = GBL.vX.size(); i < n; ++i ) {
+
+            X0 = GBL.vX[i];
+
+            if( X0->js == js && X0->ip == ip ) {
+
+                // find this XTR (k)
+                for( int k = i; k < n; ++k ) {
+
+                    if( this == GBL.vX[k] ) {
+                        k -= i + (X0->usrord == -1);
+                        GBL.fyi[QString("times_%1_%2").arg( strm ).arg( k )] = file;
+                        break;
+                    }
+                }
+                break;
+            }
+        }
+    }
+
     return true;
 }
 
@@ -1722,25 +1760,68 @@ int CGBL::myXrange( int &lim, t_js js, int ip ) const
 }
 
 
+void CGBL::fyi_ct_write()
+{
+    QString srun = QString("%1_g%2").arg( run ).arg( gt_get_first( 0 ) ),
+            dir;
+
+    if( !opar.isEmpty() ) {
+        fyi["supercat_element"] = QString("{%1,catgt_%2}").arg( opar ).arg( srun );
+        dir = QString("%1/catgt_%2").arg( opar ).arg( srun );
+    }
+    else {
+        fyi["supercat_element"] = QString("{%1,%2}").arg( inpar ).arg( srun );
+        dir = inpar;
+
+        if( !no_run_fld )
+            dir += QString("/%1").arg( srun );
+    }
+
+    fyi["outpath_top"] = dir;
+
+    fyi.toMetaFile( QString("%1/%2_fyi.txt").arg( dir ).arg( srun ) );
+}
+
+
+void CGBL::fyi_sc_write()
+{
+    QString srun = QString("%1_g%2").arg( velem[0].run ).arg( velem[0].g ),
+            dir  = QString("%1/supercat_%2").arg( opar ).arg( srun );
+
+    fyi["outpath_top"] = dir;
+
+    fyi.toMetaFile( QString("%1/%2_fyi.txt").arg( dir ).arg( srun ) );
+}
+
+
 bool CGBL::makeOutputProbeFolder( int g0, int ip )
 {
-    prb_obase = im_obase;
+    QString fyikey = QString("outpath_probe%1").arg( ip );
 
-    if( out_prb_fld ) {
+    if( !opar.isEmpty() ) {
 
-        // Create probe subfolder: dest/catgt_run_g0/run_g0_imec0
+        prb_obase = im_obase;
 
-        prb_obase += QString("/%1_g%2_imec%3").arg( run ).arg( g0 ).arg( ip );
+        if( out_prb_fld ) {
 
-        if( !QDir().exists( prb_obase ) && !QDir().mkdir( prb_obase ) ) {
-            Log() << QString("Error creating dir '%1'.").arg( prb_obase );
-            return false;
+            // Create probe subfolder: dest/catgt_run_g0/run_g0_imec0
+
+            prb_obase += QString("/%1_g%2_imec%3").arg( run ).arg( g0 ).arg( ip );
+
+            if( !QDir().exists( prb_obase ) && !QDir().mkdir( prb_obase ) ) {
+                Log() << QString("Error creating dir '%1'.").arg( prb_obase );
+                return false;
+            }
+
+            fyi[fyikey] = prb_obase;
+
+            // Append run name up to _tcat
+
+            prb_obase += QString("/%1_g%2_tcat").arg( run ).arg( g0 );
         }
-
-        // Append run name up to _tcat
-
-        prb_obase += QString("/%1_g%2_tcat").arg( run ).arg( g0 );
     }
+    else if( prb_fld )
+        fyi[fyikey] = inPath( g0, AP, ip );
 
     return true;
 }
@@ -1767,7 +1848,7 @@ QString CGBL::niOutFile( int g0, t_ex ex, XTR *X )
 {
     QString s;
 
-    if( aux_obase.isEmpty() )
+    if( opar.isEmpty() )
         s = inPathUpTo_t( g0, NI, 0 ) + "cat";
     else
         s = aux_obase;
@@ -1780,7 +1861,7 @@ QString CGBL::obOutFile( int g0, int ip, t_ex ex, XTR *X )
 {
     QString s;
 
-    if( aux_obase.isEmpty() )
+    if( opar.isEmpty() )
         s = inPathUpTo_t( g0, OB, ip ) + "cat";
     else
         s = aux_obase;
@@ -1793,7 +1874,7 @@ QString CGBL::imOutFile( int g0, t_js js, int ip, t_ex ex, XTR *X )
 {
     QString s;
 
-    if( prb_obase.isEmpty() )
+    if( opar.isEmpty() )
         s = inPathUpTo_t( g0, js, ip ) + "cat";
     else
         s = prb_obase;
@@ -2413,33 +2494,39 @@ QString CGBL::trim_adjust_slashes( const QString &dir )
 }
 
 
-QString CGBL::inPathUpTo_t( int g, t_js js, int ip )
+QString CGBL::inPath( int g, t_js js, int ip )
 {
     QString srun = QString("%1_g%2").arg( run ).arg( g ),
             s;
 
 // parent dir
 
-    s = inpar + "/";
+    s = inpar;
 
 // run subfolder?
 
     if( !no_run_fld ) {
 
+        s += "/";
+
         if( catgt_fld )
             s += "catgt_";
 
-        s += QString("%1/").arg( srun );
+        s += QString("%1").arg( srun );
     }
 
 // probe subfolder?
 
     if( js >= AP && prb_fld )
-        s += QString("%1_imec%2/").arg( srun ).arg( ip );
+        s += QString("/%1_imec%2").arg( srun ).arg( ip );
 
-// run name up to _t
+    return s;
+}
 
-    return s + QString("%1_t").arg( srun );
+
+QString CGBL::inPathUpTo_t( int g, t_js js, int ip )
+{
+    return inPath( g, js, ip ) + QString("/%1_g%2_t").arg( run ).arg( g );
 }
 
 

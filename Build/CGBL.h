@@ -234,6 +234,7 @@ public:
                     vprb;
     QVector<XTR*>   vX;
     QVector<Elem>   velem;
+    KVParams        fyi;            // generated
     int             ga,
                     gb,
                     ta,
@@ -286,6 +287,9 @@ public:
     int gt_nIndices() const;
 
     int myXrange( int &lim, t_js js, int ip ) const;
+
+    void fyi_ct_write();
+    void fyi_sc_write();
 
     bool makeOutputProbeFolder( int g0, int ip );
 
@@ -348,6 +352,7 @@ private:
         const KVParams  &kvp );
     bool addAutoExtractors();
     QString trim_adjust_slashes( const QString &dir );
+    QString inPath( int g, t_js js, int ip );
     QString inPathUpTo_t( int g, t_js js, int ip );
     QString suffix( t_js js, int ip, t_ex ex, XTR *X = 0 );
 };

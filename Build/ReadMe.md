@@ -407,12 +407,16 @@ having a `catgt_` tag: `myPath/catgt_run_name_ga`.
 
 - The meta item e.g., `catTVals=0,20`, indicates range of t-indices used.
 
-- CatGT creates an output file:
+- CatGT creates a pass-1 output file:
 `output_path/run_ga_ct_offsets.txt`.
 This tablulates, for each stream, where the first sample of each input
 file is relative to the start of the concatenated output file. It records
 these offsets in units of samples, and again in units of seconds on that
 stream's clock.
+
+- CatGT always creates output file: `output_path/run_ga_fyi.txt`.
+This lists key output paths and filenames you can use to build downstream
+command lines for supercat or TPrime.
 
 ### gtlist option
 
@@ -946,7 +950,7 @@ use the `run_ga` parts of the first listed supercat element to create a
 subfolder in the dest directory named `supercat_run_ga` and place the
 results there.
 
-The output metadata will **NOT** contain any of these Pass-1 tags:
+The output metadata will **NOT** contain any of these pass-1 tags:
 
 - `catGTCmdlineN : N in range [0..99]`
 - `catNFiles`
@@ -980,6 +984,7 @@ Version 3.0
 - Retire extractors {SY,XA,XD,iSY,iXA,iXD,BF}.
 - Sync extraction in all streams is automatic; disable with -no_auto_sync.
 - Rename pass1_force_ni_ob_bin, supercat_skip_ni_ob_bin options.
+- Add fyi file listing key output paths.
 
 Version 2.5
 

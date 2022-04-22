@@ -267,7 +267,8 @@ ls -s &lt;path/myoriginalname.meta&gt; &lt;...ZZZ/goodname_g0_t0.imec0.ap.meta&g
 <li><p>The meta item e.g., <code>catNFiles</code>, indicates count of concatenated files.</p></li>
 <li><p>The meta item e.g., <code>catGVals=0,1</code>, indicates range of g-indices used.</p></li>
 <li><p>The meta item e.g., <code>catTVals=0,20</code>, indicates range of t-indices used.</p></li>
-<li><p>CatGT creates an output file: <code>output_path/run_ga_ct_offsets.txt</code>. This tablulates, for each stream, where the first sample of each input file is relative to the start of the concatenated output file. It records these offsets in units of samples, and again in units of seconds on that stream's clock.</p></li>
+<li><p>CatGT creates a pass-1 output file: <code>output_path/run_ga_ct_offsets.txt</code>. This tablulates, for each stream, where the first sample of each input file is relative to the start of the concatenated output file. It records these offsets in units of samples, and again in units of seconds on that stream's clock.</p></li>
+<li><p>CatGT always creates output file: <code>output_path/run_ga_fyi.txt</code>. This lists key output paths and filenames you can use to build downstream command lines for supercat or TPrime.</p></li>
 </ul>
 <h3 id="gtlist-option">gtlist option</h3>
 <p>This option overrides the <code>-g=</code> and <code>-t=</code> options so that you can specify a separate t-range for each g-index. Specify the list like this:</p>
@@ -600,7 +601,7 @@ Options:
 </blockquote>
 <h3 id="supercat-output">supercat output</h3>
 <p>You must provide an output directory using the <code>-dest</code> option. CatGT will use the <code>run_ga</code> parts of the first listed supercat element to create a subfolder in the dest directory named <code>supercat_run_ga</code> and place the results there.</p>
-<p>The output metadata will <strong>NOT</strong> contain any of these Pass-1 tags:</p>
+<p>The output metadata will <strong>NOT</strong> contain any of these pass-1 tags:</p>
 <ul>
 <li><code>catGTCmdlineN : N in range [0..99]</code></li>
 <li><code>catNFiles</code></li>
@@ -623,6 +624,7 @@ Options:
 <li>Retire extractors {SY,XA,XD,iSY,iXA,iXD,BF}.</li>
 <li>Sync extraction in all streams is automatic; disable with -no_auto_sync.</li>
 <li>Rename pass1_force_ni_ob_bin, supercat_skip_ni_ob_bin options.</li>
+<li>Add fyi file listing key output paths.</li>
 </ul>
 <p>Version 2.5</p>
 <ul>

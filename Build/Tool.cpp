@@ -748,6 +748,7 @@ void pass1entrypoint()
 
 done:
     gFOff.ct_write();
+    GBL.fyi_ct_write();
 }
 
 
@@ -1011,6 +1012,7 @@ void supercatentrypoint()
 
 done:
     gFOff.sc_write();
+    GBL.fyi_sc_write();
 
     if( hLF ) {
         hLF->close();
