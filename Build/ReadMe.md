@@ -578,7 +578,7 @@ upon:
 The first three parameters of any extractor specify the stream-type,
 stream-index and channel (16-bit word) to operate on, E.g.:
 
--xa=**js,ip,word**,\<additional parameters\>
+-xa=**js,ip,word**, &#60;additional parameters&#62;
 
 #### Extractors js (stream-type):
 
@@ -668,6 +668,9 @@ reflects the parameters, e.g., `run_name_g0_tcat.imec0.ap.xd_384_6_500.txt`.
 
 - The threshold is not encoded in the `-xa` filename; just word and
 milliseconds.
+
+- The `run_name_g0_fyi.txt` file lists the full paths of all generated
+extraction files.
 
 - The files report the times (s) of leading edges of detected pulses;
 one time per line, `\n` line endings.

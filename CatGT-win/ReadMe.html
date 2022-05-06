@@ -348,7 +348,7 @@ ls -s &lt;path/myoriginalname.meta&gt; &lt;...ZZZ/goodname_g0_t0.imec0.ap.meta&g
 <li>bf: Decodes positive bitfields in any digital channel.</li>
 </ul>
 <p>The first three parameters of any extractor specify the stream-type, stream-index and channel (16-bit word) to operate on, E.g.:</p>
-<p>-xa=<strong>js,ip,word</strong>,&lt;additional parameters&gt;</p>
+<p>-xa=<strong>js,ip,word</strong>, &lt;additional parameters&gt;</p>
 <h4 id="extractors-js-stream-type">Extractors js (stream-type):</h4>
 <ul>
 <li><strong>NI</strong>: js = 0 (any extractor).</li>
@@ -407,6 +407,7 @@ ls -s &lt;path/myoriginalname.meta&gt; &lt;...ZZZ/goodname_g0_t0.imec0.ap.meta&g
 <li><p>A given channel or even bit could encode two or more types of pulse that have different durations, E.g. <code>-xd=0,0,8,0,10 -xd=0,0,8,0,20</code> scans and reports both 10 and 20 ms pulses on the same line.</p></li>
 <li><p>Each option, say <code>-xd=2,0,384,6,500</code>, creates an output file whose name reflects the parameters, e.g., <code>run_name_g0_tcat.imec0.ap.xd_384_6_500.txt</code>.</p></li>
 <li><p>The threshold is not encoded in the <code>-xa</code> filename; just word and milliseconds.</p></li>
+<li><p>The <code>run_name_g0_fyi.txt</code> file lists the full paths of all generated extraction files.</p></li>
 <li><p>The files report the times (s) of leading edges of detected pulses; one time per line, <code>\n</code> line endings.</p></li>
 <li><p>The time is relative to the start of the stream in which the pulse is detected (native time).</p></li>
 </ul>
