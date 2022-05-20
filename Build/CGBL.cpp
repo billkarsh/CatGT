@@ -1344,7 +1344,7 @@ bool CGBL::SetCmdLine( int argc, char* argv[] )
         else if( IsArg( "-supercat_skip_ni_ob_bin", argv[i] ) )
             sc_skipbin = true;
         else if( GetArgStr( sarg, "-dest=", argv[i] ) )
-            opar = trim_adjust_slashes( sarg );
+            dest = trim_adjust_slashes( sarg );
         else if( IsArg( "-out_prb_fld", argv[i] ) )
             out_prb_fld = true;
         else {
@@ -1363,7 +1363,7 @@ bad_param:
 
     if( velem.size() ) {
 
-        if( opar.isEmpty() ) {
+        if( dest.isEmpty() ) {
             Log() << "Error: Supercat requires -dest option.";
             goto error;
         }
@@ -1447,7 +1447,7 @@ error:
             sXTR        = "",
             sinarow     = "",
             ssuper      = "",
-            sodir       = "";
+            sdest       = "";
 
     if( !velem.size() ) {
         sreq    = QString(" -dir=%1 -run=%2").arg( inpar ).arg( run );
@@ -1500,8 +1500,8 @@ error:
     if( velem.size() )
         ssuper = QString(" -supercat=%1").arg( formatElems() );
 
-    if( !opar.isEmpty() )
-        sodir = QString(" -dest=%1").arg( opar );
+    if( !dest.isEmpty() )
+        sdest = QString(" -dest=%1").arg( dest );
     else
         out_prb_fld = false;
 
@@ -1539,7 +1539,7 @@ error:
         .arg( ssuper )
         .arg( sc_trim ? " -supercat_trim_edges" : "" )
         .arg( sc_skipbin ? " -supercat_skip_ni_ob_bin" : "" )
-        .arg( sodir )
+        .arg( sdest )
         .arg( out_prb_fld ? " -out_prb_fld" : "" );
 
     Log() << QString("Cmdline: %1").arg( sCmd );
@@ -1765,9 +1765,9 @@ void CGBL::fyi_ct_write()
     QString srun = QString("%1_g%2").arg( run ).arg( gt_get_first( 0 ) ),
             dir;
 
-    if( !opar.isEmpty() ) {
-        fyi["supercat_element"] = QString("{%1,catgt_%2}").arg( opar ).arg( srun );
-        dir = QString("%1/catgt_%2").arg( opar ).arg( srun );
+    if( !dest.isEmpty() ) {
+        fyi["supercat_element"] = QString("{%1,catgt_%2}").arg( dest ).arg( srun );
+        dir = QString("%1/catgt_%2").arg( dest ).arg( srun );
     }
     else {
         fyi["supercat_element"] = QString("{%1,%2}").arg( inpar ).arg( srun );
@@ -1786,7 +1786,7 @@ void CGBL::fyi_ct_write()
 void CGBL::fyi_sc_write()
 {
     QString srun = QString("%1_g%2").arg( velem[0].run ).arg( velem[0].g ),
-            dir  = QString("%1/supercat_%2").arg( opar ).arg( srun );
+            dir  = QString("%1/supercat_%2").arg( dest ).arg( srun );
 
     fyi["outpath_top"] = dir;
 
@@ -1798,7 +1798,7 @@ bool CGBL::makeOutputProbeFolder( int g0, int ip )
 {
     QString fyikey = QString("outpath_probe%1").arg( ip );
 
-    if( !opar.isEmpty() ) {
+    if( !dest.isEmpty() ) {
 
         prb_obase = im_obase;
 
@@ -1848,7 +1848,7 @@ QString CGBL::niOutFile( int g0, t_ex ex, XTR *X )
 {
     QString s;
 
-    if( opar.isEmpty() )
+    if( dest.isEmpty() )
         s = inPathUpTo_t( g0, NI, 0 ) + "cat";
     else
         s = aux_obase;
@@ -1861,7 +1861,7 @@ QString CGBL::obOutFile( int g0, int ip, t_ex ex, XTR *X )
 {
     QString s;
 
-    if( opar.isEmpty() )
+    if( dest.isEmpty() )
         s = inPathUpTo_t( g0, OB, ip ) + "cat";
     else
         s = aux_obase;
@@ -1874,7 +1874,7 @@ QString CGBL::imOutFile( int g0, t_js js, int ip, t_ex ex, XTR *X )
 {
     QString s;
 
-    if( opar.isEmpty() )
+    if( dest.isEmpty() )
         s = inPathUpTo_t( g0, js, ip ) + "cat";
     else
         s = prb_obase;
@@ -2319,12 +2319,12 @@ bool CGBL::pass1FromCatGT()
 //
 bool CGBL::makeTaggedDest()
 {
-    if( !opar.isEmpty() ) {
+    if( !dest.isEmpty() ) {
 
         QString tag = (velem.isEmpty() ? "catgt_" : "supercat_");
         int     g0  = gt_get_first( 0 );
 
-        im_obase = opar;
+        im_obase = dest;
 
         // -------------------------------------------------------
         // Create run subfolder for all streams: dest/catgt_run_g0

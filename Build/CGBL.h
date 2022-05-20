@@ -224,7 +224,7 @@ public:
     QString         sCmd,
                     run,
                     inpar,          // derived
-                    opar,           // derived
+                    dest,
                     aux_obase,      // derived
                     im_obase,       // derived
                     prb_obase;      // derived

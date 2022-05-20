@@ -573,8 +573,8 @@ void FOffsets::ct_write()
             srun = QString("%1_g%2")
                     .arg( GBL.run ).arg( GBL.gt_get_first( 0 ) );
 
-    if( !GBL.opar.isEmpty() )
-        dir = QString("%1/catgt_%2/").arg( GBL.opar ).arg( srun );
+    if( !GBL.dest.isEmpty() )
+        dir = QString("%1/catgt_%2/").arg( GBL.dest ).arg( srun );
     else {
         dir = GBL.inpar + "/";
 
@@ -595,7 +595,7 @@ void FOffsets::sc_write()
                     .arg( GBL.velem[0].run ).arg( GBL.velem[0].g );
 
     writeEntries( QString("%1/supercat_%2/%2_sc_offsets.txt")
-                    .arg( GBL.opar ).arg( srun ) );
+                    .arg( GBL.dest ).arg( srun ) );
 }
 
 
