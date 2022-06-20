@@ -980,6 +980,10 @@ on that stream's clock.
 
 ## Change Log
 
+Version 3.1
+
+- Fix loccar channel exclusion.
+
 Version 3.0
 
 - Add obx file support.
