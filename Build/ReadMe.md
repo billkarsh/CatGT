@@ -180,16 +180,29 @@ In a given run you might have saved a variety of stream/file types
 {nidq.bin, obx.bin, ap.bin, lf.bin}. Use the `{-ni, -ob, -ap, -lf}`
 flags to indicate which streams within this run you wish to process.
 
-Note that 2.0 probes output only full-band data with files named ap.bin.
-Unlike 1.0 probes there isn't a separate lf band for 2.0. However, if the
-following are true:
+The -lf option can be used in two ways:
 
-- The current probe is a 2.0 type.
+1. If there are .lf. files present in the run folder, which is usual for
+1.0-like probes which have a separate LF band, then the {-lf, -lffilter}
+options will be applied to those files.
+
+2. If there are no .lf. files already present in the run, then the {-lf,
+-lffilter} options are used to generate a downsampled (2500 Hz) lf.bin/meta
+file set from the .ap. data if the following conditions are met:
+
+- The .ap. data are full-band.
 - -lf is set.
-- -lffilter is set (include the low-pass corner!),
+- -lffilter is set (include the low-pass corner!).
 
-then CatGT will create a filtered and downsampled (2500 Hz) lf.bin/meta
-file set from the ap.bin stream data.
+The full-band test: A 2.0 probe is always full-band because it has no
+LF channel count. A 1.0 stream is full-band if at least one channel's
+AP filter is OFF in its IMRO table.
+
+Note that in SpikeGLX you can omit the saving of .lf. files by setting
+the `Save chans` string to exclude LF channels. For example, `0:383,768`
+with `Force LF` unchecked saves only AP and SY channels. If you've already
+saved .lf. files you will have to remove or rename them to allow the
+CatGT LF generation to work.
 
 ### obx (which Onebox(es))
 
@@ -979,6 +992,10 @@ on that stream's clock.
 ------
 
 ## Change Log
+
+Version 3.2
+
+- Stream option -lf creates .lf. from any full-band .ap.
 
 Version 3.1
 

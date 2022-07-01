@@ -172,7 +172,7 @@ void Pass1AP2LF::filtersAndScaling()
 }
 
 
-// To turn 2.0 AP file into LF-like file:
+// To turn AP file into LF-like file:
 // - filename .ap. -> .lf. (handled by meta.set())
 // - firstSample n -> n/12.
 // - fool smpOutEOF, hence, smpOutSpan() for call to meta.set()

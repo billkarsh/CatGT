@@ -649,8 +649,8 @@ void FOffsets::writeEntries( QString file )
 
 // Return:
 // 0 - treat as 1.0 lf stream.
-// 1 - convert: 2.0 probe + lflopass filter.
-// 2 - skip: 2.0 probe without filter.
+// 1 - convert: full-band + lflopass filter.
+// 2 - skip: no filter specified.
 //
 static int lfCase( int ip )
 {
@@ -671,33 +671,52 @@ static int lfCase( int ip )
     if( !fim.exists() )
         return 0;
 
-// check lf chan count
+// Check full-band criteria:
+// - Either no LF channels, or,
+// - At least one AP filter OFF.
 
     KVParams    kvp;
 
     if( !kvp.fromMetaFile( inMeta ) )
         return 0;
 
+    bool fullband = false;
+
     IMROTbl *R = GBL.getProbe( kvp );
 
-    if( !R )
-        return 0;
+        if( !R )
+            return 0;
 
-    int nLF = R->nLF();
+        if( !R->nLF() )
+            fullband = true;
+        else {
+            R->fromString( 0, kvp["~imroTbl"].toString() );
+            for( int ic = 0, nC = R->nChan(); ic < nC; ++ic ) {
+                if( !R->apFlt( ic ) ) {
+                    fullband = true;
+                    break;
+                }
+            }
+        }
     delete R;
 
-    if( nLF )
+    if( !fullband ) {
+        Log() <<
+        QString("LF convert error: probe %1: No LF files, AP not full-band.")
+        .arg( ip );
         return 0;
+    }
 
-// it's a 2.0... seek lf filter
+// it's full-band... seek lf filter
 
     if( GBL.lfflt.haslopass() ) {
-        Log() << QString("Creating lf stream for 2.0 probe %1.").arg( ip );
+        Log() << QString("Creating lf stream for probe %1.").arg( ip );
         return 1;
     }
 
     Log() <<
-    QString("Can't create lf stream for 2.0 probe %1 without lf low pass filter.").arg( ip );
+    QString("Can't create lf stream for probe %1 without lf low pass filter.")
+    .arg( ip );
 
     return 2;
 }
