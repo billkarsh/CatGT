@@ -993,6 +993,10 @@ on that stream's clock.
 
 ## Change Log
 
+Version 3.3
+
+- Fix -maxsecs option.
+
 Version 3.2
 
 - Stream option -lf creates .lf. from any full-band .ap.

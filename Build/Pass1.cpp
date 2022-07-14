@@ -149,7 +149,7 @@ void Pass1::fileLoop()
         // Process and copy binary data
         // ----------------------------
 
-        while( xferBytes ) {
+        while( meta.smpInpEOF < meta.maxOutEOF && xferBytes ) {
 
             if( !load( xferBytes ) || !push() ) {
                 i_f.close();

@@ -348,7 +348,9 @@ void Meta::read( t_js js, int ip )
     smp1st      = kvp["firstSample"].toLongLong();
     smpInpEOF   = smp1st;
     smpOutEOF   = smp1st;
-    maxOutEOF   = (GBL.maxsecs > 0 ? smp1st + GBL.maxsecs * srate : UNSET64);
+    maxOutEOF   = (GBL.maxsecs > 0 ?
+                    qint64(smp1st + GBL.maxsecs * srate) :
+                    UNSET64);
     nC          = kvp["nSavedChans"].toInt();
     smpBytes    = nC*sizeof(qint16);
     gLast       = GBL.gt_get_first( &tLast );
