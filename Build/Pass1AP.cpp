@@ -787,7 +787,7 @@ public:
     virtual ~gfixIter() {}
     virtual bool nextGroup() = 0;
     virtual bool nextMember() = 0;
-    virtual int get_ic() = 0;
+    virtual int get_ig() = 0;
 };
 
 class gfixIterShifted : public gfixIter
@@ -808,7 +808,7 @@ public:
     {
         return ++ic < nAP;
     }
-    virtual int get_ic()
+    virtual int get_ig()
     {
         return ic;
     }
@@ -817,10 +817,11 @@ public:
 class gfixIterStride : public gfixIter
 {
 private:
-    int nAP, stride, ic0, ic;
+    const int   *ic2ig;
+    int         nAP, stride, ic0, ic;
 public:
-    gfixIterStride( int nAP, int stride )
-    :   nAP(nAP), stride(stride), ic0(-1)
+    gfixIterStride( const int *ic2ig, int nAP, int stride )
+    :   ic2ig(ic2ig), nAP(nAP), stride(stride), ic0(-1)
     {
     }
     virtual ~gfixIterStride()   {}
@@ -834,20 +835,21 @@ public:
     {
         return (ic += stride) < nAP;
     }
-    virtual int get_ic()
+    virtual int get_ig()
     {
-        return ic;
+        return ic2ig[ic];
     }
 };
 
 class gfixIterTable : public gfixIter
 {
 private:
-    const int   *T;
+    const int   *ic2ig,
+                *T;
     int         nADC, nGrp, icol, irow;
 public:
-    gfixIterTable( const int *T, int nADC, int nGrp )
-    :   T(T), nADC(nADC), nGrp(nGrp), irow(-1)
+    gfixIterTable( const int *ic2ig, const int *T, int nADC, int nGrp )
+    :   ic2ig(ic2ig), T(T), nADC(nADC), nGrp(nGrp), irow(-1)
     {
     }
     virtual ~gfixIterTable()    {}
@@ -861,9 +863,9 @@ public:
     {
         return ++icol < nADC;
     }
-    virtual int get_ic()
+    virtual int get_ig()
     {
-        return T[nADC*irow + icol];
+        return ic2ig[T[nADC*irow + icol]];
     }
 };
 
@@ -914,9 +916,9 @@ void Pass1AP::gFixDetect(
         if( GBL.tshift )
             G = new gfixIterShifted( nAP );
         else if( stride > 0 )
-            G = new gfixIterStride( nAP, stride );
+            G = new gfixIterStride( &ic2ig[0], nAP, stride );
         else
-            G = new gfixIterTable( &muxTbl[0], nADC, nGrp );
+            G = new gfixIterTable( &ic2ig[0], &muxTbl[0], nADC, nGrp );
 
         bool loaded = false;
 
@@ -931,7 +933,7 @@ void Pass1AP::gFixDetect(
             // test ea member
             while( G->nextMember() ) {
 
-                int ig = ic2ig[G->get_ic()];
+                int ig = G->get_ig();
 
                 if( ig >= 0 ) {
 

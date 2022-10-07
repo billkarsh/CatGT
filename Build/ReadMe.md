@@ -131,7 +131,7 @@ applies filter operations in this order:
 - Apply any specified Butterworth filtering
 - Transform back to time domain
 - Detect gfix transients for later file editing
-- Loccar, gblcar
+- Loccar, gblcar (AP-band only)
 - Write file
 - Apply gfix transient edits to file
 
@@ -215,6 +215,14 @@ Examples:
 - Use `-obx=0` if your run contains one Onebox only.
 - Use `-obx=2:4` to process Oneboxes {2,3,4}.
 - Use `-obx=1,3:5` to do Oneboxes {1,3,4,5} (skip 2).
+
+### prb_3A
+
+In the early 3A development era there was one and only one probe in a run,
+so run names looked like run_name_g0_t0.imec.ap.bin, where the `imec` part
+does not have an index. In the 3B phase simultaneous recording from multiple
+probes became possible, so the filenames carry an index, e.g., `imec0`,
+`imec7`, etc.
 
 ### prb (which probe(s))
 
@@ -510,7 +518,7 @@ is excessive reduction of the amplitude of large-footprint spikes.*
 
 - Do CAR common average referencing using all channels.
 - The average is probe-wide, including channels/sites on all shanks.
-- Note that `-gblcar` tends to cancel LFP band signal.
+- Note that `-gblcar` is never applied to the LFP band.
 - Note that `-gblcar` assumes fairly uniform background across all channels.
 - Use a high-pass filter also, to remove DC offsets.
 - No, filter options `-loccar` and `-gblcar` don't make sense together.
@@ -992,6 +1000,10 @@ on that stream's clock.
 ------
 
 ## Change Log
+
+Version 3.4
+
+- Fix -gfix on save channel subsets.
 
 Version 3.3
 
