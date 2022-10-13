@@ -11,7 +11,8 @@ bool Pass1AP2LF::go()
 {
     int t0, g0 = GBL.gt_get_first( &t0 );
 
-    doWrite = GBL.gt_nIndices() > 1 || GBL.lfflt.isenabled() || GBL.tshift;
+    doWrite = GBL.gt_nIndices() > 1
+                || GBL.startsecs > 0 || GBL.lfflt.isenabled() || GBL.tshift;
 
     switch( GBL.openInputMeta( fim, meta.kvp, g0, t0, AP, ip, GBL.prb_miss_ok ) ) {
         case 0: break;

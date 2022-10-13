@@ -215,6 +215,7 @@ class CGBL
 {
 public:
     double          syncper,        // measured in supercat_trim
+                    startsecs,
                     maxsecs,
                     gfixamp,        // amplitude
                     gfixslp,        // slope
@@ -265,7 +266,7 @@ public:
 
 public:
     CGBL()
-        :   syncper(-1), maxsecs(0),
+        :   syncper(-1), startsecs(0), maxsecs(0),
             gfixamp(0), gfixslp(0), gfixbas(0),
             ga(-1), gb(-1), ta(-2), tb(-2),
             zfilmax(-1), locin(0), locout(0), inarow(-1),

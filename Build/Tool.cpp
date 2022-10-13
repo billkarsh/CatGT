@@ -345,7 +345,8 @@ void Meta::read( t_js js, int ip )
             break;
     }
 
-    smp1st      = kvp["firstSample"].toLongLong();
+    smp1st      = kvp["firstSample"].toLongLong()
+                    + qint64(GBL.startsecs * srate);
     smpInpEOF   = smp1st;
     smpOutEOF   = smp1st;
     maxOutEOF   = (GBL.maxsecs > 0 ?
@@ -542,7 +543,7 @@ void FOffsets::init( double rate, t_js js, int ip )
     QString s = stream( js, ip );
 
     mrate[s] = rate;
-    moff[s].push_back( 0 );
+    moff[s].push_back( GBL.startsecs > 0 ? -qint64(GBL.startsecs * rate) : 0 );
 }
 
 
@@ -560,7 +561,7 @@ void FOffsets::dwnSmp( int ip )
 
         QVector<qint64> &V = moff[s];
 
-        for( int i = 0, n = V.size(); i < n; ++i )
+        for( int i = 1, n = V.size(); i < n; ++i )
             V[i] /= 12;
     }
 }

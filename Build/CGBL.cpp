@@ -1085,6 +1085,7 @@ static void PrintUsage()
     Log() << "-exported                ;apply FileViewer 'exported' tag to in/output filenames";
     Log() << "-t_miss_ok               ;instead of stopping, zero-fill if trial missing";
     Log() << "-zerofillmax=500         ;set a maximum zero-fill span (millisec)";
+    Log() << "-startsecs=120.0         ;skip this initial span of each input stream (float seconds)";
     Log() << "-maxsecs=7.5             ;set a maximum output file length (float seconds)";
     Log() << "-apfilter=Typ,N,Fhi,Flo  ;apply ap band-pass filter of given {type, order, corners(float Hz)}";
     Log() << "-lffilter=Typ,N,Fhi,Flo  ;apply lf band-pass filter of given {type, order, corners(float Hz)}";
@@ -1201,6 +1202,8 @@ bool CGBL::SetCmdLine( int argc, char* argv[] )
         else if( IsArg( "-prb_3A", argv[i] ) )
             prb_3A = true;
         else if( GetArg( &zfilmax, "-zerofillmax=%d", argv[i] ) )
+            ;
+        else if( GetArg( &startsecs, "-startsecs=%lf", argv[i] ) )
             ;
         else if( GetArg( &maxsecs, "-maxsecs=%lf", argv[i] ) )
             ;
@@ -1373,6 +1376,7 @@ bad_param:
             goto error;
         }
 
+        startsecs   = 0;
         maxsecs     = 0;
         gfixamp     = 0;
         gfixslp     = 0;
@@ -1437,6 +1441,7 @@ error:
             sobxs       = "",
             sprbs       = "",
             szfil       = "",
+            sstartsecs  = "",
             smaxsecs    = "",
             sapfilter   = "",
             slffilter   = "",
@@ -1464,6 +1469,9 @@ error:
 
     if( zfilmax >= 0 )
         szfil = QString(" -zerofillmax=%1").arg( zfilmax );
+
+    if( startsecs > 0 )
+        sstartsecs = QString(" -startsecs=%1").arg( startsecs );
 
     if( maxsecs > 0 )
         smaxsecs = QString(" -maxsecs=%1").arg( maxsecs );
@@ -1508,7 +1516,7 @@ error:
     sCmd =
         QString(
             "CatGT%1%2%3%4%5%6%7%8%9%10%11%12%13%14%15%16%17"
-            "%18%19%20%21%22%23%24%25%26%27%28%29%30%31%32")
+            "%18%19%20%21%22%23%24%25%26%27%28%29%30%31%32%33")
         .arg( sreq )
         .arg( sgt )
         .arg( no_run_fld ? " -no_run_fld" : "" )
@@ -1524,6 +1532,7 @@ error:
         .arg( prb_3A ? " -prb_3A" : "" )
         .arg( sprbs )
         .arg( szfil )
+        .arg( sstartsecs )
         .arg( smaxsecs )
         .arg( sapfilter )
         .arg( slffilter )

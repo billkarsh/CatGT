@@ -326,8 +326,36 @@ int Pass1::inputSizeAndOverlap( qint64 &xferBytes, int g, int t )
 
         gFOff.addOffset( fOffset - meta.smp1st, js_out, ip );
     }
-    else    // Already have meta data for first file
+    else {  // Already have meta data for first file
+
         xferBytes = meta.kvp["fileSizeBytes"].toLongLong();
+
+        if( GBL.startsecs > 0 ) {
+
+            // Offset startsecs into file
+
+            qint64  S = meta.smpBytes * qint64(GBL.startsecs * meta.srate);
+
+            if( S >= xferBytes ) {
+                Log() << QString("Startsecs(s) %1 >= span(s) %2 of file '%3'.")
+                            .arg( GBL.startsecs )
+                            .arg( xferBytes/meta.smpBytes/meta.srate )
+                            .arg( i_fi.fileName() );
+                i_f.close();
+                return 2;
+            }
+
+            if( !i_f.seek( S ) ) {
+                Log() << QString("Startsecs seek failed (offset: %1) for file '%2'.")
+                            .arg( S )
+                            .arg( i_fi.fileName() );
+                i_f.close();
+                return 2;
+            }
+
+            xferBytes -= S;
+        }
+    }
 
     return 0;
 }

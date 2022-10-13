@@ -23,8 +23,9 @@ bool Pass1AP::go()
     int t0, g0 = GBL.gt_get_first( &t0 );
 
     doWrite = GBL.gt_nIndices() > 1
-                    || GBL.apflt.isenabled() || GBL.tshift
-                    || GBL.locout || GBL.gblcar || GBL.gfixdo;
+                    || GBL.startsecs > 0 || GBL.apflt.isenabled()
+                    || GBL.tshift || GBL.locout || GBL.gblcar
+                    || GBL.gfixdo;
 
     switch( GBL.openInputMeta( fim, meta.kvp, g0, t0, AP, ip, GBL.prb_miss_ok ) ) {
         case 0: break;

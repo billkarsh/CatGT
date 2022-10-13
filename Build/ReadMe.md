@@ -95,6 +95,7 @@ Options:
 -exported                ;apply FileViewer 'exported' tag to in/output filenames
 -t_miss_ok               ;instead of stopping, zero-fill if trial missing
 -zerofillmax=500         ;set a maximum zero-fill span (millisec)
+-startsecs=120.0         ;skip this initial span of each input stream (float seconds)
 -maxsecs=7.5             ;set a maximum output file length (float seconds)
 -apfilter=Typ,N,Fhi,Flo  ;apply ap band-pass filter of given {type, order, corners(float Hz)}
 -lffilter=Typ,N,Fhi,Flo  ;apply lf band-pass filter of given {type, order, corners(float Hz)}
@@ -448,6 +449,12 @@ a separate t-range for each g-index. Specify the list like this:
 
 >With this option the g- and t- values in each list element have to be
 integers >= 0. You can't use `t=cat` here.
+
+### startsecs option
+
+Use this to start reading each input stream after a specified offset from
+the stream's beginning (float seconds). Note that an error will be flagged
+if this value exceeds the length of the first file in a concatenation series.
 
 ### apfilter and lffilter options
 
@@ -924,6 +931,7 @@ Options:
 -exported                ;apply FileViewer 'exported' tag to in/output filenames
 -t_miss_ok               ;ignored
 -zerofillmax=500         ;ignored
+-startsecs=120.0         ;ignored
 -maxsecs=7.5             ;ignored
 -apfilter=Typ,N,Fhi,Flo  ;ignored
 -lffilter=Typ,N,Fhi,Flo  ;ignored
@@ -1003,6 +1011,7 @@ on that stream's clock.
 
 Version 3.4
 
+- Add option -startsecs.
 - Fix -gfix on save channel subsets.
 
 Version 3.3
