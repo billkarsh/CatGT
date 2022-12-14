@@ -3,6 +3,7 @@
 
 #include "IMROTbl.h"
 
+#include <QMap>
 #include <QVector>
 
 /* ---------------------------------------------------------------- */
@@ -20,11 +21,21 @@ struct IMRODesc_T24
     :   shnk(0), bank(0), refid(0)              {}
     IMRODesc_T24( int shnk, int bank, int refid )
     :   shnk(shnk), bank(bank), refid(refid)    {}
-    int chToEl( int ch ) const;
+    void setElec( int ch )
+        {elec = chToEl( ch, shnk, bank );}
+    static int chToEl( int ch, int shank, int bank );
     bool operator==( const IMRODesc_T24 &rhs ) const
         {return shnk==rhs.shnk && bank==rhs.bank && refid==rhs.refid;}
     QString toString( int chn ) const;
     static IMRODesc_T24 fromString( const QString &s );
+};
+
+
+struct T24Key {
+    int c, s, b;
+    T24Key() : c(0), s(0), b(0)                         {}
+    T24Key( int c, int s, int b ) : c(c), s(s), b(b)    {}
+    bool operator<( const T24Key &rhs ) const;
 };
 
 
@@ -35,14 +46,17 @@ struct IMROTbl_T24 : public IMROTbl
     enum imLims_T24 {
         imType24Type        = 24,
         imType24ElPerShk    = 1280,
-        imType24Elec        = 4 * imType24ElPerShk,
+        imType24Shanks      = 4,
+        imType24Elec        = imType24Shanks * imType24ElPerShk,
         imType24Col         = 2,
         imType24Chan        = 384,
         imType24Banks       = 4,
         imType24Refids      = 18
     };
 
-    QVector<IMRODesc_T24>   e;
+    QVector<IMRODesc_T24>           e;
+    mutable QMap<T24Key,IMRO_Site>  k2s;
+    mutable QMap<IMRO_Site,T24Key>  s2k;
 
     IMROTbl_T24()   {type=imType24Type;}
 
@@ -58,7 +72,7 @@ struct IMROTbl_T24 : public IMROTbl
     virtual void fillShankAndBank( int shank, int bank );
 
     virtual int nElec() const           {return imType24Elec;}
-    virtual int nShank() const          {return 4;}
+    virtual int nShank() const          {return imType24Shanks;}
     virtual int nElecPerShank() const   {return imType24ElPerShk;}
     virtual int nCol() const            {return imType24Col;}
     virtual int nRow() const            {return imType24ElPerShk/imType24Col;}
@@ -107,8 +121,21 @@ struct IMROTbl_T24 : public IMROTbl
 
     virtual void muxTable( int &nADC, int &nGrp, std::vector<int> &T ) const;
 
+// Hardware
+
     virtual int selectGains( int, int, int ) const  {return 0;}
     virtual int selectAPFlts( int, int, int ) const {return 0;}
+
+// Edit
+
+    virtual bool edit_able() const  {return true;}
+    virtual void edit_init() const;
+    virtual IMRO_GUI edit_GUI() const;
+    virtual IMRO_Attr edit_Attr_def() const;
+    virtual IMRO_Attr edit_Attr_cur() const;
+    virtual bool edit_Attr_canonical() const;
+    virtual void edit_exclude_1( tImroSites vS, const IMRO_Site &s ) const;
+    virtual void edit_ROI2tbl( tconstImroROIs vR, const IMRO_Attr &A );
 };
 
 #endif  // IMROTbl_T24_H

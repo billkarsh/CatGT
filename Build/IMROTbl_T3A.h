@@ -143,6 +143,8 @@ struct IMROTbl_T3A : public IMROTbl
 
     virtual void muxTable( int &nADC, int &nGrp, std::vector<int> &T ) const;
 
+// Hardware
+
     virtual int selectAPFlts( int, int, int ) const {return 0;}
 };
 

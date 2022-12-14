@@ -32,7 +32,13 @@ struct IMROTbl_T1200 : public IMROTbl_T0base
 
     virtual void muxTable( int &nADC, int &nGrp, std::vector<int> &T ) const;
 
+// Hardware
+
     virtual int selectSites( int, int, int, bool ) const    {return 0;}
+
+// Edit
+
+    virtual IMRO_GUI edit_GUI() const;
 };
 
 #endif  // IMROTBL_T1200_H

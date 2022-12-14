@@ -12,6 +12,7 @@ using namespace Neuropixels;
 #include <QRegExp>
 #include <QTextStream>
 
+
 /* ---------------------------------------------------------------- */
 /* struct IMRODesc ------------------------------------------------ */
 /* ---------------------------------------------------------------- */
@@ -20,7 +21,7 @@ static char bF[4] = {1,7,5,3};  // multiplier per bank
 static char bA[4] = {0,4,8,12}; // addend per bank
 
 
-int IMRODesc_T21::lowBank() const
+int IMRODesc_T21::lowBank( int mbank )
 {
     if( mbank & 1 )
         return 0;
@@ -33,7 +34,7 @@ int IMRODesc_T21::lowBank() const
 }
 
 
-int IMRODesc_T21::chToEl( int ch ) const
+int IMRODesc_T21::chToEl( int ch, int mbank )
 {
     int     bank,
             blkIdx,
@@ -46,7 +47,7 @@ int IMRODesc_T21::chToEl( int ch ) const
 
 // mbank is multibank field, we take only lowest connected bank
 
-    bank = lowBank();
+    bank = lowBank( mbank );
 
 // Find irow such that its 16-modulus is rem
 
@@ -90,15 +91,28 @@ IMRODesc_T21 IMRODesc_T21::fromString( const QString &s )
 }
 
 /* ---------------------------------------------------------------- */
+/* struct Key ----------------------------------------------------- */
+/* ---------------------------------------------------------------- */
+
+bool T21Key::operator<( const T21Key &rhs ) const
+{
+    if( c < rhs.c )
+        return true;
+
+    if( c > rhs.c )
+        return false;
+
+    return m < rhs.m;
+}
+
+/* ---------------------------------------------------------------- */
 /* struct IMROTbl ------------------------------------------------- */
 /* ---------------------------------------------------------------- */
 
 void IMROTbl_T21::setElecs()
 {
-    int n = nChan();
-
-    for( int i = 0; i < n; ++i )
-        e[i].elec = e[i].chToEl( i );
+    for( int i = 0, n = nChan(); i < n; ++i )
+        e[i].setElec( i );
 }
 
 
@@ -376,6 +390,9 @@ void IMROTbl_T21::muxTable( int &nADC, int &nGrp, std::vector<int> &T ) const
     }
 }
 
+/* ---------------------------------------------------------------- */
+/* Hardware ------------------------------------------------------- */
+/* ---------------------------------------------------------------- */
 
 // This method connects multiple electrodes per channel.
 //
@@ -408,6 +425,126 @@ int IMROTbl_T21::selectSites( int slot, int port, int dock, bool write ) const
 #endif
 
     return 0;
+}
+
+/* ---------------------------------------------------------------- */
+/* Edit ----------------------------------------------------------- */
+/* ---------------------------------------------------------------- */
+
+void IMROTbl_T21::edit_init() const
+{
+// forward
+
+    for( int c = 0; c < imType21Chan; ++c ) {
+
+        for( int b = 0; b < imType21Banks; ++b ) {
+
+            int e = IMRODesc_T21::chToEl( c, 1 << b );
+
+            if( e < imType21Elec )
+                k2s[T21Key( c, 1 << b )] = IMRO_Site( 0, e & 1, e >> 1 );
+            else
+                break;
+        }
+    }
+
+// inverse
+
+    QMap<T21Key,IMRO_Site>::iterator
+        it  = k2s.begin(),
+        end = k2s.end();
+
+    for( ; it != end; ++it )
+        s2k[it.value()] = it.key();
+}
+
+
+IMRO_GUI IMROTbl_T21::edit_GUI() const
+{
+    IMRO_GUI    G;
+    G.gains.push_back( 80 );
+    G.grid = 16;    // prevents editing fragmentation
+    return G;
+}
+
+
+IMRO_Attr IMROTbl_T21::edit_Attr_def() const
+{
+    return IMRO_Attr( 0, 0, 0, 0 );
+}
+
+
+IMRO_Attr IMROTbl_T21::edit_Attr_cur() const
+{
+    return IMRO_Attr( refid( 0 ), 0, 0, 0 );
+}
+
+
+bool IMROTbl_T21::edit_Attr_canonical() const
+{
+    int ne = e.size();
+
+    if( ne != imType21Chan )
+        return false;
+
+    const IMRODesc_T21  &E = e[0];
+
+    for( int ie = 1; ie < ne; ++ie ) {
+        if( e[ie].refid != E.refid )
+            return false;
+    }
+
+    return true;
+}
+
+
+void IMROTbl_T21::edit_exclude_1( tImroSites vS, const IMRO_Site &s ) const
+{
+    T21Key  K = s2k[s];
+
+    QMap<T21Key,IMRO_Site>::const_iterator
+        it  = k2s.find( T21Key( K.c, 1 ) ),
+        end = k2s.end();
+
+    for( ; it != end; ++it ) {
+        const T21Key  &ik = it.key();
+        if( ik.c != K.c )
+            break;
+        if( ik.m != K.m )
+            vS.push_back( k2s[ik] );
+    }
+}
+
+
+void IMROTbl_T21::edit_ROI2tbl( tconstImroROIs vR, const IMRO_Attr &A )
+{
+    e.clear();
+    e.resize( imType21Chan );
+
+    int ncol = nCol();
+
+    for( int ib = 0, nb = vR.size(); ib < nb; ++ib ) {
+
+        const IMRO_ROI  &B = vR[ib];
+
+        for( int r = B.r0; r < B.rLim; ++r ) {
+
+            for(
+                int c = qMax( 0, B.c0 ),
+                cLim  = (B.cLim < 0 ? ncol : B.cLim);
+                c < cLim;
+                ++c ) {
+
+                const T21Key    &K = s2k[IMRO_Site( 0, c, r )];
+                IMRODesc_T21    &E = e[K.c];
+
+                E.mbank = K.m;
+                E.refid = A.refIdx;
+            }
+        }
+    }
+
+    setElecs();
 }
 
 

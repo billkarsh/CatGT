@@ -32,7 +32,13 @@ struct IMROTbl_T1100 : public IMROTbl_T0base
     virtual bool chIsRef( int ) const   {return false;}
     virtual void locFltRadii( int &rin, int &rout, int iflt ) const;    // iflt = {1,2}
 
+// Hardware
+
     virtual int selectSites( int, int, int, bool ) const    {return 0;}
+
+// Edit
+
+    virtual IMRO_GUI edit_GUI() const;
 };
 
 #endif  // IMROTBL_T1100_H

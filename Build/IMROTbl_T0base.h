@@ -3,6 +3,7 @@
 
 #include "IMROTbl.h"
 
+#include <QMap>
 #include <QVector>
 
 /* ---------------------------------------------------------------- */
@@ -21,12 +22,20 @@ struct IMRODesc_T0base
     :   bank(0), apgn(500), lfgn(250), refid(0), apflt(1)               {}
     IMRODesc_T0base( int bank, int refid, int apgn, int lfgn, bool apflt )
     :   bank(bank), apgn(apgn), lfgn(lfgn), refid(refid), apflt(apflt)  {}
-    int chToEl( int ch ) const;
+    static int chToEl( int ch, int bank );
     bool operator==( const IMRODesc_T0base &rhs ) const
         {return bank==rhs.bank   && apgn==rhs.apgn && lfgn==rhs.lfgn
             &&  refid==rhs.refid && apflt==rhs.apflt;}
     QString toString( int chn ) const;
     static IMRODesc_T0base fromString( const QString &s );
+};
+
+
+struct T0Key {
+    int c, b;
+    T0Key() : c(0), b(0)               {}
+    T0Key( int c, int b ) : c(c), b(b) {}
+    bool operator<( const T0Key &rhs ) const;
 };
 
 
@@ -38,7 +47,9 @@ struct IMROTbl_T0base : public IMROTbl
         imType0baseGains    = 8
     };
 
-    QVector<IMRODesc_T0base>    e;
+    QVector<IMRODesc_T0base>        e;
+    mutable QMap<T0Key,IMRO_Site>   k2s;
+    mutable QMap<IMRO_Site,T0Key>   s2k;
 
     virtual ~IMROTbl_T0base()   {}
 
@@ -95,6 +106,17 @@ struct IMROTbl_T0base : public IMROTbl
         {return 1.2*u - 0.6;}
 
     virtual void muxTable( int &nADC, int &nGrp, std::vector<int> &T ) const;
+
+// Edit
+
+    virtual bool edit_able() const  {return true;}
+    virtual void edit_init() const;
+    virtual IMRO_GUI edit_GUI() const;
+    virtual IMRO_Attr edit_Attr_def() const;
+    virtual IMRO_Attr edit_Attr_cur() const;
+    virtual bool edit_Attr_canonical() const;
+    virtual void edit_exclude_1( tImroSites vS, const IMRO_Site &s ) const;
+    virtual void edit_ROI2tbl( tconstImroROIs vR, const IMRO_Attr &A );
 };
 
 #endif  // IMROTBL_T0BASE_H

@@ -11,7 +11,7 @@
 /* struct IMRODesc_T0base ----------------------------------------- */
 /* ---------------------------------------------------------------- */
 
-int IMRODesc_T0base::chToEl( int ch ) const
+int IMRODesc_T0base::chToEl( int ch, int bank )
 {
     return (ch >= 0 ? ch + bank * 384 : 0);
 }
@@ -43,6 +43,21 @@ IMRODesc_T0base IMRODesc_T0base::fromString( const QString &s )
             sl.at( 1 ).toInt(), sl.at( 2 ).toInt(),
             sl.at( 3 ).toInt(), sl.at( 4 ).toInt(),
             sl.at( 5 ).toInt() );
+}
+
+/* ---------------------------------------------------------------- */
+/* struct Key ----------------------------------------------------- */
+/* ---------------------------------------------------------------- */
+
+bool T0Key::operator<( const T0Key &rhs ) const
+{
+    if( c < rhs.c )
+        return true;
+
+    if( c > rhs.c )
+        return false;
+
+    return b < rhs.b;
 }
 
 /* ---------------------------------------------------------------- */
@@ -224,7 +239,7 @@ int IMROTbl_T0base::elShankAndBank( int &bank, int ch ) const
 
 int IMROTbl_T0base::elShankColRow( int &col, int &row, int ch ) const
 {
-    int el = e[ch].chToEl( ch ),
+    int el = IMRODesc_T0base::chToEl( ch, e[ch].bank ),
         nc = nCol();
 
     row = el / nc;
@@ -245,7 +260,7 @@ void IMROTbl_T0base::eaChansOrder( QVector<int> &v ) const
 // Order the AP set
 
     for( int ic = 0; ic < _nAP; ++ic )
-        el2Ch[e[ic].chToEl( ic )] = ic;
+        el2Ch[IMRODesc_T0base::chToEl( ic, e[ic].bank )] = ic;
 
     QMap<int,int>::iterator it;
 
@@ -344,6 +359,144 @@ void IMROTbl_T0base::muxTable( int &nADC, int &nGrp, std::vector<int> &T ) const
         for( int irow = 0; irow < nGrp; ++irow ) {
             T[nADC*irow + icol]     = ch++;
             T[nADC*irow + icol + 1] = ch++;
+        }
+    }
+}
+
+/* ---------------------------------------------------------------- */
+/* Edit ----------------------------------------------------------- */
+/* ---------------------------------------------------------------- */
+
+void IMROTbl_T0base::edit_init() const
+{
+// forward
+
+    int ePerShank   = nElecPerShank(),
+        ncol        = nCol();
+
+    for( int c = 0, nc = nAP(); c < nc; ++c ) {
+
+        for( int b = 0, nb = nBanks(); b < nb; ++b ) {
+
+            int e = IMRODesc_T0base::chToEl( c, b );
+
+            if( e < ePerShank )
+                k2s[T0Key( c, b )] = IMRO_Site( 0, e % ncol, e / ncol );
+            else
+                break;
+        }
+    }
+
+// inverse
+
+    QMap<T0Key,IMRO_Site>::iterator
+        it  = k2s.begin(),
+        end = k2s.end();
+
+    for( ; it != end; ++it )
+        s2k[it.value()] = it.key();
+}
+
+
+IMRO_GUI IMROTbl_T0base::edit_GUI() const
+{
+    IMRO_GUI    G;
+    G.gains.push_back( 50 );
+    G.gains.push_back( 125 );
+    G.gains.push_back( 250 );
+    G.gains.push_back( 500 );
+    G.gains.push_back( 1000 );
+    G.gains.push_back( 1500 );
+    G.gains.push_back( 2000 );
+    G.gains.push_back( 3000 );
+    G.apEnab = true;
+    G.lfEnab = true;
+    G.hpEnab = true;
+    return G;
+}
+
+
+IMRO_Attr IMROTbl_T0base::edit_Attr_def() const
+{
+    return IMRO_Attr( 0, 3, 2, 1 );
+}
+
+
+IMRO_Attr IMROTbl_T0base::edit_Attr_cur() const
+{
+    return IMRO_Attr( refid( 0 ), gainToIdx( apGain( 0 ) ),
+                    gainToIdx( lfGain( 0 ) ), apFlt( 0 ) );
+}
+
+
+bool IMROTbl_T0base::edit_Attr_canonical() const
+{
+    int ne = e.size();
+
+    if( ne != nAP() )
+        return false;
+
+    const IMRODesc_T0base   &E = e[0];
+
+    for( int ie = 1; ie < ne; ++ie ) {
+        const IMRODesc_T0base   &T = e[ie];
+        if( T.apgn  != E.apgn  || T.lfgn  != E.lfgn ||
+            T.refid != E.refid || T.apflt != E.apflt ) {
+
+            return false;
+        }
+    }
+
+    return true;
+}
+
+
+void IMROTbl_T0base::edit_exclude_1( tImroSites vS, const IMRO_Site &s ) const
+{
+    T0Key   K = s2k[s];
+
+    QMap<T0Key,IMRO_Site>::const_iterator
+        it  = k2s.find( T0Key( K.c, 0 ) ),
+        end = k2s.end();
+
+    for( ; it != end; ++it ) {
+        const T0Key &ik = it.key();
+        if( ik.c != K.c )
+            break;
+        if( ik.b != K.b )
+            vS.push_back( k2s[ik] );
+    }
+}
+
+
+void IMROTbl_T0base::edit_ROI2tbl( tconstImroROIs vR, const IMRO_Attr &A )
+{
+    e.clear();
+    e.resize( nAP() );
+
+    int ncol = nCol();
+
+    for( int ib = 0, nb = vR.size(); ib < nb; ++ib ) {
+
+        const IMRO_ROI  &B = vR[ib];
+
+        for( int r = B.r0; r < B.rLim; ++r ) {
+
+            for(
+                int c = qMax( 0, B.c0 ),
+                cLim  = (B.cLim < 0 ? ncol : B.cLim);
+                c < cLim;
+                ++c ) {
+
+                const T0Key     &K = s2k[IMRO_Site( 0, c, r )];
+                IMRODesc_T0base &E = e[K.c];
+
+                E.bank  = K.b;
+                E.apgn  = idxToGain( A.apgIdx );
+                E.lfgn  = idxToGain( A.lfgIdx );
+                E.refid = A.refIdx;
+                E.apflt = A.hpfIdx;
+            }
         }
     }
 }
