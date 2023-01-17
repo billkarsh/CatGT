@@ -1009,6 +1009,10 @@ on that stream's clock.
 
 ## Change Log
 
+Version 3.5
+
+- Support latest probes.
+
 Version 3.4
 
 - Add option -startsecs.

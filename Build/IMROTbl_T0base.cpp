@@ -337,8 +337,8 @@ int IMROTbl_T0base::gainToIdx( int gain ) const
 void IMROTbl_T0base::locFltRadii( int &rin, int &rout, int iflt ) const
 {
     switch( iflt ) {
-        case 2:     rin = 2, rout = 8; break;
-        default:    rin = 0, rout = 2; break;
+        case 2:     rin = 2; rout = 8; break;
+        default:    rin = 0; rout = 2; break;
     }
 }
 
@@ -372,7 +372,7 @@ void IMROTbl_T0base::edit_init() const
 // forward
 
     int ePerShank   = nElecPerShank(),
-        ncol        = nCol();
+        ncol        = nCol_smap();
 
     for( int c = 0, nc = nAP(); c < nc; ++c ) {
 

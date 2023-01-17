@@ -25,6 +25,10 @@ HEADERS +=              \
     IMROTbl_T1030.h     \
     IMROTbl_T1100.h     \
     IMROTbl_T1110.h     \
+    IMROTbl_T1120.h     \
+    IMROTbl_T1121.h     \
+    IMROTbl_T1122.h     \
+    IMROTbl_T1123.h     \
     IMROTbl_T1200.h     \
     IMROTbl_T1300.h     \
     IMROTbl_T21.h       \
@@ -52,6 +56,10 @@ SOURCES +=              \
     IMROTbl_T0base.cpp  \
     IMROTbl_T1100.cpp   \
     IMROTbl_T1110.cpp   \
+    IMROTbl_T1120.cpp   \
+    IMROTbl_T1121.cpp   \
+    IMROTbl_T1122.cpp   \
+    IMROTbl_T1123.cpp   \
     IMROTbl_T1200.cpp   \
     IMROTbl_T21.cpp     \
     IMROTbl_T24.cpp     \
