@@ -646,6 +646,159 @@ void FOffsets::writeEntries( QString file )
     f.close();
 }
 
+
+/* ---------------------------------------------------------------- */
+/* P1EOF ---------------------------------------------------------- */
+/* ---------------------------------------------------------------- */
+
+P1EOF   gP1EOF; // global file length
+
+
+bool P1EOF::GTJSIP::operator<( const GTJSIP &rhs ) const
+{
+    if( g < rhs.g )
+        return true;
+
+    if( g > rhs.g )
+        return false;
+
+    if( t < rhs.t )
+        return true;
+
+    if( t > rhs.t )
+        return false;
+
+    if( js < rhs.js )
+        return true;
+
+    if( js > rhs.js )
+        return false;
+
+    return ip < rhs.ip;
+}
+
+
+bool P1EOF::init()
+{
+// More than one stream?
+
+    if( GBL.ni + GBL.vobx.size() + GBL.vprb.size() <= 1 )
+        return true;
+
+// Get all EOF metadata
+
+    GT_iterator I;
+    int         g, t;
+
+    while( I.next( g, t ) ) {
+
+        if( GBL.ni )
+            if( !getMeta( g, t, NI, 0, false ) ) return false;
+
+        foreach( uint ip, GBL.vobx )
+            if( !getMeta( g, t, OB, ip, false ) ) return false;
+
+        foreach( uint ip, GBL.vprb ) {
+
+            if( GBL.ap )
+                if( !getMeta( g, t, AP, ip, GBL.t_miss_ok ) ) return false;
+
+            if( GBL.lf )
+                if( !getMeta( g, t, LF, ip, true ) ) return false;
+        }
+    }
+
+// Trim each {g,t} set to shortest
+
+    QMap<GTJSIP,EOFDAT>::iterator
+        it      = id2dat.begin(),
+        end     = id2dat.end(),
+        start   = it,
+        last    = it + 1,
+        best    = it;
+
+    for( ; ; ++it ) {
+
+        if( it == end ||
+            it.key().g != start.key().g ||
+            it.key().t != start.key().t ) {
+
+            for( QMap<GTJSIP,EOFDAT>::iterator j = start; j != last; ++j ) {
+
+                if( j != best ) {
+                    j.value().bytes = j.value().smpBytes *
+                        llround(best.value().span * j.value().srate);
+                }
+            }
+
+            if( it == end )
+                break;
+
+            start = it;
+            last  = it + 1;
+            best  = it;
+        }
+        else {
+            if( it.value().span < best.value().span )
+                 best = it;
+
+            last = it + 1;
+        }
+    }
+
+    return true;
+}
+
+
+qint64 P1EOF::fileBytes(
+    const KVParams  &kvp,
+    int             g,
+    int             t,
+    t_js            js,
+    int             ip ) const
+{
+    if( id2dat.size() )
+        return id2dat[GTJSIP( g, t, js, ip )].bytes;
+    else
+        return kvp["fileSizeBytes"].toLongLong();
+}
+
+
+bool P1EOF::getMeta( int g, int t, t_js js, int ip, bool t_miss_ok )
+{
+    QFileInfo   fim;
+    KVParams    kvp;
+    int         ret = GBL.openInputMeta( fim, kvp, g, t, js, ip, t_miss_ok );
+
+    switch( ret ) {
+        case 0: break;
+        case 1: return true;
+        case 2: return false;
+    }
+
+    EOFDAT  D;
+
+    switch( js ) {
+        case NI:
+            D.srate = kvp["niSampRate"].toDouble();
+            break;
+        case OB:
+            D.srate = kvp["obSampRate"].toDouble();
+            break;
+        case AP:
+        case LF:
+            D.srate = kvp["imSampRate"].toDouble();
+            break;
+    }
+
+    D.span      = kvp["fileTimeSecs"].toDouble();
+    D.bytes     = kvp["fileSizeBytes"].toLongLong();
+    D.smpBytes  = sizeof(qint16) * kvp["nSavedChans"].toInt();
+
+    id2dat[GTJSIP( g, t, js, ip )] = D;
+    return true;
+}
+
 /* ---------------------------------------------------------------- */
 /* Functions ------------------------------------------------------ */
 /* ---------------------------------------------------------------- */
@@ -727,6 +880,9 @@ static int lfCase( int ip )
 
 void pass1entrypoint()
 {
+    if( !gP1EOF.init() )
+        goto done;
+
     if( GBL.ni ) {
         Pass1NI P;
         if( !P.go() )

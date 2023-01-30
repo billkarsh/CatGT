@@ -522,7 +522,10 @@ ls -s &lt;path/myoriginalname.meta&gt; &lt;...ZZZ/goodname_g0_t0.imec0.ap.meta&g
 <p>Note that in linux, curly braces will be misinterpreted, unless you enclose the whole parameter list in quotes:<br> <strong>&gt; runit.sh 'my_params'</strong></p>
 </blockquote>
 <h3 id="supercat_trim_edges-option">supercat_trim_edges option</h3>
-<p>When SpikeGLX writes files, the first samples written are aligned as closely as possible across each of the streams, either using elapsed time, or using sync if enabled for the run. However, the trailing edges of the files, that is, the last samples written, are not tightly controlled unless you selected a trigger mode that sets a fixed time span for the files. Said another way, the starts of files in a run are aligned, but the lengths of the files are ragged (differences of ~thousandths of a second).</p>
+<p>When SpikeGLX writes files, the first samples written are aligned as closely as possible across each of the streams, either using elapsed time, or using sync if enabled for the run. However, the trailing edges of the files, that is, the last samples written, are not tightly controlled unless you selected a trigger mode that sets a fixed time span for the files. Said another way, the starts of files in a run are aligned, but the lengths of the files are ragged (differences of ~thousandth of a second).</p>
+<blockquote>
+<p>As of version 3.6 pass1 CatGT runs trim any trailing ragged edges to even-up the stream lengths.</p>
+</blockquote>
 <p>By default, supercat just sews the files from different runs together end to end without regard for the differences in length of different streams. However, when the supercat_trim_edges option is enabled, supercat does more work to trim the files so that the different streams stay better aligned and closer to the same length. In particular, between each pair of adjacent runs (A) and (B):</p>
 <ul>
 <li><p>The trailing edge of each stream of (A) is cut at a sync edge (the same edge in each stream). The edge itself is kept in the output.</p></li>
@@ -629,6 +632,10 @@ Options:
 <p>Supercat creates an output file: <code>dest/supercat_run_ga/run_ga_sc_offsets.txt</code>. This tablulates, for each stream, where the first sample of each input &quot;tcat&quot; file is relative to the start of the concatenated output file. It records these offsets in units of samples, and again in units of seconds on that stream's clock.</p>
 <hr />
 <h2 id="change-log">Change Log</h2>
+<p>Version 3.6</p>
+<ul>
+<li>Pass1: Trim file sets to same length.</li>
+</ul>
 <p>Version 3.5</p>
 <ul>
 <li>Support latest probes.</li>

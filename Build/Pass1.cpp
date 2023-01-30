@@ -273,7 +273,7 @@ int Pass1::inputSizeAndOverlap( qint64 &xferBytes, int g, int t )
         if( ret )
             return ret;
 
-        xferBytes = kvp["fileSizeBytes"].toLongLong();
+        xferBytes = gP1EOF.fileBytes( kvp, g, t, js_in, ip );
 
         qint64  olapSmp     = meta.smpInpEOF
                                 - kvp["firstSample"].toLongLong(),
@@ -328,7 +328,7 @@ int Pass1::inputSizeAndOverlap( qint64 &xferBytes, int g, int t )
     }
     else {  // Already have meta data for first file
 
-        xferBytes = meta.kvp["fileSizeBytes"].toLongLong();
+        xferBytes = gP1EOF.fileBytes( meta.kvp, g, t, js_in, ip );
 
         if( GBL.startsecs > 0 ) {
 

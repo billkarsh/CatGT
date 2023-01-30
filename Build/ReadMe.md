@@ -854,7 +854,10 @@ sync if enabled for the run. However, the trailing edges of the files,
 that is, the last samples written, are not tightly controlled unless you
 selected a trigger mode that sets a fixed time span for the files. Said
 another way, the starts of files in a run are aligned, but the lengths
-of the files are ragged (differences of ~thousandths of a second).
+of the files are ragged (differences of ~thousandth of a second).
+
+>As of version 3.6 pass1 CatGT runs trim any trailing ragged edges to
+even-up the stream lengths.
 
 By default, supercat just sews the files from different runs together end
 to end without regard for the differences in length of different streams.
@@ -1008,6 +1011,10 @@ on that stream's clock.
 ------
 
 ## Change Log
+
+Version 3.6
+
+- Pass1: Trim file sets to same length.
 
 Version 3.5
 

@@ -69,6 +69,7 @@ private:
 };
 
 struct FOffsets {
+// Offset of each input file start within concatenated whole
     QMap<QString,double>            mrate;
     QMap<QString,QVector<qint64>>   moff;
     void init( double rate, t_js js, int ip );
@@ -81,6 +82,39 @@ struct FOffsets {
 };
 
 extern FOffsets gFOff;
+
+struct P1EOF {
+// For each {g,t} file set, its common (shortest) length
+    struct GTJSIP {
+        int     g, t;
+        t_js    js;
+        int     ip;
+        GTJSIP() : g(0), t(0), js(NI), ip(0)    {}
+        GTJSIP( int g, int t, t_js js, int ip )
+            :   g(g), t(t), js(js), ip(ip)      {}
+        bool operator<( const GTJSIP &rhs ) const;
+    };
+// ---
+    struct EOFDAT {
+        double  srate,
+                span;
+        qint64  bytes;
+        int     smpBytes;
+    };
+// ---
+    QMap<GTJSIP,EOFDAT> id2dat;
+    bool init();
+    qint64 fileBytes(
+        const KVParams  &kvp,
+        int             g,
+        int             t,
+        t_js            js,
+        int             ip ) const;
+private:
+    bool getMeta( int g, int t, t_js js, int ip, bool t_miss_ok );
+};
+
+extern P1EOF    gP1EOF;
 
 /* ---------------------------------------------------------------- */
 /* Functions ------------------------------------------------------ */
