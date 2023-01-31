@@ -692,19 +692,27 @@ bool P1EOF::init()
 
     while( I.next( g, t ) ) {
 
-        if( GBL.ni )
-            if( !getMeta( g, t, NI, 0, false ) ) return false;
+        if( GBL.ni ) {
+            if( !getMeta( g, t, NI, 0, GBL.t_miss_ok ) )
+                return false;
+        }
 
-        foreach( uint ip, GBL.vobx )
-            if( !getMeta( g, t, OB, ip, false ) ) return false;
+        foreach( uint ip, GBL.vobx ) {
+            if( !getMeta( g, t, OB, ip, GBL.t_miss_ok ) )
+                return false;
+        }
 
         foreach( uint ip, GBL.vprb ) {
 
-            if( GBL.ap )
-                if( !getMeta( g, t, AP, ip, GBL.t_miss_ok ) ) return false;
+            if( GBL.ap ) {
+                if( !getMeta( g, t, AP, ip, GBL.t_miss_ok || GBL.prb_miss_ok ) )
+                    return false;
+            }
 
-            if( GBL.lf )
-                if( !getMeta( g, t, LF, ip, true ) ) return false;
+            if( GBL.lf ) {
+                if( !getMeta( g, t, LF, ip, true ) )
+                    return false;
+            }
         }
     }
 
@@ -791,9 +799,9 @@ bool P1EOF::getMeta( int g, int t, t_js js, int ip, bool t_miss_ok )
             break;
     }
 
-    D.span      = kvp["fileTimeSecs"].toDouble();
     D.bytes     = kvp["fileSizeBytes"].toLongLong();
     D.smpBytes  = sizeof(qint16) * kvp["nSavedChans"].toInt();
+    D.span      = D.bytes / D.smpBytes / D.srate;
 
     id2dat[GTJSIP( g, t, js, ip )] = D;
     return true;
