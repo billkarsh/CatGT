@@ -733,9 +733,15 @@ bool P1EOF::init()
 
             for( QMap<GTJSIP,EOFDAT>::iterator j = start; j != last; ++j ) {
 
+                // Guard against making file too long
+                // due to an inaccurate revised rate.
+
                 if( j != best ) {
-                    j.value().bytes = j.value().smpBytes *
-                        llround(best.value().span * j.value().srate);
+                    j.value().bytes =
+                        qMin( j.value().bytes,
+                            j.value().smpBytes *
+                            llround(best.value().span *
+                            j.value().srate) );
                 }
             }
 
