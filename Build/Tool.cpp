@@ -7,6 +7,9 @@
 #include "Pass1OB.h"
 #include "Pass2.h"
 #include "SGLTypes.h"
+#include "ChanMap.h"
+#include "ShankMap.h"
+#include "Subset.h"
 
 #include <math.h>
 
@@ -323,7 +326,7 @@ void FFT::timeShiftChannel( int igrp )
 /* Meta ----------------------------------------------------------- */
 /* ---------------------------------------------------------------- */
 
-void Meta::read( t_js js, int ip )
+void Meta::read( t_js js )
 {
     switch( js ) {
         case NI:
@@ -399,6 +402,69 @@ void Meta::write( const QString &outBin, int g0, int t0, t_js js, int ip )
         case AP:
         case LF: kvp.toMetaFile( GBL.imOutFile( g0, js, ip, eMETA ) ); break;
     }
+}
+
+
+void Meta::writeSave( int sv0, int svLim, int g0, int t0, t_js js_out )
+{
+    ChanMapIM                   *chanMap    = 0;
+    ShankMap                    *shankMap   = 0;
+    KVParams::const_iterator    it_kvp;
+    int                         nimec = 0;
+
+    for( int is = sv0; is < svLim; ++is ) {
+        const Save &S = GBL.vS[is];
+        if( S.ip2 > nimec )
+            nimec = S.ip2;
+    }
+    ++nimec;
+
+    it_kvp = kvp.find( "~snsChanMap" );
+    if( it_kvp != kvp.end() ) {
+        chanMap = new ChanMapIM;
+        chanMap->fromString( it_kvp.value().toString() );
+    }
+
+    it_kvp = kvp.find( "~snsShankMap" );
+    if( it_kvp != kvp.end() ) {
+        shankMap = new ShankMap;
+        shankMap->fromString( it_kvp.value().toString() );
+    }
+
+    for( int is = sv0; is < svLim; ++is ) {
+
+        const Save &S = GBL.vS[is];
+
+        smpBytes = S.smpBytes;
+
+        kvp["nSavedChans"]          = smpBytes / sizeof(qint16);
+        kvp["snsSaveChanSubset"]    = S.sUsr_out;
+
+        QString fmt = (S.js == AP ? "%1,0,%2" : "0,%1,%2");
+        kvp["snsApLfSy"] = QString(fmt)
+                            .arg( S.nN )
+                            .arg( S.iKeep.size() - S.nN );
+
+        if( kvp["typeImEnabled"].toInt() < nimec )
+            kvp["typeImEnabled"] = nimec;
+
+        QBitArray   bits;
+        Subset::vec2Bits( bits, S.iKeep );
+
+        if( chanMap )
+            kvp["~snsChanMap"] = chanMap->toString( bits );
+
+        if( shankMap )
+            kvp["~snsShankMap"] = shankMap->toString( bits, 0 );
+
+        write( S.o_name, g0, t0, js_out, S.ip2 );
+    }
+
+    if( chanMap )
+        delete chanMap;
+
+    if( shankMap )
+        delete shankMap;
 }
 
 

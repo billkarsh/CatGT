@@ -108,6 +108,7 @@ Options:
 -bf=0,0,8,2,4,3          ;extract numeric bit-field from digital chan (js,ip,word,startbit,nbits,inarow)
 -inarow=5                ;extractor {xa,xd,xia,xid} antibounce stay high/low sample count
 -no_auto_sync            ;disable the automatic extraction of sync edges in all streams
+-save=2,0,5,20:60        ;save subset of probe chans (js,ip1,ip2,chan-list)
 -pass1_force_ni_ob_bin   ;write pass one ni/ob binary tcat file even if not changed
 -supercat={dir,run_ga}   ;concatenate existing output files across runs (see ReadMe)
 -supercat_trim_edges     ;supercat after trimming each stream to matched sync edges
@@ -485,6 +486,35 @@ ls -s &lt;path/myoriginalname.meta&gt; &lt;...ZZZ/goodname_g0_t0.imec0.ap.meta&g
 <li>Pass 2: <code>&gt;CatGT -dir=ccc -run=catgt_bbb -g=ga -t=cat -dest=ccc</code>.</li>
 </ul></li>
 </ul>
+<h3 id="save-option">save option</h3>
+<p>By default CatGT reads and writes all of the channels in a binary input file. However, for probe bin files, you can write out a subset of the channels. This is analogous to SpikeGLX selective channel saving, and to the FileViewer export feature. You might use this to eliminate noisy or uninteresting channels, or to split out the shanks of a multishank probe.</p>
+<p>-save=js,ip1,ip2,channel-list</p>
+<ul>
+<li><strong>js,ip1</strong>: Identify the input probe stream, where, js = {2=AP, 3=LF}.</li>
+<li><strong>ip2</strong>: User-provided output stream number; a non-negative integer that can be the same as ip1 or not (see examples below).</li>
+<li><strong>channel-list</strong>: Standard SpikeGLX-type list of channels; these name originally acquired channels.</li>
+</ul>
+<h4 id="example-1">Example 1</h4>
+<p>Remove the first ten channels [0..9] from NP 1.0 file imec0.ap.bin that was originally written with all AP channels saved.</p>
+<p>-save=2,0,0,10:383,768</p>
+<ul>
+<li>The input stream imec0.ap has (js,ip1) = (2,0).</li>
+<li>We will write it out also as imec0.ap, so ip2 = 0.</li>
+<li>There are 384 neural channels [0..383], and the final sync channel is 768.</li>
+</ul>
+<h4 id="example-2">Example 2</h4>
+<p>NP 2.0 single-shank file imec3.ap.bin was originally written with SpikeGLX selective saving enabled. The first 100 channels were uninteresting, so the input file to CatGT contains channels [100..384]. Here we will keep only the lowest ten channels and the sync channel, renaming it to imec5.ap.</p>
+<p>-save=2,3,5,100:109,384</p>
+<ul>
+<li>Notice that the channel indices are given with respect to the original data stream rather than the saved file.</li>
+</ul>
+<h4 id="example-3">Example 3</h4>
+<p>Split NP 2.0 4-shank stream imec0.ap (all channels saved) into four shanks, giving each a new stream number. The original imro selected the lowest (384/4 = 96) electrodes from each shank.</p>
+<p>-save=0,0,10,0:47,96:143,384 -save=0,0,11,48:95,144:191,384 -save=0,0,12,192:239,288:335,384 -save=0,0,13,240:287,336:384</p>
+<ul>
+<li>You can enter as many -save options on one command line as needed, and several options can refer to the same input file if needed: <strong>One file in -&gt; many files out</strong>.</li>
+<li>ip2 can be any non-negative integer.</li>
+</ul>
 <hr />
 <h2 id="supercat-multiple-runs">Supercat Multiple Runs</h2>
 <p>You may want to concatenate the output {bin, meta, extractor} files from two or more different CatGT runs, perhaps, to spike-sort them jointly and look for persistent units over several days. You can do that in a two-step process by (1) running CatGT normally, <code>&quot;pass 1&quot;</code>, for each of the separate runs to generate their tcat-tagged output files, and then (2) running CatGT on those tcat outputs <code>&quot;pass 2&quot;</code> using the <code>-supercat</code> option as described in this section.</p>
@@ -597,6 +627,7 @@ Options:
 -bf=0,0,8,2,4,3          ;required if joining this extractor type
 -inarow=5                ;ignored
 -no_auto_sync            ;forbidden with supercat_trim_edges
+-save=2,0,5,20:60        ;ignored
 -pass1_force_ni_ob_bin   ;ignored
 -dest=path               ;required
 -out_prb_fld             ;create output subfolder per probe</code></pre>
@@ -635,6 +666,7 @@ Options:
 <p>Version 3.6</p>
 <ul>
 <li>Pass1: Trim file sets to same length.</li>
+<li>Add option -save.</li>
 </ul>
 <p>Version 3.5</p>
 <ul>

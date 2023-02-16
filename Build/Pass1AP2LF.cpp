@@ -26,7 +26,12 @@ bool Pass1AP2LF::go()
     if( !o_open( g0 ) )
         return false;
 
-    meta.read( AP, ip );
+    meta.read( AP );
+
+    for( int is = sv0; is < svLim; ++is ) {
+        if( !GBL.vS[is].init( meta.kvp, fim ) )
+            return false;
+    }
 
     filtersAndScaling();
 
@@ -37,7 +42,11 @@ bool Pass1AP2LF::go()
     fileLoop();
 
     adjustMeta();
-    meta.write( o_name, g0, t0, LF, ip );
+
+    if( svLim > sv0 )
+        meta.writeSave( sv0, svLim, g0, t0, LF );
+    else
+        meta.write( o_name, g0, t0, LF, ip );
 
     gFOff.dwnSmp( ip );
 
@@ -73,7 +82,7 @@ bool Pass1AP2LF::go()
 // (J) 12 - (I)     : remainder in last buffer
 // (J) 11 - offset' : remainder from last file
 //
-qint64 Pass1AP2LF::_write( qint64 bytes )
+bool Pass1AP2LF::_write( qint64 bytes )
 {
     int nC          = meta.nC,
         smpBytes    = nC * sizeof(qint16),
@@ -81,7 +90,7 @@ qint64 Pass1AP2LF::_write( qint64 bytes )
 
     if( offset >= nsmp ) {
         offset -= nsmp;
-        return bytes;
+        return true;
     }
 
     int nlf = 1 + (nsmp - offset - 1) / 12,
@@ -105,10 +114,7 @@ qint64 Pass1AP2LF::_write( qint64 bytes )
 
     wrt = nlf * smpBytes;
 
-    if( wrt != o_f.write( o_buf8(), wrt ) )
-        return 0;
-
-    return bytes;
+    return Pass1::_write( wrt );
 }
 
 
@@ -136,12 +142,8 @@ bool Pass1AP2LF::zero( qint64 gapBytes, qint64 zfBytes )
 
         qint64  cpyBytes = qMin( zfBytes, o_bufBytes );
 
-        if( cpyBytes != Pass1::_write( cpyBytes ) ) {
-            Log() << QString("Zero fill failed (error %1); input file '%2'.")
-                        .arg( o_f.error() )
-                        .arg( i_fi.fileName() );
+        if( !Pass1::_write( cpyBytes ) )
             return false;
-        }
 
         zfBytes        -= cpyBytes;
         meta.smpOutEOF += 12 * cpyBytes / meta.smpBytes;
@@ -186,7 +188,13 @@ void Pass1AP2LF::adjustMeta()
 
     meta.kvp["firstSample"] = meta.smp1st /= 12;
 
-    meta.smpOutEOF = meta.smp1st + o_f.size() / meta.smpBytes;
+    if( svLim > sv0 ) {
+        // EOF as samples same for all xS[]
+        const Save &S = GBL.vS[sv0];
+        meta.smpOutEOF = meta.smp1st + S.o_f->size() / S.smpBytes;
+    }
+    else
+        meta.smpOutEOF = meta.smp1st + o_f.size() / meta.smpBytes;
 
 // imSampleRate
 

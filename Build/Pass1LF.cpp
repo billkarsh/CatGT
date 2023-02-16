@@ -26,7 +26,12 @@ bool Pass1LF::go()
     if( !o_open( g0 ) )
         return false;
 
-    meta.read( LF, ip );
+    meta.read( LF );
+
+    for( int is = sv0; is < svLim; ++is ) {
+        if( !GBL.vS[is].init( meta.kvp, fim ) )
+            return false;
+    }
 
     filtersAndScaling();
 
@@ -36,7 +41,10 @@ bool Pass1LF::go()
 
     fileLoop();
 
-    meta.write( o_name, g0, t0, LF, ip );
+    if( svLim > sv0 )
+        meta.writeSave( sv0, svLim, g0, t0, LF );
+    else
+        meta.write( o_name, g0, t0, LF, ip );
 
     return true;
 }

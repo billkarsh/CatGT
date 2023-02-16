@@ -2,6 +2,7 @@
 #include "Pass1.h"
 #include "Util.h"
 #include "Biquad.h"
+#include "Subset.h"
 
 
 // With FFT-based filtering one must use a long enough FFT to adequately
@@ -39,6 +40,9 @@
 
 Pass1::~Pass1()
 {
+    for( int is = sv0; is < svLim; ++is )
+        GBL.vS[is].close();
+
     if( hipass ) delete hipass;
     if( lopass ) delete lopass;
 }
@@ -48,6 +52,21 @@ bool Pass1::o_open( int g0 )
 {
     if( !doWrite )
         return true;
+
+    if( js_in >= AP ) {
+
+        sv0 = GBL.mySrange( svLim, js_in, ip );
+
+        if( svLim > sv0 ) {
+
+            for( int is = sv0; is < svLim; ++is ) {
+                if( !GBL.vS[is].o_open( g0, js_out ) )
+                    return false;
+            }
+
+            return true;
+        }
+    }
 
     return GBL.openOutputBinary( o_f, o_name, g0, js_out, ip );
 }
@@ -78,7 +97,7 @@ bool Pass1::openDigitalFiles( int g0 )
         if( X->word >= meta.nC )
             continue;
 
-        if( !X->openOutFiles( g0, js_in, ip ) )
+        if( !X->openOutFiles( g0 ) )
             return false;
     }
 
@@ -182,9 +201,38 @@ void Pass1::digital( const qint16 *data, int ntpts )
 }
 
 
-qint64 Pass1::_write( qint64 bytes )
+bool Pass1::_write( qint64 bytes )
 {
-    return o_f.write( o_buf8(), bytes );
+    if( svLim > sv0 ) {
+
+        qint64  smp = bytes / meta.smpBytes;
+
+        for( int is = sv0; is < svLim; ++is ) {
+
+            const Save  &S = GBL.vS[is];
+            vec_i16     sub;
+
+            Subset::subset( sub, o_buf, S.iKeep, meta.nC );
+            bytes = smp * S.smpBytes;
+
+            if( bytes != S.o_f->write( (char*)&sub[0], bytes ) )  {
+
+                Log() << QString("Write failed (error %1); input file '%2'.")
+                            .arg( S.o_f->error() )
+                            .arg( i_fi.fileName() );
+                return false;
+            }
+        }
+    }
+    else if( bytes != o_f.write( o_buf8(), bytes ) )  {
+
+        Log() << QString("Write failed (error %1); input file '%2'.")
+                    .arg( o_f.error() )
+                    .arg( i_fi.fileName() );
+        return false;
+    }
+
+    return true;
 }
 
 
@@ -208,12 +256,8 @@ bool Pass1::zero( qint64 gapBytes, qint64 zfBytes )
 
         qint64  cpyBytes = qMin( zfBytes, o_bufBytes );
 
-        if( cpyBytes != _write( cpyBytes ) ) {
-            Log() << QString("Zero fill failed (error %1); input file '%2'.")
-                        .arg( o_f.error() )
-                        .arg( i_fi.fileName() );
+        if( !_write( cpyBytes ) )
             return false;
-        }
 
         zfBytes        -= cpyBytes;
         meta.smpOutEOF += cpyBytes / meta.smpBytes;
@@ -480,12 +524,8 @@ bool Pass1::flush()
 
 bool Pass1::write( qint64 bytes )
 {
-    if( doWrite && bytes != _write( bytes ) ) {
-        Log() << QString("Write failed (error %1); input file '%2'.")
-                    .arg( o_f.error() )
-                    .arg( i_fi.fileName() );
+    if( doWrite && !_write( bytes ) )
         return false;
-    }
 
     meta.smpOutEOF += bytes / meta.smpBytes;
 

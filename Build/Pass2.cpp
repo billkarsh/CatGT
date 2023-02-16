@@ -41,7 +41,7 @@ int Pass2::first( int ip )
     if( do_bin && !GBL.openOutputBinary( fout, outBin, g0, js, ip ) )
         return 2;
 
-    meta.read( js, ip );
+    meta.read( js );
 
     if( js != LF ) {
 
@@ -114,7 +114,7 @@ bool Pass2::openDigitalFiles( int g0 )
         if( X->word >= meta.nC )
             continue;
 
-        if( !X->openOutFiles( g0, js, ip ) )
+        if( !X->openOutFiles( g0 ) )
             return false;
     }
 

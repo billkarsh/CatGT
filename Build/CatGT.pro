@@ -3,8 +3,12 @@ TEMPLATE = app
 TARGET   = CatGT
 
 win32 {
-    DESTDIR = C:/Users/labadmin/Desktop/SGLBUILD/FIXU/CatGT/CatGT-win
-#    DESTDIR = C:/Users/labadmin/Desktop/SGLBUILD/FIXU/CatGT/Debug
+    CONFIG(debug, debug|release) {
+        DESTDIR = C:/Users/labadmin/Desktop/SGLBUILD/FIXU/CatGT/Debug
+    }
+    else {
+        DESTDIR = C:/Users/labadmin/Desktop/SGLBUILD/FIXU/CatGT/CatGT-win
+    }
 }
 
 unix {
@@ -16,6 +20,7 @@ QT += widgets
 HEADERS +=              \
     Biquad.h            \
     CGBL.h              \
+    ChanMap.h           \
     Cmdline.h           \
     fftw3.h             \
     IMROTbl.h           \
@@ -51,6 +56,7 @@ HEADERS +=              \
 SOURCES +=              \
     Biquad.cpp          \
     CGBL.cpp            \
+    ChanMap.cpp         \
     Cmdline.cpp         \
     IMROTbl.cpp         \
     IMROTbl_T0base.cpp  \

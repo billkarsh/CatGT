@@ -17,7 +17,7 @@ bool Pass1OB::go()
     if( !o_open( g0 ) )
         return false;
 
-    meta.read( OB, ip );
+    meta.read( OB );
 
     initDigitalFields( meta.kvp["obAiRangeMax"].toDouble() );
 

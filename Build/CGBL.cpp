@@ -102,7 +102,7 @@ bool Filter::parse( const QString &s )
 /* Extractors ---------------------------------------------------- */
 /* --------------------------------------------------------------- */
 
-bool XTR::openOutTimesFile( int g0, t_js js, int ip, t_ex ex )
+bool XTR::openOutTimesFile( int g0, t_ex ex )
 {
     QString file,
             strm;
@@ -164,19 +164,21 @@ bool XTR::openOutTimesFile( int g0, t_js js, int ip, t_ex ex )
 }
 
 
-bool XTR::openOutFiles( int g0, t_js js, int ip )
+bool XTR::openOutFiles( int g0 )
 {
-    return openOutTimesFile( g0, js, ip, ex );
+    return openOutTimesFile( g0, ex );
 }
 
 
 void XTR::close() const
 {
-    if( ts )
+    if( ts ) {
         ts->flush();
+        delete ts;
+    }
 
     if( f )
-        f->close();
+        delete f;
 }
 
 
@@ -203,17 +205,6 @@ void Pulse::setTolerance( double rate )
 }
 
 
-void A_Pulse::init( double rate, double rangeMax )
-{
-    setTolerance( rate );
-
-// assume unity gain
-
-    T = SHRT_MAX * thresh / rangeMax;
-    V = SHRT_MAX * thrsh2 / rangeMax;
-}
-
-
 QString A_Pulse::sparam() const
 {
     if( usrord == -1 )
@@ -235,6 +226,17 @@ QString A_Pulse::suffix( const QString &stype ) const
 {
     return QString(".%1_%2_%3.txt")
             .arg( stype ).arg( word ).arg( sSpan() );
+}
+
+
+void A_Pulse::init( double rate, double rangeMax )
+{
+    setTolerance( rate );
+
+// assume unity gain
+
+    T = SHRT_MAX * thresh / rangeMax;
+    V = SHRT_MAX * thrsh2 / rangeMax;
 }
 
 
@@ -623,14 +625,6 @@ void A_Pulse::scan( const qint16 *data, qint64 t0, int ntpts, int nC )
 }
 
 
-void D_Pulse::init( double rate, double rangeMax )
-{
-    Q_UNUSED( rangeMax )
-
-    setTolerance( rate );
-}
-
-
 QString D_Pulse::sparam() const
 {
     if( usrord == -1 )
@@ -652,6 +646,14 @@ QString D_Pulse::suffix( const QString &stype ) const
 {
     return QString(".%1_%2_%3_%4.txt")
             .arg( stype ).arg( word ).arg( bit ).arg( sSpan() );
+}
+
+
+void D_Pulse::init( double rate, double rangeMax )
+{
+    Q_UNUSED( rangeMax )
+
+    setTolerance( rate );
 }
 
 
@@ -920,21 +922,6 @@ void D_Pulse::scan( const qint16 *data, qint64 t0, int ntpts, int nC )
 }
 
 
-void BitField::init( double rate, double rangeMax )
-{
-    Q_UNUSED( rangeMax )
-
-    srate = rate;
-
-// mask = 2^nb - 1
-
-    mask = 1;
-    for( int i = 0; i < nb; ++i )
-        mask *= 2;
-    --mask;
-}
-
-
 QString BitField::sparam() const
 {
     return QString(" -bf=%1,%2,%3,%4,%5,%6")
@@ -950,9 +937,24 @@ QString BitField::suffix( const QString &stype ) const
 }
 
 
-bool BitField::openOutFiles( int g0, t_js js, int ip )
+void BitField::init( double rate, double rangeMax )
 {
-    if( !openOutTimesFile( g0, js, ip, eBFT ) )
+    Q_UNUSED( rangeMax )
+
+    srate = rate;
+
+// mask = 2^nb - 1
+
+    mask = 1;
+    for( int i = 0; i < nb; ++i )
+        mask *= 2;
+    --mask;
+}
+
+
+bool BitField::openOutFiles( int g0 )
+{
+    if( !openOutTimesFile( g0, eBFT ) )
         return false;
 
     QString file;
@@ -1021,13 +1023,108 @@ void BitField::scan( const qint16 *data, qint64 t0, int ntpts, int nC )
 
 void BitField::close() const
 {
-    if( tsv )
+    if( tsv ) {
         tsv->flush();
+        delete tsv;
+    }
 
     if( fv )
-        fv->close();
+        delete fv;
 
     XTR::close();
+}
+
+/* --------------------------------------------------------------- */
+/* Save ---------------------------------------------------------- */
+/* --------------------------------------------------------------- */
+
+bool Save::parse( const char *s )
+{
+    char    c[1024];
+    int     js, ip1, ip2;
+
+    if( 4 != sscanf( s, "%d,%d,%d,%s", &js, &ip1, &ip2, c ) ) {
+        Log() << "Save options need 4 arguments: -save=js,ip1,ip2,chan-list";
+        return false;
+    }
+
+    Save    S( t_js(js), ip1, ip2, c );
+
+    if( Subset::isAllChansStr( c ) )
+        Log() << "Skipping directive to save all:" << S.sparam();
+    else
+        GBL.vS.push_back( S );
+
+    return true;
+}
+
+
+QString Save::sparam() const
+{
+    return QString(" -save=%1,%2,%3,%4")
+            .arg( js ).arg( ip1 ).arg( ip2 ).arg( sUsr );
+}
+
+
+bool Save::init( const KVParams &kvp, const QFileInfo &fim )
+{
+// Reinit these for summing: In AP2LF mode the record is used twice
+    iKeep.clear();
+    nN = 0;
+
+    QVector<uint>   cFile, cUsr, cUsr2;
+
+    if( !Subset::rngStr2Vec( cUsr, sUsr ) ) {
+        Log() << QString("Bad channel-list format:%1").arg( sparam() );
+        return false;
+    }
+
+    if( !GBL.getSavedChannels( cFile, kvp, fim ) )
+        return false;
+
+    const QStringList   sl = kvp["acqApLfSy"].toString().split(
+                                QRegExp("^\\s+|\\s*,\\s*"),
+                                QString::SkipEmptyParts );
+    int cSY = sl[0].toInt() + sl[1].toInt();
+
+    for( int ic = 0, nU = cUsr.size(); ic < nU; ++ic ) {
+
+        int cU  = cUsr[ic],
+            idx = cFile.indexOf( cU );
+
+        if( idx >= 0 ) {
+            cUsr2.push_back( cU );
+            iKeep.push_back( idx );
+            nN += (cU < cSY);
+        }
+    }
+
+    nC = iKeep.size();
+
+    if( !nC ) {
+        Log() << QString("Specified channels not in file:%1").arg( sparam() );
+        return false;
+    }
+
+    sUsr_out    = Subset::vec2RngStr( cUsr2 );
+    smpBytes    = nC*sizeof(qint16);
+    return true;
+}
+
+
+bool Save::o_open( int g0, t_js js )
+{
+    o_f = new QFile;
+    return GBL.openOutputBinary( *o_f, o_name, g0, js, ip2 );
+}
+
+
+void Save::close()
+{
+    if( o_f ) {
+        delete o_f;
+        o_f = 0;
+    }
 }
 
 /* --------------------------------------------------------------- */
@@ -1101,6 +1198,7 @@ static void PrintUsage()
     Log() << "-bf=0,0,8,2,4,3          ;extract numeric bit-field from digital chan (js,ip,word,startbit,nbits,inarow)";
     Log() << "-inarow=5                ;extractor {xa,xd,xia,xid} antibounce stay high/low sample count";
     Log() << "-no_auto_sync            ;disable the automatic extraction of sync edges in all streams";
+    Log() << "-save=2,0,5,20:60        ;save subset of probe chans (js,ip1,ip2,chan-list)";
     Log() << "-pass1_force_ni_ob_bin   ;write pass one ni/ob binary tcat file even if not changed";
     Log() << "-supercat={dir,run_ga}   ;concatenate existing output files across runs (see ReadMe)";
     Log() << "-supercat_trim_edges     ;supercat after trimming each stream to matched sync edges";
@@ -1338,6 +1436,10 @@ bool CGBL::SetCmdLine( int argc, char* argv[] )
         }
         else if( IsArg( "-no_auto_sync", argv[i] ) )
             auto_sync = false;
+        else if( GetArgStr( sarg, "-save=", argv[i] ) ) {
+            if( !Save::parse( sarg ) )
+                return false;
+        }
         else if( IsArg( "-pass1_force_ni_ob_bin", argv[i] ) )
             force_ni_ob = true;
         else if( GetArgStr( sarg, "-supercat=", argv[i] ) )
@@ -1434,6 +1536,11 @@ error:
     if( !checkExtractors() )
         return false;
 
+// Check and sort save options
+
+    if( !checkSaves() )
+        return false;
+
 // Echo
 
     QString sreq        = "",
@@ -1451,6 +1558,7 @@ error:
             schnexc     = "",
             sXTR        = "",
             sinarow     = "",
+            sSave       = "",
             ssuper      = "",
             sdest       = "";
 
@@ -1505,6 +1613,9 @@ error:
         sinarow = QString(" -inarow=%1").arg( inarow );
     }
 
+    foreach( const Save &S, vS )
+        sSave += S.sparam();
+
     if( velem.size() )
         ssuper = QString(" -supercat=%1").arg( formatElems() );
 
@@ -1515,8 +1626,8 @@ error:
 
     sCmd =
         QString(
-            "CatGT%1%2%3%4%5%6%7%8%9%10%11%12%13%14%15%16%17"
-            "%18%19%20%21%22%23%24%25%26%27%28%29%30%31%32%33")
+            "CatGT%1%2%3%4%5%6%7%8%9%10%11%12%13%14%15%16%17%18"
+            "%19%20%21%22%23%24%25%26%27%28%29%30%31%32%33%34")
         .arg( sreq )
         .arg( sgt )
         .arg( no_run_fld ? " -no_run_fld" : "" )
@@ -1544,6 +1655,7 @@ error:
         .arg( sXTR )
         .arg( sinarow )
         .arg( auto_sync ? "" : " -no_auto_sync" )
+        .arg( sSave )
         .arg( force_ni_ob ? " -pass1_force_ni_ob_bin" : "" )
         .arg( ssuper )
         .arg( sc_trim ? " -supercat_trim_edges" : "" )
@@ -1756,6 +1868,34 @@ int CGBL::myXrange( int &lim, t_js js, int ip ) const
                 XTR *jX = vX[j];
 
                 if( jX->js != js || jX->ip != ip ) {
+                    lim = j;
+                    break;
+                }
+            }
+
+            return i;
+        }
+    }
+
+    return lim;
+}
+
+
+int CGBL::mySrange( int &lim, t_js js, int ip ) const
+{
+    lim = vS.size();
+
+    for( int i = 0; i < lim; ++i ) {
+
+        const Save  &iS = vS[i];
+
+        if( iS.js == js && iS.ip1 == ip ) {
+
+            for( int j = i + 1; j < lim; ++j ) {
+
+                const Save  &jS = vS[j];
+
+                if( jS.js != js || jS.ip1 != ip ) {
                     lim = j;
                     break;
                 }
@@ -2189,7 +2329,7 @@ bool CGBL::checkExtractors()
 
         if( X->js < 0 || X->js > AP ) {
             Log() <<
-            QString("Error: Extractor js must be in range [0..2]: %1.")
+            QString("Error: Extractor js must be in range [0..2]:%1.")
             .arg( X->sparam() );
             ok = false;
         }
@@ -2198,27 +2338,27 @@ bool CGBL::checkExtractors()
             case NI:
                 if( X->ip != 0 ) {
                     Log() <<
-                    QString("Warning: Extractor ip should be zero for ni stream: %1.")
+                    QString("Warning: Extractor ip should be zero for ni stream:%1.")
                     .arg( X->sparam() );
                 }
                 break;
             case OB:
                 if( !vobx.contains( X->ip ) ) {
                     Log() <<
-                    QString("Warning: Extractor ip not among -obx=list: %1.")
+                    QString("Warning: Extractor ip not among -obx=list:%1.")
                     .arg( X->sparam() );
                 }
                 break;
             case AP:
                 if( X->ex == eXA || X->ex == eXIA || X->ex == eBFT ) {
                     Log() <<
-                    QString("Error: Illegal extractor type for AP stream: %1.")
+                    QString("Error: Illegal extractor type for AP stream:%1.")
                     .arg( X->sparam() );
                     ok = false;
                 }
                 if( !vprb.contains( X->ip ) ) {
                     Log() <<
-                    QString("Warning: Extractor ip not among -prb=list: %1.")
+                    QString("Warning: Extractor ip not among -prb=list:%1.")
                     .arg( X->sparam() );
                 }
                 break;
@@ -2233,16 +2373,42 @@ bool CGBL::checkExtractors()
 
                 Log() <<
                 QString("Error: Extractor bf startbit must be in range [0..15],"
-                " nbits in range [1..16-startbit]: %1.")
+                " nbits in range [1..16-startbit]:%1.")
                 .arg( X->sparam() );
                 ok = false;
             }
 
             if( B->inarow < 1 ) {
                 B->inarow = 1;
-                Log() << QString("Warning: Extractor bf inarow must be >= 1: %1.")
+                Log() << QString("Warning: Extractor bf inarow must be >= 1:%1.")
                 .arg( X->sparam() );
             }
+        }
+    }
+
+    return ok;
+}
+
+
+bool CGBL::checkSaves()
+{
+    qSort( vS.begin(), vS.end() );
+
+    bool ok = true;
+
+    foreach( const Save &S, vS ) {
+
+        if( S.js < AP || S.js > LF ) {
+            Log() <<
+            QString("Error: Save js must be in range [2..3]:%1.")
+            .arg( S.sparam() );
+            ok = false;
+        }
+
+        if( (prb_3A && S.ip1 != 0) || !vprb.contains( S.ip1 ) ) {
+            Log() <<
+            QString("Warning: Save ip1 not among -prb=list:%1.")
+            .arg( S.sparam() );
         }
     }
 

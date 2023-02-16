@@ -19,7 +19,7 @@ public:
     bool go();
 
     virtual void digital( const qint16 *data, int ntpts )   {}
-    virtual qint64 _write( qint64 bytes );
+    virtual bool _write( qint64 bytes );
     virtual bool zero( qint64 gapBytes, qint64 zfBytes );
 
 private:

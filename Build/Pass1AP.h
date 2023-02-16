@@ -37,6 +37,7 @@ public:
 private:
     bool filtersAndScaling();
     void gfixEdits();
+    void gfixZeros( qint64 L, int N );
     void sAveTable( int nAP );
     void sAveApplyLocal(
         qint16  *d,

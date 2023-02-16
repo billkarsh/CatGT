@@ -111,6 +111,7 @@ Options:
 -bf=0,0,8,2,4,3          ;extract numeric bit-field from digital chan (js,ip,word,startbit,nbits,inarow)
 -inarow=5                ;extractor {xa,xd,xia,xid} antibounce stay high/low sample count
 -no_auto_sync            ;disable the automatic extraction of sync edges in all streams
+-save=2,0,5,20:60        ;save subset of probe chans (js,ip1,ip2,chan-list)
 -pass1_force_ni_ob_bin   ;write pass one ni/ob binary tcat file even if not changed
 -supercat={dir,run_ga}   ;concatenate existing output files across runs (see ReadMe)
 -supercat_trim_edges     ;supercat after trimming each stream to matched sync edges
@@ -803,6 +804,61 @@ if the second pass specifies any concatenation or filter options.
     + Pass 1: `>CatGT -dir=aaa -run=bbb -g=ga,gb -t=ta,tb -dest=ccc`.
     + Pass 2: `>CatGT -dir=ccc -run=catgt_bbb -g=ga -t=cat -dest=ccc`.
 
+### save option
+
+By default CatGT reads and writes all of the channels in a binary input file.
+However, for probe bin files, you can write out a subset of the channels.
+This is analogous to SpikeGLX selective channel saving, and to the FileViewer
+export feature. You might use this to eliminate noisy or uninteresting
+channels, or to split out the shanks of a multishank probe.
+
+-save=js,ip1,ip2,channel-list
+
+* **js,ip1**: Identify the input probe stream, where, js = {2=AP, 3=LF}.
+* **ip2**: User-provided output stream number; a non-negative integer that
+can be the same as ip1 or not (see examples below).
+* **channel-list**: Standard SpikeGLX-type list of channels; these name
+originally acquired channels.
+
+#### Example 1
+
+Remove the first ten channels [0..9] from NP 1.0 file imec0.ap.bin that
+was originally written with all AP channels saved.
+
+-save=2,0,0,10:383,768
+
+* The input stream imec0.ap has (js,ip1) = (2,0).
+* We will write it out also as imec0.ap, so ip2 = 0.
+* There are 384 neural channels [0..383], and the final sync channel is 768.
+
+#### Example 2
+
+NP 2.0 single-shank file imec3.ap.bin was originally written with SpikeGLX
+selective saving enabled. The first 100 channels were uninteresting, so the
+input file to CatGT contains channels [100..384]. Here we will keep only
+the lowest ten channels and the sync channel, renaming it to imec5.ap.
+
+-save=2,3,5,100:109,384
+
+* Notice that the channel indices are given with respect to the original
+data stream rather than the saved file.
+
+#### Example 3
+
+Split NP 2.0 4-shank stream imec0.ap (all channels saved) into four shanks,
+giving each a new stream number. The original imro selected the lowest
+(384/4 = 96) electrodes from each shank.
+
+-save=0,0,10,0:47,96:143,384
+-save=0,0,11,48:95,144:191,384
+-save=0,0,12,192:239,288:335,384
+-save=0,0,13,240:287,336:384
+
+* You can enter as many -save options on one command line as needed,
+and several options can refer to the same input file if needed:
+**One file in -> many files out**.
+* ip2 can be any non-negative integer.
+
 ------
 
 ## Supercat Multiple Runs
@@ -950,6 +1006,7 @@ Options:
 -bf=0,0,8,2,4,3          ;required if joining this extractor type
 -inarow=5                ;ignored
 -no_auto_sync            ;forbidden with supercat_trim_edges
+-save=2,0,5,20:60        ;ignored
 -pass1_force_ni_ob_bin   ;ignored
 -dest=path               ;required
 -out_prb_fld             ;create output subfolder per probe
@@ -1015,6 +1072,7 @@ on that stream's clock.
 Version 3.6
 
 - Pass1: Trim file sets to same length.
+- Add option -save.
 
 Version 3.5
 

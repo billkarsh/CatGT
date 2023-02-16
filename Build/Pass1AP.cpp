@@ -39,7 +39,12 @@ bool Pass1AP::go()
     if( !o_open( g0 ) )
         return false;
 
-    meta.read( AP, ip );
+    meta.read( AP );
+
+    for( int is = sv0; is < svLim; ++is ) {
+        if( !GBL.vS[is].init( meta.kvp, fim ) )
+            return false;
+    }
 
     if( !filtersAndScaling() )
         return false;
@@ -61,7 +66,10 @@ bool Pass1AP::go()
     if( shankMap )
         meta.kvp["~snsShankMap"] = shankMap->toString();
 
-    meta.write( o_name, g0, t0, AP, ip );
+    if( svLim > sv0 )
+        meta.writeSave( sv0, svLim, g0, t0, AP );
+    else
+        meta.write( o_name, g0, t0, AP, ip );
 
     gfixEdits();
 
@@ -245,7 +253,6 @@ void Pass1AP::gfixEdits()
 
     for( ; it_fix != end; ++it_fix ) {
 
-        qint16  *d;
         qint64  T0 = it_fix.key(),
                 L  = T0 - it_fix.value().L,
                 R  = T0 + it_fix.value().R;
@@ -279,23 +286,48 @@ void Pass1AP::gfixEdits()
         L = qMax( L, qint64(0) );
         R = qMin( R, smpFLen - 1 ); // EOF limit
 
-        d = &o_buf[0];
         N = qMin( R - L + 1, qint64(bufWid) );
 
-        o_f.seek( meta.smpBytes * L );
-        o_f.read( o_buf8(), meta.smpBytes * N );
-
-        for( int it = 0; it < N; ++it, d += meta.nC )
-            memset( d, 0, meta.nN*sizeof(qint16) );
-
-        o_f.seek( meta.smpBytes * L );
-        _write( meta.smpBytes * N );
+        gfixZeros( L, N );
         ++nedit;
     }
 
     Log() << QString("Run %1_g%2 Gfix prb %3 edits/sec %4")
                 .arg( GBL.run ).arg( g0 ).arg( ip )
                 .arg( nedit * meta.srate / smpFLen, 0, 'g', 3 );
+}
+
+
+void Pass1AP::gfixZeros( qint64 L, int N )
+{
+    if( svLim > sv0 ) {
+
+        for( int is = sv0; is < svLim; ++is ) {
+
+            const Save  &S = GBL.vS[is];
+
+            S.o_f->seek( S.smpBytes * L );
+            S.o_f->read( o_buf8(), S.smpBytes * N );
+
+            qint16  *d = &o_buf[0];
+            for( int it = 0; it < N; ++it, d += S.nC )
+                memset( d, 0, S.nN*sizeof(qint16) );
+
+            S.o_f->seek( S.smpBytes * L );
+            S.o_f->write( o_buf8(), S.smpBytes * N );
+        }
+    }
+    else {
+        o_f.seek( meta.smpBytes * L );
+        o_f.read( o_buf8(), meta.smpBytes * N );
+
+        qint16  *d = &o_buf[0];
+        for( int it = 0; it < N; ++it, d += meta.nC )
+            memset( d, 0, meta.nN*sizeof(qint16) );
+
+        o_f.seek( meta.smpBytes * L );
+        o_f.write( o_buf8(), meta.smpBytes * N );
+    }
 }
 
 

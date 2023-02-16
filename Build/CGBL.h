@@ -113,14 +113,14 @@ struct XTR {
         bool operator()( const XTR *L, const XTR *R ) const {return *L < *R;}
     };
     void autoWord( int nC ) {if( word == -1 ) word = nC - 1;}
-    virtual void init( double rate, double rangeMax ) = 0;
     virtual QString sparam() const = 0;
     virtual QString suffix( const QString &stype ) const = 0;
-    virtual bool openOutFiles( int g0, t_js js, int ip );
+    virtual void init( double rate, double rangeMax ) = 0;
+    virtual bool openOutFiles( int g0 );
     virtual void scan( const qint16 *data, qint64 t0, int ntpts, int nC ) = 0;
     virtual void close() const;
 protected:
-    bool openOutTimesFile( int g0, t_js js, int ip, t_ex ex );
+    bool openOutTimesFile( int g0, t_ex ex );
 };
 
 struct Pulse : public XTR {
@@ -147,9 +147,9 @@ struct A_Pulse : public Pulse {
             peak;   // working measured thrsh2
     A_Pulse() : thresh(0.0), thrsh2(0.0)    {}
     virtual ~A_Pulse()                      {}
-    virtual void init( double rate, double rangeMax );
     virtual QString sparam() const;
     virtual QString suffix( const QString &stype ) const;
+    virtual void init( double rate, double rangeMax );
     void pos( const qint16 *data, qint64 t0, int ntpts, int nC );
     void inv( const qint16 *data, qint64 t0, int ntpts, int nC );
     virtual void scan( const qint16 *data, qint64 t0, int ntpts, int nC );
@@ -160,9 +160,9 @@ struct D_Pulse : public Pulse {
     int     bit;    // cmdline
     D_Pulse() : bit(-1) {}
     virtual ~D_Pulse()  {}
-    virtual void init( double rate, double rangeMax );
     virtual QString sparam() const;
     virtual QString suffix( const QString &stype ) const;
+    virtual void init( double rate, double rangeMax );
     void pos( const qint16 *data, qint64 t0, int ntpts, int nC );
     void inv( const qint16 *data, qint64 t0, int ntpts, int nC );
     virtual void scan( const qint16 *data, qint64 t0, int ntpts, int nC );
@@ -180,15 +180,55 @@ struct BitField : public XTR {
                 vlast;  // last reported value
     BitField() : fv(0), tsv(0), vlast(-1)   {}
     virtual ~BitField()                     {}
-    virtual void init( double rate, double rangeMax );
     virtual QString sparam() const;
     virtual QString suffix( const QString &stype ) const;
-    virtual bool openOutFiles( int g0, t_js js, int ip );
+    virtual void init( double rate, double rangeMax );
+    virtual bool openOutFiles( int g0 );
     virtual void scan( const qint16 *data, qint64 t0, int ntpts, int nC );
     virtual void close() const;
 };
 
+struct Save {
+// selective save directive
+    QVector<uint>   iKeep;  // indices relative to infile samples
+    QFile           *o_f;
+    QString         o_name,
+                    sUsr_out,
+                    sUsr;   // cmdline
+    t_js            js;     // cmdline
+    int             ip1,    // cmdline
+                    ip2,    // cmdline
+                    nC,     // iKeep.size
+                    nN,     // neurals within iKeep
+                    smpBytes;
+    Save() : o_f(0), js(AP), ip1(0), ip2(0), nN(0)              {}
+    Save( t_js js, int ip1, int ip2, const QString &s )
+        :   o_f(0), sUsr(s), js(js), ip1(ip1), ip2(ip2), nN(0)  {}
+    virtual ~Save()                                             {close();}
+    bool operator<( const Save &rhs ) const
+        {
+            if( js < rhs.js )
+                return true;
+            else if( js == rhs.js ) {
+                if( ip1 < rhs.ip1 )
+                    return true;
+                else if( ip1 == rhs.ip1 )
+                    return ip2 < rhs.ip2;
+                else
+                    return false;
+            }
+            else
+                return false;
+        }
+    static bool parse( const char *s );
+    QString sparam() const;
+    bool init( const KVParams &kvp, const QFileInfo &fim );
+    bool o_open( int g0, t_js js );
+    void close();
+};
+
 struct Elem {
+// supercat element
     QMap<int,double>    iq2head,
                         iq2tail;
     QString             dir,
@@ -234,6 +274,7 @@ public:
     QVector<uint>   vobx,
                     vprb;
     QVector<XTR*>   vX;
+    QVector<Save>   vS;
     QVector<Elem>   velem;
     KVParams        fyi;            // generated
     int             ga,
@@ -288,6 +329,7 @@ public:
     int gt_nIndices() const;
 
     int myXrange( int &lim, t_js js, int ip ) const;
+    int mySrange( int &lim, t_js js, int ip ) const;
 
     void fyi_ct_write();
     void fyi_sc_write();
@@ -344,6 +386,7 @@ private:
     bool parseChnexcl( const QString &s );
     bool parseElems( const QString &s );
     bool checkExtractors();
+    bool checkSaves();
     QString formatChnexcl();
     QString formatElems();
     bool pass1FromCatGT();

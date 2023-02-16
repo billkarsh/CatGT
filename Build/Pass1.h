@@ -32,6 +32,8 @@ protected:
     std::vector<qint16> i_buf,
                         o_buf;
     int                 ip,
+                        sv0,
+                        svLim,  // entries iff svLim > sv0
                         i_nxt,  // next input middle (samples)
                         i_lim,  // input count (samples)
                         gfix0,  // cur o_buf start in i_buf
@@ -40,8 +42,8 @@ protected:
 
 protected:
     Pass1( t_js js_in, t_js js_out, int ip )
-    :   hipass(0), lopass(0), js_in(js_in), js_out(js_out),
-        ip(ip), i_nxt(0), i_lim(0), doWrite(false)  {}
+    :   hipass(0), lopass(0), js_in(js_in), js_out(js_out), ip(ip),
+        sv0(-1), svLim(-1), i_nxt(0), i_lim(0), doWrite(false)      {}
     virtual ~Pass1();
 
     bool o_open( int g0 );
@@ -53,7 +55,7 @@ protected:
 
     virtual void digital( const qint16 *data, int ntpts );
     virtual void neural( qint16 *data, int ntpts )  {}
-    virtual qint64 _write( qint64 bytes );
+    virtual bool _write( qint64 bytes );
     virtual bool zero( qint64 gapBytes, qint64 zfBytes );
 
 private:
