@@ -524,8 +524,13 @@ is excessive reduction of the amplitude of large-footprint spikes.*
 
 ### gblcar option
 
-- Do CAR common average referencing using all channels.
-- The average is probe-wide, including channels/sites on all shanks.
+>*Note: Prior to CatGT version 3.6 the subracted value had been the
+statistical average (mean) over all channels. Starting with version
+3.6 the median value is used instead to reduce outlier bias.*
+
+- Do CAR common median referencing using all channels.
+- The median is probe-wide, including channels/sites on all shanks.
+- Unused channels are excluded, see [chnexcl option](#chnexcl-option).
 - Note that `-gblcar` is never applied to the LFP band.
 - Note that `-gblcar` assumes fairly uniform background across all channels.
 - Use a high-pass filter also, to remove DC offsets.
@@ -1071,8 +1076,9 @@ on that stream's clock.
 
 Version 3.6
 
-- Pass1: Trim file sets to same length.
-- Add option -save.
+- Option -gblcar uses median rather than mean.
+- Trim pass1 file sets to same length.
+- Add option -save (selective channel saving).
 
 Version 3.5
 

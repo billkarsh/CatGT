@@ -2,6 +2,7 @@
 #define PASS1_H
 
 #include "Tool.h"
+#include "SGLTypes.h"
 
 class Biquad;
 
@@ -14,31 +15,31 @@ class Pass1
     friend bool Meta::pass1_zeroFill( Pass1 &H, qint64 gapBytes );
 
 private:
-    Biquad              *hipass,
-                        *lopass;
-    FFT                 fft;
-    t_js                js_in,
-                        js_out;
-    int                 ex0,
-                        exLim;
+    Biquad      *hipass,
+                *lopass;
+    FFT         fft;
+    t_js        js_in,
+                js_out;
+    int         ex0,
+                exLim;
 
 protected:
-    QFileInfo           fim;
-    Meta                meta;
-    QFileInfo           i_fi;
-    QFile               i_f,
-                        o_f;
-    QString             o_name;
-    std::vector<qint16> i_buf,
-                        o_buf;
-    int                 ip,
-                        sv0,
-                        svLim,  // entries iff svLim > sv0
-                        i_nxt,  // next input middle (samples)
-                        i_lim,  // input count (samples)
-                        gfix0,  // cur o_buf start in i_buf
-                        maxInt;
-    bool                doWrite;
+    QFileInfo   fim;
+    Meta        meta;
+    QFileInfo   i_fi;
+    QFile       i_f,
+                o_f;
+    QString     o_name;
+    vec_i16     i_buf,
+                o_buf;
+    int         ip,
+                sv0,
+                svLim,  // entries iff svLim > sv0
+                i_nxt,  // next input middle (samples)
+                i_lim,  // input count (samples)
+                gfix0,  // cur o_buf start in i_buf
+                maxInt;
+    bool        doWrite;
 
 protected:
     Pass1( t_js js_in, t_js js_out, int ip )

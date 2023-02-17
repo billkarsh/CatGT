@@ -11,6 +11,50 @@
 
 
 
+/* ---------------------------------------------------------------- */
+/* MedCAR --------------------------------------------------------- */
+/* ---------------------------------------------------------------- */
+
+void MedCAR::init( const ShankMap *shankMap, int nC, int nAP )
+{
+    const ShankMapDesc  *E = &shankMap->e[0];
+
+    for( int ig = 0; ig < nAP; ++ig ) {
+        if( E[ig].u )
+            idx.push_back( ig );
+    }
+
+    this->nC = nC;
+    arrange.resize( nU = idx.size() );
+
+    ibeg = arrange.begin();
+    iend = arrange.end();
+    imid = ibeg + nU / 2;
+}
+
+
+void MedCAR::apply( qint16 *d, int ntpts )
+{
+    const int   *pidx = &idx[0];
+    qint16      *parr = &arrange[0];
+
+    for( int it = 0; it < ntpts; ++it, d += nC ) {
+
+        for( int ig = 0; ig < nU; ++ig )
+            parr[ig] = d[pidx[ig]];
+
+        std::nth_element( ibeg, imid, iend );
+        int median = *imid;
+
+        for( int ig = 0; ig < nU; ++ig )
+            d[pidx[ig]] -= median;
+    }
+}
+
+/* ---------------------------------------------------------------- */
+/* Pass1AP -------------------------------------------------------- */
+/* ---------------------------------------------------------------- */
+
 Pass1AP::~Pass1AP()
 {
     if( shankMap ) delete shankMap;
@@ -48,6 +92,8 @@ bool Pass1AP::go()
 
     if( !filtersAndScaling() )
         return false;
+
+    medCAR.init( shankMap, meta.nC, meta.nN );
 
     initDigitalFields( 0.0001 );
 
@@ -95,7 +141,10 @@ void Pass1AP::neural( qint16 *data, int ntpts )
 // Gblcar
 
     if( GBL.gblcar )
-        sAveApplyGlobal( data, ntpts, meta.nC, meta.nN, 1 );
+        medCAR.apply( data, ntpts );
+
+//    if( GBL.gblcar )
+//        sAveApplyGlobal( data, ntpts, meta.nC, meta.nN, 1 );
 }
 
 
@@ -164,10 +213,10 @@ bool Pass1AP::filtersAndScaling()
                                     QString::SkipEmptyParts );
         int nAcqChan = sl[0].toInt() + sl[1].toInt() + sl[2].toInt();
 
-        ig2ic.resize( meta.nC );
+        ig2ic.resize( meta.nN );
         ic2ig.fill( -1, qMax( nAcqChan, nADC * nGrp ) );
 
-        for( int ig = 0; ig < meta.nC; ++ig ) {
+        for( int ig = 0; ig < meta.nN; ++ig ) {
 
             int &C = ig2ic[ig];
 
@@ -216,6 +265,18 @@ bool Pass1AP::filtersAndScaling()
                 if( ig >= 0 )
                     shankMap->e[ig].u = 0;
             }
+        }
+
+        // ---------------------
+        // Unmap unused channels
+        // ---------------------
+
+        const ShankMapDesc  *E = &shankMap->e[0];
+
+        for( int ig = 0; ig < meta.nN; ++ig ) {
+
+            if( !E[ig].u )
+                ic2ig[ig2ic[ig]] = -1;
         }
 
         // ---
@@ -536,9 +597,7 @@ void Pass1AP::sAveApplyGlobal(
 
         for( int ig = 0; ig < nAP; ++ig ) {
 
-            const ShankMapDesc  *e = &E[ig];
-
-            if( e->u ) {
+            if( E[ig].u ) {
                 S += d[ig];
                 ++N;
             }
@@ -602,12 +661,10 @@ void Pass1AP::sAveApplyDmxStride(
 
                 if( ig >= 0 ) {
 
-                    const ShankMapDesc  *e = &E[ig];
+                    int s = E[ig].s;
 
-                    if( e->u ) {
-                        S[e->s] += d[ig];
-                        ++N[e->s];
-                    }
+                    S[s] += d[ig];
+                    ++N[s];
                 }
             }
 
@@ -662,12 +719,8 @@ void Pass1AP::sAveApplyDmxStride(
 
                 if( ig >= 0 ) {
 
-                    const ShankMapDesc  *e = &E[ig];
-
-                    if( e->u ) {
-                        S += d[ig];
-                        ++N;
-                    }
+                    S += d[ig];
+                    ++N;
                 }
             }
 
@@ -731,12 +784,10 @@ void Pass1AP::sAveApplyDmxTbl(
 
                 if( ig >= 0 ) {
 
-                    const ShankMapDesc  *e = &E[ig];
+                    int s = E[ig].s;
 
-                    if( e->u ) {
-                        S[e->s] += d[ig];
-                        ++N[e->s];
-                    }
+                    S[s] += d[ig];
+                    ++N[s];
                 }
             }
 
@@ -789,12 +840,8 @@ void Pass1AP::sAveApplyDmxTbl(
 
                 if( ig >= 0 ) {
 
-                    const ShankMapDesc  *e = &E[ig];
-
-                    if( e->u ) {
-                        S += d[ig];
-                        ++N;
-                    }
+                    S += d[ig];
+                    ++N;
                 }
             }
 
@@ -970,9 +1017,7 @@ void Pass1AP::gFixDetect(
 
                 if( ig >= 0 ) {
 
-                    const ShankMapDesc  *e = &E[ig];
-
-                    if( e->u ) {
+                    if( E[ig].u ) {
 
                         int V = d[ig];
 

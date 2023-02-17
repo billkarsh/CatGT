@@ -10,17 +10,32 @@ struct ShankMap;
 /* Types ---------------------------------------------------------- */
 /* ---------------------------------------------------------------- */
 
+struct MedCAR {
+private:
+    std::vector<int>    idx;
+    vec_i16             arrange;
+    vec_i16::iterator   ibeg, imid, iend;
+    int                 nC,
+                        nU;
+public:
+    MedCAR()            {}
+    virtual ~MedCAR()   {}
+    void init( const ShankMap *shankMap, int nC, int nAP );
+    void apply( qint16 *d, int ntpts );
+};
+
 class Pass1AP : public Pass1
 {
 private:
     double              Tmul;
     ShankMap            *shankMap;
     Biquad              *hp_gfix;
-    std::vector<qint16> gfixbuf;
+    MedCAR              medCAR;
+    vec_i16             gfixbuf;
     QMap<qint64,LR>     TLR;                // gfix reports
-    std::vector<qint16> loccarBuf;          // local CAR workspace
-    QVector<int>        ig2ic,              // saved to acquired
-                        ic2ig;              // acq to saved or -1
+    vec_i16             loccarBuf;          // local CAR workspace
+    QVector<int>        ig2ic,              // saved to acquired AP
+                        ic2ig;              // acq AP to saved or -1
     std::vector<std::vector<int> >  TSM;
     std::vector<int>    muxTbl;
     int                 nADC,

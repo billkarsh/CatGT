@@ -6,7 +6,6 @@
 #include "Pass1NI.h"
 #include "Pass1OB.h"
 #include "Pass2.h"
-#include "SGLTypes.h"
 #include "ChanMap.h"
 #include "ShankMap.h"
 #include "Subset.h"
@@ -437,7 +436,7 @@ void Meta::writeSave( int sv0, int svLim, int g0, int t0, t_js js_out )
 
         smpBytes = S.smpBytes;
 
-        kvp["nSavedChans"]          = smpBytes / sizeof(qint16);
+        kvp["nSavedChans"]          = int(smpBytes / sizeof(qint16));
         kvp["snsSaveChanSubset"]    = S.sUsr_out;
 
         QString fmt = (S.js == AP ? "%1,0,%2" : "0,%1,%2");

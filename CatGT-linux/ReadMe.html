@@ -319,9 +319,13 @@ ls -s &lt;path/myoriginalname.meta&gt; &lt;...ZZZ/goodname_g0_t0.imec0.ap.meta&g
 <p><em>Use the SpikeGLX FileViewer to look at traces pre- and post-CAR to see if this filter option is working for your data. A danger of loccar is excessive reduction of the amplitude of large-footprint spikes.</em></p>
 </blockquote>
 <h3 id="gblcar-option">gblcar option</h3>
+<blockquote>
+<p><em>Note: Prior to CatGT version 3.6 the subracted value had been the statistical average (mean) over all channels. Starting with version 3.6 the median value is used instead to reduce outlier bias.</em></p>
+</blockquote>
 <ul>
-<li>Do CAR common average referencing using all channels.</li>
-<li>The average is probe-wide, including channels/sites on all shanks.</li>
+<li>Do CAR common median referencing using all channels.</li>
+<li>The median is probe-wide, including channels/sites on all shanks.</li>
+<li>Unused channels are excluded, see <a href="#chnexcl-option">chnexcl option</a>.</li>
 <li>Note that <code>-gblcar</code> is never applied to the LFP band.</li>
 <li>Note that <code>-gblcar</code> assumes fairly uniform background across all channels.</li>
 <li>Use a high-pass filter also, to remove DC offsets.</li>
@@ -665,8 +669,9 @@ Options:
 <h2 id="change-log">Change Log</h2>
 <p>Version 3.6</p>
 <ul>
-<li>Pass1: Trim file sets to same length.</li>
-<li>Add option -save.</li>
+<li>Option -gblcar uses median rather than mean.</li>
+<li>Trim pass1 file sets to same length.</li>
+<li>Add option -save (selective channel saving).</li>
 </ul>
 <p>Version 3.5</p>
 <ul>
