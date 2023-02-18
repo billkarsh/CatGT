@@ -199,9 +199,9 @@ bool Pass1AP::filtersAndScaling()
         // Saved channel ID list
         // ---------------------
 
-        QVector<uint>   chanIds;
+        QVector<uint>   snsFileChans;
 
-        if( !GBL.getSavedChannels( chanIds, meta.kvp, fim ) )
+        if( !GBL.getSavedChannels( snsFileChans, meta.kvp, fim ) )
             return false;
 
         // ---------------------------------------------
@@ -211,7 +211,7 @@ bool Pass1AP::filtersAndScaling()
         const QStringList   sl = meta.kvp["acqApLfSy"].toString().split(
                                     QRegExp("^\\s+|\\s*,\\s*"),
                                     QString::SkipEmptyParts );
-        int nAcqChan = sl[0].toInt() + sl[1].toInt() + sl[2].toInt();
+        int nAcqChan = sl[0].toInt();
 
         ig2ic.resize( meta.nN );
         ic2ig.fill( -1, qMax( nAcqChan, nADC * nGrp ) );
@@ -220,7 +220,7 @@ bool Pass1AP::filtersAndScaling()
 
             int &C = ig2ic[ig];
 
-            C           = chanIds[ig];
+            C           = snsFileChans[ig];
             ic2ig[C]    = ig;
         }
 

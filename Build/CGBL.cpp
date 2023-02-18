@@ -1072,14 +1072,14 @@ bool Save::init( const KVParams &kvp, const QFileInfo &fim )
     iKeep.clear();
     nN = 0;
 
-    QVector<uint>   cFile, cUsr, cUsr2;
+    QVector<uint>   snsFileChans, cUsr, cUsr2;
 
     if( !Subset::rngStr2Vec( cUsr, sUsr ) ) {
         Log() << QString("Bad channel-list format:%1").arg( sparam() );
         return false;
     }
 
-    if( !GBL.getSavedChannels( cFile, kvp, fim ) )
+    if( !GBL.getSavedChannels( snsFileChans, kvp, fim ) )
         return false;
 
     const QStringList   sl = kvp["acqApLfSy"].toString().split(
@@ -1090,7 +1090,7 @@ bool Save::init( const KVParams &kvp, const QFileInfo &fim )
     for( int ic = 0, nU = cUsr.size(); ic < nU; ++ic ) {
 
         int cU  = cUsr[ic],
-            idx = cFile.indexOf( cU );
+            idx = snsFileChans.indexOf( cU );
 
         if( idx >= 0 ) {
             cUsr2.push_back( cU );
@@ -2180,15 +2180,15 @@ IMROTbl *CGBL::getProbe( const KVParams &kvp )
 
 
 bool CGBL::getSavedChannels(
-    QVector<uint>   &chanIds,
+    QVector<uint>   &snsFileChans,
     const KVParams  &kvp,
     const QFileInfo &fim )
 {
     QString chnstr = kvp["snsSaveChanSubset"].toString();
 
     if( Subset::isAllChansStr( chnstr ) )
-        Subset::defaultVec( chanIds, kvp["nSavedChans"].toInt() );
-    else if( !Subset::rngStr2Vec( chanIds, chnstr ) ) {
+        Subset::defaultVec( snsFileChans, kvp["nSavedChans"].toInt() );
+    else if( !Subset::rngStr2Vec( snsFileChans, chnstr ) ) {
         Log() << QString("Bad snsSaveChanSubset tag '%1'.").arg( fim.fileName() );
         return false;
     }
@@ -2583,11 +2583,11 @@ bool CGBL::addAutoExtractors()
         if( openInputMeta( fim, kvp, g0, t0, NI, 0, false ) )
             return false;
 
-        QVector<uint>   chanIds;
+        QVector<uint>   snsFileChans;
         int             iword = kvp["syncNiChan"].toInt(),
                         bit;
 
-        if( !getSavedChannels( chanIds, kvp, fim ) )
+        if( !getSavedChannels( snsFileChans, kvp, fim ) )
             return false;
 
         if( kvp["syncNiChanType"].toInt() == 1 ) {  // Analog
@@ -2597,7 +2597,7 @@ bool CGBL::addAutoExtractors()
             X->usrord   = -1;
             X->js       = NI;
             X->ip       = 0;
-            X->word     = chanIds.indexOf( iword );
+            X->word     = snsFileChans.indexOf( iword );
             X->thresh   = kvp["syncNiThresh"].toDouble();
             X->thrsh2   = 0;
             X->span     = 500;
@@ -2610,7 +2610,7 @@ bool CGBL::addAutoExtractors()
 
             bit     = iword % 16;
             iword   = niCumTypCnt[CniCfg::niSumAnalog] + iword / 16;
-            iword   = chanIds.indexOf( iword );
+            iword   = snsFileChans.indexOf( iword );
 
             D_Pulse *X = new D_Pulse;
             X->ex       = eXD;

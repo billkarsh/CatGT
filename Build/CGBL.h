@@ -378,7 +378,7 @@ public:
     IMROTbl *getProbe( const KVParams &kvp );
 
     bool getSavedChannels(
-        QVector<uint>   &chanIds,
+        QVector<uint>   &snsFileChans,
         const KVParams  &kvp,
         const QFileInfo &fim );
 
