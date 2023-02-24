@@ -567,8 +567,11 @@ void Pass1AP::sAveApplyGlobal(
                 A[is] = S[is] / N[is];
         }
 
-        for( int ig = 0; ig < nAP; ++ig )
-            d[ig] -= A[E[ig].s];
+        for( int ig = 0; ig < nAP; ++ig ) {
+            const ShankMapDesc  *e = &E[ig];
+            if( e->u )
+                d[ig] -= A[e->s];
+        }
     }
 }
 #else
@@ -606,8 +609,10 @@ void Pass1AP::sAveApplyGlobal(
         if( N > 1 )
             A = S / N;
 
-        for( int ig = 0; ig < nAP; ++ig )
-            d[ig] -= A;
+        for( int ig = 0; ig < nAP; ++ig ) {
+            if( E[ig].u )
+                d[ig] -= A;
+        }
     }
 }
 #endif
@@ -675,9 +680,7 @@ void Pass1AP::sAveApplyDmxStride(
             }
 
             for( int ic = ic0; ic <= nAP; ic += stride ) {
-
                 int ig = ic2ig[ic];
-
                 if( ig >= 0 )
                     d[ig] -= A[E[ig].s];
             }
@@ -700,8 +703,6 @@ void Pass1AP::sAveApplyDmxStride(
         return;
 
     nAP = ig2ic[nAP-1];    // highest acquired channel saved
-
-    const ShankMapDesc  *E = &shankMap->e[0];
 
     int dStep = nC * dwnSmp;
 
@@ -820,8 +821,6 @@ void Pass1AP::sAveApplyDmxTbl(
 {
     if( nAP <= 0 )
         return;
-
-    const ShankMapDesc  *E = &shankMap->e[0];
 
     int *T      = &muxTbl[0];
     int dStep   = nC * dwnSmp;
