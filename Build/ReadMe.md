@@ -82,7 +82,7 @@ Which streams:
 -ob                      ;required to process ob streams
 -ap                      ;required to process ap streams
 -lf                      ;required to process lf streams
--obx=0,3:5               ;if -ob process these Oneboxes
+-obx=0,3:5               ;if -ob process these OneBoxes
 -prb_3A                  ;if -ap or -lf process 3A-style probe files, e.g. run_name_g0_t0.imec.ap.bin
 -prb=0,3:5               ;if -ap or -lf AND !prb_3A process these probes
 
@@ -206,17 +206,17 @@ with `Force LF` unchecked saves only AP and SY channels. If you've already
 saved .lf. files you will have to remove or rename them to allow the
 CatGT LF generation to work.
 
-### obx (which Onebox(es))
+### obx (which OneBox(es))
 
-This designates which Oneboxes to process. Onebox indices are assigned by
+This designates which OneBoxes to process. OneBox indices are assigned by
 SpikeGLX and always start at zero. Unlike probes, all obx files are at
 the top level of a run folder (like NI); there are no obx subfolders.
 
 Examples:
 
-- Use `-obx=0` if your run contains one Onebox only.
-- Use `-obx=2:4` to process Oneboxes {2,3,4}.
-- Use `-obx=1,3:5` to do Oneboxes {1,3,4,5} (skip 2).
+- Use `-obx=0` if your run contains one OneBox only.
+- Use `-obx=2:4` to process OneBoxes {2,3,4}.
+- Use `-obx=1,3:5` to do OneBoxes {1,3,4,5} (skip 2).
 
 ### prb_3A
 
@@ -634,7 +634,7 @@ Word is a zero-based channel index. It selects the 16-bit data word to
 process.
 
 word = -1, selects the last word in that stream. That's especially useful
-to specify the SY word at the end of a Onebox or probe stream.
+to specify the SY word at the end of a OneBox or probe stream.
 
 >It may be helpful to review the organization of words and bits in data
 streams in the
@@ -983,7 +983,7 @@ Which streams:
 -ob                      ;required to supercat ob streams
 -ap                      ;required to supercat ap streams
 -lf                      ;required to supercat lf streams
--obx=0,3:5               ;if -ob supercat these Oneboxes
+-obx=0,3:5               ;if -ob supercat these OneBoxes
 -prb_3A                  ;if -ap or -lf supercat 3A-style probe files, e.g. run_name_g0_tcat.imec.ap.bin
 -prb=0,3:5               ;if -ap or -lf AND !prb_3A supercat these probes
 

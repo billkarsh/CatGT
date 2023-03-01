@@ -1170,7 +1170,7 @@ static void PrintUsage()
     Log() << "-ob                      ;required to process ob streams";
     Log() << "-ap                      ;required to process ap streams";
     Log() << "-lf                      ;required to process lf streams";
-    Log() << "-obx=0,3:5               ;if -ob process these Oneboxes";
+    Log() << "-obx=0,3:5               ;if -ob process these OneBoxes";
     Log() << "-prb_3A                  ;if -ap or -lf process 3A-style probe files, e.g. run_name_g0_t0.imec.ap.bin";
     Log() << "-prb=0,3:5               ;if -ap or -lf AND !prb_3A process these probes\n";
     Log() << "Options:";
@@ -1519,7 +1519,7 @@ bad_param:
     }
 
     if( ob && !vobx.size() ) {
-        Log() << "Error: Missing Onebox specifier -obx=???.";
+        Log() << "Error: Missing OneBox specifier -obx=???.";
         goto error;
     }
 
