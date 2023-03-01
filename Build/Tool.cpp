@@ -341,7 +341,6 @@ void Meta::read( t_js js )
             QStringList sl = kvp["snsApLfSy"].toString().split(
                                 QRegExp("^\\s+|\\s*,\\s*"),
                                 QString::SkipEmptyParts );
-
             srate   = kvp["imSampRate"].toDouble();
             nN      = sl[js-AP].toInt();
             break;
