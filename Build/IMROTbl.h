@@ -1,17 +1,18 @@
 #ifndef IMROTBL_H
 #define IMROTBL_H
 
-#include <qglobal.h>
+#include <QString>
 
 #include <vector>
 
+struct GeomMap;
 struct ShankMap;
 
 /* ---------------------------------------------------------------- */
 /* Types ---------------------------------------------------------- */
 /* ---------------------------------------------------------------- */
 
-// Editing helper
+// Editing helper - columns in hwr coords
 //
 struct IMRO_Site {
     int s, c, r;
@@ -20,7 +21,7 @@ struct IMRO_Site {
     bool operator<( const IMRO_Site &rhs ) const;
 };
 
-// Editing helper
+// Editing helper - columns in hwr coords
 //
 struct IMRO_ROI {
 // if c0   <= 0  full left  included
@@ -66,8 +67,24 @@ typedef const std::vector<IMRO_ROI>&    tconstImroROIs;
 //
 struct IMROTbl
 {
-    int type;
+    friend class ShankView;
 
+protected:
+    std::vector<int>    col2vis_ev,
+                        col2vis_od;
+    float               _shankpitch,
+                        _shankwid,
+                        _x0_ev,
+                        _x0_od,
+                        _xpitch,
+                        _zpitch;
+    int                 _ncolhwr,
+                        _ncolvis;
+public:
+    QString             pn;
+    int                 type;
+
+    IMROTbl( const QString &pn, int type );
     virtual ~IMROTbl()  {}
 
     virtual void copyFrom( const IMROTbl *rhs ) = 0;
@@ -76,10 +93,10 @@ struct IMROTbl
 
     virtual int nElec() const = 0;
     virtual int nShank() const = 0;
-    virtual int nElecPerShank() const = 0;
-    virtual int nCol() const = 0;
-    virtual int nCol_smap() const       {return nCol();}
-    virtual int nRow() const = 0;
+            int nElecPerShank() const   {return nElec()/nShank();}
+            int nCol_hwr() const        {return _ncolhwr;}
+            int nCol_vis() const        {return _ncolvis;}
+            int nRow() const            {return nElecPerShank()/_ncolhwr;}
     virtual int nChan() const = 0;
     virtual int nAP() const = 0;
     virtual int nLF() const = 0;
@@ -101,9 +118,14 @@ struct IMROTbl
     virtual bool loadFile( QString &msg, const QString &path ) = 0;
     virtual bool saveFile( QString &msg, const QString &path ) const = 0;
 
-    virtual void toShankMap( ShankMap &S ) const;
-    virtual void toShankMap_saved(
+    void toShankMap_hwr( ShankMap &S ) const;
+    void toShankMap_vis( ShankMap &S ) const;
+    void toShankMap_snsFileChans(
         ShankMap            &S,
+        const QVector<uint> &saved,
+        int                 offset ) const;
+    void toGeomMap_snsFileChans(
+        GeomMap             &G,
         const QVector<uint> &saved,
         int                 offset ) const;
     void andOutRefs( ShankMap &S ) const;
@@ -144,20 +166,20 @@ struct IMROTbl
     virtual IMRO_Attr edit_Attr_def() const     {return IMRO_Attr();}
     virtual IMRO_Attr edit_Attr_cur() const     {return IMRO_Attr();}
     virtual bool edit_Attr_canonical() const    {return false;}
-    virtual void edit_exclude_1( tImroSites vS, const IMRO_Site &s ) const
-        {vS.clear(); Q_UNUSED( s )}
+    virtual void edit_exclude_1( tImroSites vX, const IMRO_Site &s ) const
+        {vX.clear(); Q_UNUSED( s )}
     virtual void edit_ROI2tbl( tconstImroROIs vR, const IMRO_Attr &A )
         {Q_UNUSED( vR ) Q_UNUSED( A )}
-    virtual int edit_defaultROI( tImroROIs vR ) const;
-    virtual bool edit_isCanonical( tconstImroROIs vR ) const;
+    int edit_defaultROI( tImroROIs vR ) const;
+    bool edit_isCanonical( tconstImroROIs vR ) const;
     int edit_tbl2ROI( tImroROIs vR ) const;
-    void edit_exclude( tImroSites vS, tconstImroROIs vR ) const;
-    bool edit_isAllowed( tconstImroSites vS, const IMRO_ROI &B ) const;
+    void edit_exclude( tImroSites vX, tconstImroROIs vR ) const;
+    bool edit_isAllowed( tconstImroSites vX, const IMRO_ROI &B ) const;
 
 // Allocate
 
     static bool pnToType( int &type, const QString &pn );
-    static IMROTbl* alloc( int type );
+    static IMROTbl* alloc( const QString &pn );
     static QString default_imroLE( int type );
 };
 
