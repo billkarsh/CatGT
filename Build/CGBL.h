@@ -257,6 +257,8 @@ public:
     double          syncper,        // measured in supercat_trim
                     startsecs,
                     maxsecs,
+                    locin_um,
+                    locout_um,
                     gfixamp,        // amplitude
                     gfixslp,        // slope
                     gfixbas;        // baseline
@@ -308,6 +310,7 @@ public:
 public:
     CGBL()
         :   syncper(-1), startsecs(0), maxsecs(0),
+            locin_um(0), locout_um(0),
             gfixamp(0), gfixslp(0), gfixbas(0),
             ga(-1), gb(-1), ta(-2), tb(-2),
             zfilmax(-1), locin(0), locout(0), inarow(-1),

@@ -80,7 +80,7 @@
 -ap                      ;required to process ap streams
 -lf                      ;required to process lf streams
 -obx=0,3:5               ;if -ob process these OneBoxes
--prb_3A                  ;if -ap or -lf process 3A-style probe files, e.g. run_name_g0_t0.imec.ap.bin
+-prb_3A                  ;if -ap or -lf process 3A-style probe files, e.g., run_name_g0_t0.imec.ap.bin
 -prb=0,3:5               ;if -ap or -lf AND !prb_3A process these probes
 
 Options:
@@ -97,6 +97,7 @@ Options:
 -apfilter=Typ,N,Fhi,Flo  ;apply ap band-pass filter of given {type, order, corners(float Hz)}
 -lffilter=Typ,N,Fhi,Flo  ;apply lf band-pass filter of given {type, order, corners(float Hz)}
 -no_tshift               ;DO NOT time-align channels to account for ADC multiplexing
+-loccar_um=40,140        ;apply ap local CAR annulus (exclude radius, include radius)
 -loccar=2,8              ;apply ap local CAR annulus (exclude radius, include radius)
 -gblcar                  ;apply ap global CAR filter over all channels
 -gfix=0.40,0.10,0.02     ;rmv ap artifacts: ||amp(mV)||, ||slope(mV/sample)||, ||noise(mV)||
@@ -178,7 +179,7 @@ Options:
 </ul>
 <h3 id="index-range-g--t--concatenation">Index range (g-, t- concatenation)</h3>
 <h4 id="background">Background</h4>
-<p>During a SpikeGLX run the data samples from the hardware are enqueued into history streams, one stream for each probe and one for NI data. There are several options for writing data files while a run is in progress. For example, all of the data can be saved in a continuous manner, which would produce a single file named <code>run_name_g0_t0</code>. As another example, the <code>Enable/Disable Recording</code> (gate control) button might be pressed several times creating distinct file-writing epochs, each of which gets its own <code>g-index</code>, e.g., {<code>run_name_g0_t0</code>, <code>run_name_g1_t0</code>, <code>run_name_g3_t0</code>, ...}. Finally, within each open gate epoch, SpikeGLX can write a programmed sequence of triggered files, incrementing the <code>t-index</code> for each of these, e.g. {<code>run_name_g7_t0</code>, <code>run_name_g7_t1</code>, <code>run_name_g7_t2</code>, ...}. Note that triggered sequences share a common run_name and g-index. Note too that each time the gate reopens, the g-index is advanced and the selected trigger program will start over again beginning with index t0. In all of these examples the hardware remains in the running state and file data are being drawn from the shared underlying history streams. That allows files from the same run (run_name) to be sewn back together so as to preserve the timing in the original experiment.</p>
+<p>During a SpikeGLX run the data samples from the hardware are enqueued into history streams, one stream for each probe and one for NI data. There are several options for writing data files while a run is in progress. For example, all of the data can be saved in a continuous manner, which would produce a single file named <code>run_name_g0_t0</code>. As another example, the <code>Enable/Disable Recording</code> (gate control) button might be pressed several times creating distinct file-writing epochs, each of which gets its own <code>g-index</code>, e.g., {<code>run_name_g0_t0</code>, <code>run_name_g1_t0</code>, <code>run_name_g3_t0</code>, ...}. Finally, within each open gate epoch, SpikeGLX can write a programmed sequence of triggered files, incrementing the <code>t-index</code> for each of these, e.g., {<code>run_name_g7_t0</code>, <code>run_name_g7_t1</code>, <code>run_name_g7_t2</code>, ...}. Note that triggered sequences share a common run_name and g-index. Note too that each time the gate reopens, the g-index is advanced and the selected trigger program will start over again beginning with index t0. In all of these examples the hardware remains in the running state and file data are being drawn from the shared underlying history streams. That allows files from the same run (run_name) to be sewn back together so as to preserve the timing in the original experiment.</p>
 <h4 id="usage-notes">Usage notes</h4>
 <p>CatGT can concatenate files together that come from the same run. That is, the files have the same base run_name, but may have differing g- and t-indices.</p>
 <ul>
@@ -220,8 +221,8 @@ Options:
 <p>This can be done easily by creating symbolic file links that use the established SpikeGLX g/t naming conventions.</p>
 <h5 id="windows-2">(Windows)</h5>
 <ol style="list-style-type: decimal">
-<li>Create a folder, e.g. 'ZZZ', to hold your symlinks; it acts like a containing run folder. You can make either a flat folder organization or a standard SpikeGLX hierarchy; adjust the CatGT parameters accordingly.</li>
-<li>Create a .bat script file, e.g. 'makelinks.bat'.</li>
+<li>Create a folder, e.g., 'ZZZ', to hold your symlinks; it acts like a containing run folder. You can make either a flat folder organization or a standard SpikeGLX hierarchy; adjust the CatGT parameters accordingly.</li>
+<li>Create a .bat script file, e.g., 'makelinks.bat'.</li>
 <li>Edit makelinks.bat, adding entries for each bin/meta file pair like this:</li>
 </ol>
 <pre><code>mklink &lt;...ZZZ\goodname_g0_t0.imec0.ap.bin&gt; &lt;path\myoriginalname.bin&gt;
@@ -235,8 +236,8 @@ mklink &lt;...ZZZ\goodname_g0_t0.imec0.ap.meta&gt; &lt;path\myoriginalname.meta&
 </ol>
 <h5 id="linux-2">(Linux)</h5>
 <ol style="list-style-type: decimal">
-<li>Create a folder, e.g. 'ZZZ', to hold your symlinks; it acts like a containing run folder. You can make either a flat folder organization or a standard SpikeGLX hierarchy; adjust the CatGT parameters accordingly.</li>
-<li>Create a .sh script file, e.g. 'makelinks.sh'.</li>
+<li>Create a folder, e.g., 'ZZZ', to hold your symlinks; it acts like a containing run folder. You can make either a flat folder organization or a standard SpikeGLX hierarchy; adjust the CatGT parameters accordingly.</li>
+<li>Create a .sh script file, e.g., 'makelinks.sh'.</li>
 <li>Edit makelinks.sh, adding entries for each bin/meta file pair like this:</li>
 </ol>
 <pre><code>#!/bin/sh
@@ -308,13 +309,15 @@ ls -s &lt;path/myoriginalname.meta&gt; &lt;...ZZZ/goodname_g0_t0.imec0.ap.meta&g
 <ul>
 <li>Use option <code>-no_tshift</code> to disable CatGT's automatic tshift.</li>
 </ul>
-<h3 id="loccar-option">loccar option</h3>
+<h3 id="loccar_umloccar-option">loccar_um/loccar option</h3>
 <ul>
 <li>Do CAR common average referencing on an annular area about each site.</li>
 <li>The average is shank-specific, including only channels/sites on the same shank as the center site.</li>
-<li>Specify an excluded inner radius (in sites) and an outer averaging radius.</li>
+<li>Specify an excluded inner radius and an outer averaging radius.</li>
 <li>Use a high-pass filter also, to remove DC offsets.</li>
 </ul>
+<p>Use option -loccar_um to specify the radii in microns. This requires the presence of <code>snsGeomMap</code> in the metadata, which will be standard for SpikeGLX versions 20230202 and later. The inner radius must be at least 10 microns.</p>
+<p>Use option -loccar to specify the radii in numbers of rows/columns. This requires the presence of <code>snsShankMap</code> in the metadata, which will be eliminated in SpikeGLX versions 20230202 and later. The inner radius must be at least 1.</p>
 <blockquote>
 <p><em>Use the SpikeGLX FileViewer to look at traces pre- and post-CAR to see if this filter option is working for your data. A danger of loccar is excessive reduction of the amplitude of large-footprint spikes.</em></p>
 </blockquote>
@@ -332,7 +335,7 @@ ls -s &lt;path/myoriginalname.meta&gt; &lt;...ZZZ/goodname_g0_t0.imec0.ap.meta&g
 <li>No, filter options <code>-loccar</code> and <code>-gblcar</code> don't make sense together.</li>
 </ul>
 <blockquote>
-<p><em>Use the SpikeGLX FileViewer to look at traces pre- and post-CAR to see if this filter option is working for your data. A danger of gblcar is that the probe is sampling tissue layers with two or more distinct backgrounds. That can create artifacts that look like small amplitude spikes. If that is happening, instead of <code>-gblcar</code>, try a more localized but still large averaging area using <code>-loccar=4,32</code> for example. Think of this geometry not as a small ring, but as a 65-row averaging block about each site. Choose a block size that works best for the layer thickness. Note too that we suggested an inner exclusion radius larger than 1 to avoid including the spike, itself, in the averaging block.</em></p>
+<p><em>Use the SpikeGLX FileViewer to look at traces pre- and post-CAR to see if this filter option is working for your data. A danger of gblcar is that the probe is sampling tissue layers with two or more distinct backgrounds. That can create artifacts that look like small amplitude spikes. If that is happening, instead of <code>-gblcar</code>, try a more localized but still large averaging area using <code>-loccar_um=60,480</code> for example. Think of this geometry not as a small ring, but as a 960 um averaging block about each site. Choose a block size that works best for the layer thickness. Note too that we suggested an inner exclusion radius larger than 2 row-steps to avoid including the spike, itself, in the averaging block.</em></p>
 </blockquote>
 <h3 id="gfix-option">gfix option</h3>
 <p>Light or chewing artifacts often make large amplitude excursions on a majority of channels. This tool identifies them and cuts them out, replacing with zeros. You specify three things.</p>
@@ -349,7 +352,9 @@ ls -s &lt;path/myoriginalname.meta&gt; &lt;...ZZZ/goodname_g0_t0.imec0.ap.meta&g
 <h3 id="chnexcl-option">chnexcl option</h3>
 <p>Use this option to prevent bad channels from corrupting calculations over mixtures of channels, such as the spatial filters {loccar, gblcar, gfix}.</p>
 <p>The option <code>-chnexcl={probe;chan_list}{probe;chan_list}...</code> takes a list of elements <em>(include the curly braces)</em> that specify a probe index; and a list of channels to exclude for that probe. Channel lists are specified like page lists in a printer dialog, <code>1,10,40:51</code> for example. Be careful to use a semicolon (;) between probe and channel list, and use only commas and colons (,:) within your channel lists.</p>
-<p>Note that the CatGT spatial filters honor the metadata item <code>~snsShankMap</code>. The shank map has an entry for each saved channel that describes the (shank, col, row) where its electrode resides on the shank, and a fourth 0/1 value, <code>use flag</code>, indicating if the channel should be used in spatial filtering. By default, SpikeGLX marks known on-shank reference channels with zeroes. Your chnexcl data force the corresponding use flags to zero before the filters are applied, and the modified <code>~snsShankMap</code> is written to the CatGT output metadata.</p>
+<p>Note that the CatGT spatial filters honor metadata items <code>~snsGeomMap</code> and <code>~snsShankMap</code>. The GeomMap replaces the ShankMap in metadata as of SpikeGLX version 20230202.</p>
+<p>A GeomMap has an entry for each saved channel that describes the (shank, x(um), z(um)) where its electrode resides on the shank, and a fourth 0/1 value, <code>use flag</code>, indicating if the channel should be used in spatial filtering. By default, SpikeGLX marks known on-shank reference channels with zeroes. Your chnexcl data force the corresponding use flags to zero before the filters are applied, and the modified <code>~snsGeomMap</code>, if present, is written to the CatGT output metadata.</p>
+<p>A ShankMap has an entry for each saved channel that describes the (shank, col, row) where its electrode resides on the shank, and a fourth 0/1 value, <code>use flag</code>, indicating if the channel should be used in spatial filtering. By default, SpikeGLX marks known on-shank reference channels with zeroes. Your chnexcl data force the corresponding use flags to zero before the filters are applied, and the modified <code>~snsShankMap</code>, if present, is written to the CatGT output metadata.</p>
 <h3 id="extractors">Extractors</h3>
 <blockquote>
 <p><em>Starting with version 3.0, CatGT extracts sync edges from all streams by default, unless you specify the <code>-no_auto_sync</code> option (see below).</em></p>
@@ -416,10 +421,10 @@ ls -s &lt;path/myoriginalname.meta&gt; &lt;...ZZZ/goodname_g0_t0.imec0.ap.meta&g
 <ul>
 <li>Default tolerance can be overridden by appending it in milliseconds as the last parameter for that extractor.</li>
 <li>Each extractor can have its own tolerance.</li>
-<li>E.g. -xd=js,ip,word,bit,100 seeks pulses with duration in default range [80,120] ms.</li>
-<li>E.g. -xd=js,ip,word,bit,100,2 seeks pulses with duration in specified range [98,102] ms.</li>
+<li>E.g., -xd=js,ip,word,bit,100 seeks pulses with duration in default range [80,120] ms.</li>
+<li>E.g., -xd=js,ip,word,bit,100,2 seeks pulses with duration in specified range [98,102] ms.</li>
 </ul></li>
-<li><p>A given channel or even bit could encode two or more types of pulse that have different durations, E.g. <code>-xd=0,0,8,0,10 -xd=0,0,8,0,20</code> scans and reports both 10 and 20 ms pulses on the same line.</p></li>
+<li><p>A given channel or even bit could encode two or more types of pulse that have different durations, e.g., <code>-xd=0,0,8,0,10 -xd=0,0,8,0,20</code> scans and reports both 10 and 20 ms pulses on the same line.</p></li>
 <li><p>Each option, say <code>-xd=2,0,384,6,500</code>, creates an output file whose name reflects the parameters, e.g., <code>run_name_g0_tcat.imec0.ap.xd_384_6_500.txt</code>.</p></li>
 <li><p>The threshold is not encoded in the <code>-xa</code> filename; just word and milliseconds.</p></li>
 <li><p>The <code>run_name_g0_fyi.txt</code> file lists the full paths of all generated extraction files.</p></li>
@@ -546,7 +551,7 @@ ls -s &lt;path/myoriginalname.meta&gt; &lt;...ZZZ/goodname_g0_t0.imec0.ap.meta&g
 </ol>
 <ul>
 <li>dir: The parent directory of the catgt_run_ga folder.</li>
-<li>run_ga: 'catgt_' tagged folder name, e.g. <strong>catgt_myrun_g7</strong>.</li>
+<li>run_ga: 'catgt_' tagged folder name, e.g., <strong>catgt_myrun_g7</strong>.</li>
 </ul></li>
 </ul>
 <blockquote>
@@ -604,7 +609,7 @@ Which streams:
 -ap                      ;required to supercat ap streams
 -lf                      ;required to supercat lf streams
 -obx=0,3:5               ;if -ob supercat these OneBoxes
--prb_3A                  ;if -ap or -lf supercat 3A-style probe files, e.g. run_name_g0_tcat.imec.ap.bin
+-prb_3A                  ;if -ap or -lf supercat 3A-style probe files, e.g., run_name_g0_tcat.imec.ap.bin
 -prb=0,3:5               ;if -ap or -lf AND !prb_3A supercat these probes
 
 Options:
@@ -620,6 +625,7 @@ Options:
 -apfilter=Typ,N,Fhi,Flo  ;ignored
 -lffilter=Typ,N,Fhi,Flo  ;ignored
 -no_tshift               ;ignored
+-loccar_um=40,140        ;ignored
 -loccar=2,8              ;ignored
 -gblcar                  ;ignored
 -gfix=0.40,0.10,0.02     ;ignored
@@ -667,6 +673,11 @@ Options:
 <p>Supercat creates an output file: <code>dest/supercat_run_ga/run_ga_sc_offsets.txt</code>. This tablulates, for each stream, where the first sample of each input &quot;tcat&quot; file is relative to the start of the concatenated output file. It records these offsets in units of samples, and again in units of seconds on that stream's clock.</p>
 <hr />
 <h2 id="change-log">Change Log</h2>
+<p>Version 3.7</p>
+<ul>
+<li>Add ~snsGeomMap awareness.</li>
+<li>Add -loccar_um option.</li>
+</ul>
 <p>Version 3.6</p>
 <ul>
 <li>Option -gblcar uses median rather than mean.</li>

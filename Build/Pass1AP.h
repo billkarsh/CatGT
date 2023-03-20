@@ -4,11 +4,21 @@
 #include "Pass1.h"
 
 struct LR;
+struct GeomMap;
 struct ShankMap;
 
 /* ---------------------------------------------------------------- */
 /* Types ---------------------------------------------------------- */
 /* ---------------------------------------------------------------- */
+
+struct SUElem {
+// The common parts of GeomMap & ShankMap.
+// This device allows unification of code whichever map is loaded.
+    qint16 s, u;
+    SUElem( qint16 s, qint16 u ) : s(s), u(u)   {}
+};
+
+typedef std::vector<SUElem> SUList;
 
 struct MedCAR {
 private:
@@ -20,7 +30,7 @@ private:
 public:
     MedCAR()            {}
     virtual ~MedCAR()   {}
-    void init( const ShankMap *shankMap, int nC, int nAP );
+    void init( const SUList &SU, int nC, int nAP );
     void apply( qint16 *d, int ntpts );
 };
 
@@ -28,6 +38,7 @@ class Pass1AP : public Pass1
 {
 private:
     double              Tmul;
+    GeomMap             *geomMap;
     ShankMap            *shankMap;
     Biquad              *hp_gfix;
     MedCAR              medCAR;
@@ -37,12 +48,14 @@ private:
     QVector<int>        ig2ic,              // saved to acquired AP
                         ic2ig;              // acq AP to saved or -1
     std::vector<std::vector<int> >  TSM;
+    SUList              SU;
     std::vector<int>    muxTbl;
     int                 nADC,
                         nGrp;
 
 public:
-    Pass1AP( int ip ) : Pass1( AP, AP, ip ), shankMap(0), hp_gfix(0)    {}
+    Pass1AP( int ip )
+        :   Pass1( AP, AP, ip ), geomMap(0), shankMap(0), hp_gfix(0)    {}
     virtual ~Pass1AP();
 
     bool go();
@@ -53,7 +66,8 @@ private:
     bool filtersAndScaling();
     void gfixEdits();
     void gfixZeros( qint64 L, int N );
-    void sAveTable( int nAP );
+    void sAveTable_geomMap( int nAP );
+    void sAveTable_shankMap( int nAP );
     void sAveApplyLocal(
         qint16  *d,
         qint16  *tmp,

@@ -2,7 +2,10 @@
 #include "Pass1AP.h"
 #include "Util.h"
 #include "Biquad.h"
+#include "GeomMap.h"
 #include "ShankMap.h"
+
+#include <QSet>
 
 #define MAX10BIT    512
 #define GFIXOFF     128+32
@@ -15,12 +18,12 @@
 /* MedCAR --------------------------------------------------------- */
 /* ---------------------------------------------------------------- */
 
-void MedCAR::init( const ShankMap *shankMap, int nC, int nAP )
+void MedCAR::init( const SUList &SU, int nC, int nAP )
 {
-    const ShankMapDesc  *E = &shankMap->e[0];
+    const SUElem    *su = &SU[0];
 
     for( int ig = 0; ig < nAP; ++ig ) {
-        if( E[ig].u )
+        if( su[ig].u )
             idx.push_back( ig );
     }
 
@@ -57,8 +60,9 @@ void MedCAR::apply( qint16 *d, int ntpts )
 
 Pass1AP::~Pass1AP()
 {
+    if( geomMap )  delete geomMap;
     if( shankMap ) delete shankMap;
-    if( hp_gfix ) delete hp_gfix;
+    if( hp_gfix )  delete hp_gfix;
 }
 
 
@@ -68,8 +72,8 @@ bool Pass1AP::go()
 
     doWrite = GBL.gt_nIndices() > 1
                     || GBL.startsecs > 0 || GBL.apflt.isenabled()
-                    || GBL.tshift || GBL.locout || GBL.gblcar
-                    || GBL.gfixdo;
+                    || GBL.tshift || GBL.locout_um || GBL.locout
+                    || GBL.gblcar || GBL.gfixdo;
 
     switch( GBL.openInputMeta( fim, meta.kvp, g0, t0, AP, ip, GBL.prb_miss_ok ) ) {
         case 0: break;
@@ -93,7 +97,7 @@ bool Pass1AP::go()
     if( !filtersAndScaling() )
         return false;
 
-    medCAR.init( shankMap, meta.nC, meta.nN );
+    medCAR.init( SU, meta.nC, meta.nN );
 
     initDigitalFields( 0.0001 );
 
@@ -108,6 +112,9 @@ bool Pass1AP::go()
         gfixbuf.resize( GFIXBUFSMP * meta.nC );
 
     fileLoop();
+
+    if( geomMap )
+        meta.kvp["~snsGeomMap"] = geomMap->toString();
 
     if( shankMap )
         meta.kvp["~snsShankMap"] = shankMap->toString();
@@ -135,7 +142,7 @@ void Pass1AP::neural( qint16 *data, int ntpts )
 
 // Loccar
 
-    if( GBL.locout )
+    if( GBL.locout_um || GBL.locout )
         sAveApplyLocal( data, &loccarBuf[0], ntpts, meta.nC, meta.nN );
 
 // Gblcar
@@ -193,7 +200,7 @@ bool Pass1AP::filtersAndScaling()
 // Channel mapping
 // ---------------
 
-    if( GBL.locout || GBL.gblcar || GBL.gfixdo ) {
+    if( GBL.locout_um || GBL.locout || GBL.gblcar || GBL.gfixdo ) {
 
         // ---------------------
         // Saved channel ID list
@@ -224,6 +231,29 @@ bool Pass1AP::filtersAndScaling()
             ic2ig[C]    = ig;
         }
 
+        // -------
+        // GeomMap
+        // -------
+
+        if( geomMap )
+            delete geomMap;
+
+        geomMap = new GeomMap;
+
+        KVParams::const_iterator    it_kvp = meta.kvp.find( "~snsGeomMap" );
+
+        if( it_kvp != meta.kvp.end() )
+            geomMap->fromString( it_kvp.value().toString() );
+        else if( GBL.locout_um ) {
+            Log() << QString("Missing ~snsGeomMap tag needed for loccar_um '%1'.")
+                        .arg( fim.fileName() );
+            return false;
+        }
+        else {
+            delete geomMap;
+            geomMap = 0;
+        }
+
         // --------
         // ShankMap
         // --------
@@ -233,12 +263,23 @@ bool Pass1AP::filtersAndScaling()
 
         shankMap = new ShankMap;
 
-        KVParams::const_iterator    it_kvp = meta.kvp.find( "~snsShankMap" );
+        it_kvp = meta.kvp.find( "~snsShankMap" );
 
         if( it_kvp != meta.kvp.end() )
             shankMap->fromString( it_kvp.value().toString() );
+        else if( GBL.locout ) {
+            Log() << QString("Missing ~snsShankMap tag needed for loccar '%1'.")
+                        .arg( fim.fileName() );
+            return false;
+        }
         else {
-            Log() << QString("Missing ~snsShankMap tag '%1'.")
+            delete shankMap;
+            shankMap = 0;
+        }
+
+        if( !geomMap && !shankMap ) {
+            Log() << QString("Missing ~snsGeomMap and ~snsShankMap"
+                        " tags (need one of these for channel usage flags) '%1'.")
                         .arg( fim.fileName() );
             return false;
         }
@@ -262,8 +303,27 @@ bool Pass1AP::filtersAndScaling()
 
                 int ig = ig2ic.indexOf( C[ie] );
 
-                if( ig >= 0 )
-                    shankMap->e[ig].u = 0;
+                if( ig >= 0 ) {
+                    if( geomMap )  geomMap->e[ig].u  = 0;
+                    if( shankMap ) shankMap->e[ig].u = 0;
+                }
+            }
+        }
+
+        // --------------
+        // Transfer to SU
+        // --------------
+
+        if( geomMap ) {
+            for( int ie = 0; ie < meta.nN; ++ie ) {
+                const GeomMapDesc   &E = geomMap->e[ie];
+                SU.push_back( SUElem( E.s, E.u ) );
+            }
+        }
+        else {
+            for( int ie = 0; ie < meta.nN; ++ie ) {
+                const ShankMapDesc  &E = shankMap->e[ie];
+                SU.push_back( SUElem( E.s, E.u ) );
             }
         }
 
@@ -271,11 +331,11 @@ bool Pass1AP::filtersAndScaling()
         // Unmap unused channels
         // ---------------------
 
-        const ShankMapDesc  *E = &shankMap->e[0];
+        const SUElem    *su = &SU[0];
 
         for( int ig = 0; ig < meta.nN; ++ig ) {
 
-            if( !E[ig].u )
+            if( !su[ig].u )
                 ic2ig[ig2ic[ig]] = -1;
         }
 
@@ -283,8 +343,12 @@ bool Pass1AP::filtersAndScaling()
         // TSM
         // ---
 
-        if( GBL.locout ) {
-            sAveTable( meta.nN );
+        if( GBL.locout_um ) {
+            sAveTable_geomMap( meta.nN );
+            loccarBuf.resize( meta.nC );
+        }
+        else if( GBL.locout ) {
+            sAveTable_shankMap( meta.nN );
             loccarBuf.resize( meta.nC );
         }
     }
@@ -392,12 +456,83 @@ void Pass1AP::gfixZeros( qint64 L, int N )
 }
 
 
+// For each channel [0,nAP), calculate a neighborhood of
+// indices into a timepoint's channels.
+// - Annulus with {inner, outer} radii {GBL.locin_um, GBL.locout_um}.
+// - The list is sorted for cache friendliness.
+//
+void Pass1AP::sAveTable_geomMap( int nAP )
+{
+    TSM.clear();
+    TSM.resize( nAP );
+
+    float   ri2 = GBL.locin_um * GBL.locin_um,
+            ro2 = GBL.locout_um * GBL.locout_um;
+
+    for( int ig = 0; ig < nAP; ++ig ) {
+
+        const GeomMapDesc   &E = geomMap->e[ig];
+
+        if( !E.u )
+            continue;
+
+        // ----------------------------------
+        // Form set of excluded inner indices
+        // ----------------------------------
+
+        QSet<int>   inner;
+
+        for( int ie = 0; ie < nAP; ++ie ) {
+
+            if( ie == ig )
+                continue;
+
+            const GeomMapDesc   &e = geomMap->e[ie];
+
+            if( e.u && e.s == E.s ) {
+
+                float   dx = e.x - E.x,
+                        dz = e.z - E.z;
+
+                if( dx*dx + dz*dz <= ri2 )
+                    inner.insert( ie );
+            }
+        }
+
+        // -------------------------
+        // Fill with annulus members
+        // -------------------------
+
+        std::vector<int>    &V = TSM[ig];
+
+        for( int ie = 0; ie < nAP; ++ie ) {
+
+            if( ie == ig )
+                continue;
+
+            const GeomMapDesc   &e = geomMap->e[ie];
+
+            if( e.u && e.s == E.s ) {
+
+                float   dx = e.x - E.x,
+                        dz = e.z - E.z;
+
+                if( dx*dx + dz*dz <= ro2 && !inner.contains( ie ) )
+                    V.push_back( ie );
+            }
+        }
+
+        qSort( V );
+    }
+}
+
+
 // For each channel [0,nAP), calculate an 8-way
 // neighborhood of indices into a timepoint's channels.
 // - Annulus with {inner, outer} radii {GBL.locin, GBL.locout}.
 // - The list is sorted for cache friendliness.
 //
-void Pass1AP::sAveTable( int nAP )
+void Pass1AP::sAveTable_shankMap( int nAP )
 {
     TSM.clear();
     TSM.resize( nAP );
@@ -416,10 +551,10 @@ void Pass1AP::sAveTable( int nAP )
             continue;
 
         // ----------------------------------
-        // Form map of excluded inner indices
+        // Form set of excluded inner indices
         // ----------------------------------
 
-        QMap<int,int>   inner;  // keys sorted, value is arbitrary
+        QSet<int>   inner;
 
         int xL  = qMax( int(E.c)  - rIn, 0 ),
             xH  = qMin( uint(E.c) + rIn + 1, shankMap->nc ),
@@ -435,7 +570,7 @@ void Pass1AP::sAveTable( int nAP )
                 it = ISM.find( ShankMapDesc( E.s, ix, iy, 1 ) );
 
                 if( it != ISM.end() )
-                    inner[it.value()] = 1;
+                    inner.insert( it.value() );
             }
         }
 
@@ -464,7 +599,7 @@ void Pass1AP::sAveTable( int nAP )
 
                     // Exclude inners
 
-                    if( inner.find( i ) == inner.end() )
+                    if( !inner.contains( i ) )
                         V.push_back( i );
                 }
             }
@@ -532,8 +667,7 @@ void Pass1AP::sAveApplyGlobal(
     if( nAP <= 0 )
         return;
 
-    const ShankMapDesc  *E = &shankMap->e[0];
-
+    const SUElem        *su     = &SU[0];
     int                 ns      = shankMap->ns,
                         dStep   = nC * dwnSmp;
     std::vector<int>    _A( ns ),
@@ -553,7 +687,7 @@ void Pass1AP::sAveApplyGlobal(
 
         for( int ig = 0; ig < nAP; ++ig ) {
 
-            const ShankMapDesc  *e = &E[ig];
+            const SUElem    *e = &su[ig];
 
             if( e->u ) {
                 S[e->s] += d[ig];
@@ -568,7 +702,7 @@ void Pass1AP::sAveApplyGlobal(
         }
 
         for( int ig = 0; ig < nAP; ++ig ) {
-            const ShankMapDesc  *e = &E[ig];
+            const SUElem    *e = &su[ig];
             if( e->u )
                 d[ig] -= A[e->s];
         }
@@ -588,9 +722,8 @@ void Pass1AP::sAveApplyGlobal(
     if( nAP <= 0 )
         return;
 
-    const ShankMapDesc  *E = &shankMap->e[0];
-
-    int dStep = nC * dwnSmp;
+    const SUElem    *su     = &SU[0];
+    int             dStep   = nC * dwnSmp;
 
     for( int it = 0; it < ntpts; it += dwnSmp, d += dStep ) {
 
@@ -600,7 +733,7 @@ void Pass1AP::sAveApplyGlobal(
 
         for( int ig = 0; ig < nAP; ++ig ) {
 
-            if( E[ig].u ) {
+            if( su[ig].u ) {
                 S += d[ig];
                 ++N;
             }
@@ -610,7 +743,7 @@ void Pass1AP::sAveApplyGlobal(
             A = S / N;
 
         for( int ig = 0; ig < nAP; ++ig ) {
-            if( E[ig].u )
+            if( su[ig].u )
                 d[ig] -= A;
         }
     }
@@ -639,9 +772,8 @@ void Pass1AP::sAveApplyDmxStride(
 
     nAP = ig2ic[nAP-1];    // highest acquired channel saved
 
-    const ShankMapDesc  *E = &shankMap->e[0];
-
-    int                 ns      = shankMap->ns,
+    const SUElem        *su     = &SU[0];
+    int                 ns      = (geomMap ? geomMap->ns : shankMap->ns),
                         dStep   = nC * dwnSmp;
     std::vector<int>    _A( ns ),
                         _N( ns );
@@ -666,7 +798,7 @@ void Pass1AP::sAveApplyDmxStride(
 
                 if( ig >= 0 ) {
 
-                    int s = E[ig].s;
+                    int s = su[ig].s;
 
                     S[s] += d[ig];
                     ++N[s];
@@ -682,7 +814,7 @@ void Pass1AP::sAveApplyDmxStride(
             for( int ic = ic0; ic <= nAP; ic += stride ) {
                 int ig = ic2ig[ic];
                 if( ig >= 0 )
-                    d[ig] -= A[E[ig].s];
+                    d[ig] -= A[su[ig].s];
             }
         }
     }
@@ -757,9 +889,8 @@ void Pass1AP::sAveApplyDmxTbl(
     if( nAP <= 0 )
         return;
 
-    const ShankMapDesc  *E = &shankMap->e[0];
-
-    int                 ns      = shankMap->ns,
+    const SUElem        *su     = &SU[0];
+    int                 ns      = (geomMap ? geomMap->ns : shankMap->ns),
                         dStep   = nC * dwnSmp;
     std::vector<int>    _A( ns ),
                         _N( ns );
@@ -785,7 +916,7 @@ void Pass1AP::sAveApplyDmxTbl(
 
                 if( ig >= 0 ) {
 
-                    int s = E[ig].s;
+                    int s = su[ig].s;
 
                     S[s] += d[ig];
                     ++N[s];
@@ -803,7 +934,7 @@ void Pass1AP::sAveApplyDmxTbl(
                 int ig = ic2ig[T[nADC*irow + icol]];
 
                 if( ig >= 0 )
-                    d[ig] -= A[E[ig].s];
+                    d[ig] -= A[su[ig].s];
             }
         }
     }
@@ -977,12 +1108,12 @@ void Pass1AP::gFixDetect(
     if( stride > 0 )
         nAP = ig2ic[nAP-1]; // highest acquired channel saved
 
-    const ShankMapDesc  *E      = &shankMap->e[0];
-    const int           Tamp    = GBL.gfixamp * Tmul,
-                        Tslp    = GBL.gfixslp * Tmul,
-                        Tbas    = GBL.gfixbas * Tmul;
-    int                 B0,
-                        BN;
+    const SUElem    *su     = &SU[0];
+    const int       Tamp    = GBL.gfixamp * Tmul,
+                    Tslp    = GBL.gfixslp * Tmul,
+                    Tbas    = GBL.gfixbas * Tmul;
+    int             B0,
+                    BN;
 
     // for ea timepoint
     for( int it = 0; it < ntpts; ++it, d += nC ) {
@@ -1016,7 +1147,7 @@ void Pass1AP::gFixDetect(
 
                 if( ig >= 0 ) {
 
-                    if( E[ig].u ) {
+                    if( su[ig].u ) {
 
                         int V = d[ig];
 

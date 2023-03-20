@@ -23,6 +23,7 @@ HEADERS +=              \
     ChanMap.h           \
     Cmdline.h           \
     fftw3.h             \
+    GeomMap.h           \
     IMROTbl.h           \
     IMROTbl_T0.h        \
     IMROTbl_T0base.h    \
@@ -58,6 +59,7 @@ SOURCES +=              \
     CGBL.cpp            \
     ChanMap.cpp         \
     Cmdline.cpp         \
+    GeomMap.cpp         \
     IMROTbl.cpp         \
     IMROTbl_T0base.cpp  \
     IMROTbl_T1100.cpp   \

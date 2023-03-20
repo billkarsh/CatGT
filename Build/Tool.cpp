@@ -7,6 +7,7 @@
 #include "Pass1OB.h"
 #include "Pass2.h"
 #include "ChanMap.h"
+#include "GeomMap.h"
 #include "ShankMap.h"
 #include "Subset.h"
 
@@ -406,6 +407,7 @@ void Meta::write( const QString &outBin, int g0, int t0, t_js js, int ip )
 void Meta::writeSave( int sv0, int svLim, int g0, int t0, t_js js_out )
 {
     ChanMapIM                   *chanMap    = 0;
+    GeomMap                     *geomMap    = 0;
     ShankMap                    *shankMap   = 0;
     KVParams::const_iterator    it_kvp;
     int                         nimec = 0;
@@ -421,6 +423,12 @@ void Meta::writeSave( int sv0, int svLim, int g0, int t0, t_js js_out )
     if( it_kvp != kvp.end() ) {
         chanMap = new ChanMapIM;
         chanMap->fromString( it_kvp.value().toString() );
+    }
+
+    it_kvp = kvp.find( "~snsGeomMap" );
+    if( it_kvp != kvp.end() ) {
+        geomMap = new GeomMap;
+        geomMap->fromString( it_kvp.value().toString() );
     }
 
     it_kvp = kvp.find( "~snsShankMap" );
@@ -452,6 +460,9 @@ void Meta::writeSave( int sv0, int svLim, int g0, int t0, t_js js_out )
         if( chanMap )
             kvp["~snsChanMap"] = chanMap->toString( bits );
 
+        if( geomMap )
+            kvp["~snsGeomMap"] = geomMap->toString( bits, 0 );
+
         if( shankMap )
             kvp["~snsShankMap"] = shankMap->toString( bits, 0 );
 
@@ -460,6 +471,9 @@ void Meta::writeSave( int sv0, int svLim, int g0, int t0, t_js js_out )
 
     if( chanMap )
         delete chanMap;
+
+    if( geomMap )
+        delete geomMap;
 
     if( shankMap )
         delete shankMap;

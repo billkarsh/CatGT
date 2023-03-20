@@ -1171,7 +1171,7 @@ static void PrintUsage()
     Log() << "-ap                      ;required to process ap streams";
     Log() << "-lf                      ;required to process lf streams";
     Log() << "-obx=0,3:5               ;if -ob process these OneBoxes";
-    Log() << "-prb_3A                  ;if -ap or -lf process 3A-style probe files, e.g. run_name_g0_t0.imec.ap.bin";
+    Log() << "-prb_3A                  ;if -ap or -lf process 3A-style probe files, e.g., run_name_g0_t0.imec.ap.bin";
     Log() << "-prb=0,3:5               ;if -ap or -lf AND !prb_3A process these probes\n";
     Log() << "Options:";
     Log() << "-no_run_fld              ;older data, or data files relocated without a run folder";
@@ -1187,6 +1187,7 @@ static void PrintUsage()
     Log() << "-apfilter=Typ,N,Fhi,Flo  ;apply ap band-pass filter of given {type, order, corners(float Hz)}";
     Log() << "-lffilter=Typ,N,Fhi,Flo  ;apply lf band-pass filter of given {type, order, corners(float Hz)}";
     Log() << "-no_tshift               ;DO NOT time-align channels to account for ADC multiplexing";
+    Log() << "-loccar_um=40,140        ;apply ap local CAR annulus (exclude radius, include radius)";
     Log() << "-loccar=2,8              ;apply ap local CAR annulus (exclude radius, include radius)";
     Log() << "-gblcar                  ;apply ap global CAR filter over all channels";
     Log() << "-gfix=0.40,0.10,0.02     ;rmv ap artifacts: ||amp(mV)||, ||slope(mV/sample)||, ||noise(mV)||";
@@ -1312,6 +1313,18 @@ bool CGBL::SetCmdLine( int argc, char* argv[] )
         else if( GetArgStr( sarg, "-lffilter=", argv[i] ) ) {
             if( !lfflt.parse( sarg ) )
                 return false;
+        }
+        else if( GetArgList( vd, "-loccar_um=", argv[i] ) && vd.size() == 2 ) {
+
+            locin_um  = vd[0];
+            locout_um = vd[1];
+
+            if( locin_um < 10 || locin_um >= locout_um ) {
+                Log() <<
+                    QString("Bad loccar_um parameters: -loccar_um=%1,%2.")
+                    .arg( locin_um ).arg( locout_um );
+                return false;
+            }
         }
         else if( GetArgList( vi, "-loccar=", argv[i] ) && vi.size() == 2 ) {
 
@@ -1480,6 +1493,8 @@ bad_param:
 
         startsecs   = 0;
         maxsecs     = 0;
+        locin_um    = 0;
+        locout_um   = 0;
         gfixamp     = 0;
         gfixslp     = 0;
         gfixbas     = 0;
@@ -1553,6 +1568,7 @@ error:
             sapfilter   = "",
             slffilter   = "",
             stshift     = "",
+            sloccar_um  = "",
             sloccar     = "",
             sgfix       = "",
             schnexc     = "",
@@ -1593,6 +1609,9 @@ error:
     if( !velem.size() && !tshift )
         stshift = QString(" -no_tshift");
 
+    if( locout_um > 0 )
+        sloccar_um = QString(" -loccar_um=%1,%2").arg( locin_um ).arg( locout_um );
+
     if( locout > 0 )
         sloccar = QString(" -loccar=%1,%2").arg( locin ).arg( locout );
 
@@ -1627,7 +1646,7 @@ error:
     sCmd =
         QString(
             "CatGT%1%2%3%4%5%6%7%8%9%10%11%12%13%14%15%16%17%18"
-            "%19%20%21%22%23%24%25%26%27%28%29%30%31%32%33%34")
+            "%19%20%21%22%23%24%25%26%27%28%29%30%31%32%33%34%35")
         .arg( sreq )
         .arg( sgt )
         .arg( no_run_fld ? " -no_run_fld" : "" )
@@ -1648,6 +1667,7 @@ error:
         .arg( sapfilter )
         .arg( slffilter )
         .arg( stshift )
+        .arg( sloccar_um )
         .arg( sloccar )
         .arg( gblcar ? " -gblcar" : "" )
         .arg( sgfix )
@@ -2164,16 +2184,16 @@ int CGBL::openInputMeta(
 IMROTbl *CGBL::getProbe( const KVParams &kvp )
 {
     IMROTbl                     *R      = 0;
-    KVParams::const_iterator    it_kvp  = kvp.find( "imDatPrb_type" );
-    int                         prbType = -999;
+    KVParams::const_iterator    it_kvp  = kvp.find( "imDatPrb_pn" );
+    QString                     pn;
 
     if( it_kvp != kvp.end() )
-        prbType = it_kvp.value().toInt();
+        pn = it_kvp.value().toString();
     else if( kvp.contains( "imProbeOpt" ) )
-        prbType = -3;
+        pn = "Probe3A";
 
-    if( prbType != -999 )
-        R = IMROTbl::alloc( prbType );
+    if( !pn.isEmpty() )
+        R = IMROTbl::alloc( pn );
 
     return R;
 }
