@@ -97,8 +97,6 @@ bool Pass1AP::go()
     if( !filtersAndScaling() )
         return false;
 
-    medCAR.init( SU, meta.nC, meta.nN );
-
     initDigitalFields( 0.0001 );
 
     if( !openDigitalFiles( g0 ) )
@@ -351,6 +349,8 @@ bool Pass1AP::filtersAndScaling()
             sAveTable_shankMap( meta.nN );
             loccarBuf.resize( meta.nC );
         }
+
+        medCAR.init( SU, meta.nC, meta.nN );
     }
 
     return true;
