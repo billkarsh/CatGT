@@ -73,7 +73,7 @@ bool Pass1AP::go()
     doWrite = GBL.gt_nIndices() > 1
                     || GBL.startsecs > 0 || GBL.apflt.isenabled()
                     || GBL.tshift || GBL.locout_um || GBL.locout
-                    || GBL.gblcar || GBL.gfixdo;
+                    || GBL.gblcar || GBL.gbldmx    || GBL.gfixdo;
 
     switch( GBL.openInputMeta( fim, meta.kvp, g0, t0, AP, ip, GBL.prb_miss_ok ) ) {
         case 0: break;
@@ -130,7 +130,7 @@ bool Pass1AP::go()
 
 void Pass1AP::neural( qint16 *data, int ntpts )
 {
-// Gbl detect
+// gfix detect
 
     if( GBL.gfixdo ) {
         gFixDetect(
@@ -138,18 +138,14 @@ void Pass1AP::neural( qint16 *data, int ntpts )
             Tmul, ntpts, meta.nC, meta.nN, maxInt, -1 );
     }
 
-// Loccar
+// CAR
 
     if( GBL.locout_um || GBL.locout )
         sAveApplyLocal( data, &loccarBuf[0], ntpts, meta.nC, meta.nN );
-
-// Gblcar
-
-    if( GBL.gblcar )
+    else if( GBL.gbldmx )
+        sAveApplyDmxTbl( data, ntpts, meta.nC, meta.nN, 1 );
+    else if( GBL.gblcar )
         medCAR.apply( data, ntpts );
-
-//    if( GBL.gblcar )
-//        sAveApplyGlobal( data, ntpts, meta.nC, meta.nN, 1 );
 }
 
 
@@ -197,7 +193,8 @@ bool Pass1AP::filtersAndScaling()
 // Channel mapping
 // ---------------
 
-    if( GBL.locout_um || GBL.locout || GBL.gblcar || GBL.gfixdo ) {
+    if( GBL.locout_um || GBL.locout ||
+        GBL.gblcar    || GBL.gbldmx || GBL.gfixdo ) {
 
         // ---------------------
         // Saved channel ID list

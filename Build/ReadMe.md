@@ -103,6 +103,7 @@ Options:
 -loccar_um=40,140        ;apply ap local CAR annulus (exclude radius, include radius)
 -loccar=2,8              ;apply ap local CAR annulus (exclude radius, include radius)
 -gblcar                  ;apply ap global CAR filter over all channels
+-gbldmx                  ;apply ap global demuxed CAR filter over channel groups
 -gfix=0.40,0.10,0.02     ;rmv ap artifacts: ||amp(mV)||, ||slope(mV/sample)||, ||noise(mV)||
 -chnexcl={prb;chans}     ;this probe, exclude listed chans from ap loccar, gblcar, gfix
 -xa=0,0,2,3.0,4.5,25     ;extract pulse signal from analog chan (js,ip,word,thresh1(V),thresh2(V),millisec)
@@ -518,14 +519,15 @@ other component of your analysis pipeline.
 shank as the center site.
 - Specify an excluded inner radius and an outer averaging radius.
 - Use a high-pass filter also, to remove DC offsets.
+- You may select only one of {`-loccar`, `-gblcar`, `-gbldmx`}.
 
 Use option -loccar_um to specify the radii in microns. This requires the
-presence of `snsGeomMap` in the metadata, which will be standard for
+presence of `~snsGeomMap` in the metadata, which will be standard for
 SpikeGLX versions 20230202 and later. The inner radius must be at least
 10 microns.
 
 Use option -loccar to specify the radii in numbers of rows/columns. This
-requires the presence of `snsShankMap` in the metadata, which will be
+requires the presence of `~snsShankMap` in the metadata, which will be
 eliminated in SpikeGLX versions 20230202 and later. The inner radius
 must be at least 1.
 
@@ -545,7 +547,7 @@ statistical average (mean) over all channels. Starting with version
 - Note that `-gblcar` is never applied to the LFP band.
 - Note that `-gblcar` assumes fairly uniform background across all channels.
 - Use a high-pass filter also, to remove DC offsets.
-- No, filter options `-loccar` and `-gblcar` don't make sense together.
+- You may select only one of {`-loccar`, `-gblcar`, `-gbldmx`}.
 
 >*Use the SpikeGLX FileViewer to look at traces pre- and post-CAR to
 see if this filter option is working for your data. A danger of gblcar
@@ -558,6 +560,24 @@ block about each site. Choose a block size that works best for the layer
 thickness. Note too that we suggested an inner exclusion radius larger
 than 2 row-steps to avoid including the spike, itself, in the averaging
 block.*
+
+### gbldmx option
+
+- Do demuxed CAR common average referencing.
+- This works on groups of channels that are digitized at the same time.
+- All shanks are included in the groups.
+- Unused channels are excluded, see [chnexcl option](#chnexcl-option).
+- Note that `-gbldmx` is never applied to the LFP band.
+- Note that `-gbldmx` assumes fairly uniform background across all channels.
+- Use a high-pass filter also, to remove DC offsets.
+- You may select only one of {`-loccar`, `-gblcar`, `-gbldmx`}.
+
+Generally we recommend gblcar which considers all channels together and is
+more robust against outlier values than gbldmx. However, for rare cases
+of high frequency noise (>15kHz), gbldmx may do a better job. Because
+fewer channels are included (and averaged), larger correction factors may
+be subtracted, and that can produce overcorrection artifacts that look like
+small inverted spikes.
 
 ### gfix option
 
@@ -1026,6 +1046,7 @@ Options:
 -loccar_um=40,140        ;ignored
 -loccar=2,8              ;ignored
 -gblcar                  ;ignored
+-gbldmx                  ;ignored
 -gfix=0.40,0.10,0.02     ;ignored
 -chnexcl={prb;chans}     ;ignored
 -xa=0,0,2,3.0,4.5,25     ;required if joining this extractor type
@@ -1097,6 +1118,12 @@ on that stream's clock.
 ------
 
 ## Change Log
+
+Version 3.8
+
+- Fix crash when no CAR options specified.
+- Restore option -gbldmx.
+- Support probes {2003,2004,2013,2014}.
 
 Version 3.7
 

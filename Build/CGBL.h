@@ -300,6 +300,7 @@ public:
                     prb_3A,
                     tshift,
                     gblcar,
+                    gbldmx,
                     gfixdo,
                     auto_sync,
                     force_ni_ob,
@@ -317,9 +318,9 @@ public:
             no_run_fld(false), prb_fld(false), prb_miss_ok(false),
             exported(false), catgt_fld(false), t_miss_ok(false),
             ni(false), ob(false), ap(false), lf(false), prb_3A(false),
-            tshift(true), gblcar(false), gfixdo(false), auto_sync(true),
-            force_ni_ob(false), sc_trim(false), sc_skipbin(false),
-            out_prb_fld(false)  {}
+            tshift(true), gblcar(false), gbldmx(false), gfixdo(false),
+            auto_sync(true), force_ni_ob(false), sc_trim(false),
+            sc_skipbin(false), out_prb_fld(false)   {}
 
     bool SetCmdLine( int argc, char* argv[] );
 

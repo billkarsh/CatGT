@@ -1190,6 +1190,7 @@ static void PrintUsage()
     Log() << "-loccar_um=40,140        ;apply ap local CAR annulus (exclude radius, include radius)";
     Log() << "-loccar=2,8              ;apply ap local CAR annulus (exclude radius, include radius)";
     Log() << "-gblcar                  ;apply ap global CAR filter over all channels";
+    Log() << "-gbldmx                  ;apply ap global demuxed CAR filter over channel groups";
     Log() << "-gfix=0.40,0.10,0.02     ;rmv ap artifacts: ||amp(mV)||, ||slope(mV/sample)||, ||noise(mV)||";
     Log() << "-chnexcl={prb;chans}     ;this probe, exclude listed chans from ap loccar, gblcar, gfix";
     Log() << "-xa=0,0,2,3.0,4.5,25     ;extract pulse signal from analog chan (js,ip,word,thresh1(V),thresh2(V),millisec)";
@@ -1344,6 +1345,8 @@ bool CGBL::SetCmdLine( int argc, char* argv[] )
             tshift = false;
         else if( IsArg( "-gblcar", argv[i] ) )
             gblcar = true;
+        else if( IsArg( "-gbldmx", argv[i] ) )
+            gbldmx = true;
         else if( GetArgList( vd, "-gfix=", argv[i] ) && vd.size() == 3 ) {
 
             gfixamp = vd[0];
@@ -1510,6 +1513,7 @@ bad_param:
         t_miss_ok   = false;
         tshift      = false;
         gblcar      = false;
+        gbldmx      = false;
         gfixdo      = false;
     }
     else {
@@ -1544,6 +1548,20 @@ bad_param:
 error:
         PrintUsage();
         return false;
+    }
+
+// One type of CAR
+
+    int nSel = 0;
+    if( GBL.locout_um || GBL.locout )
+        ++nSel;
+    if( GBL.gblcar )
+        ++nSel;
+    if( GBL.gbldmx )
+        ++nSel;
+    if( nSel > 1 ) {
+        Log() << "Error: Select only one of {loccar, gblcar, gbldmx}.";
+        goto error;
     }
 
 // Check and sort extractors : js -> ip -> usrord
@@ -1645,8 +1663,8 @@ error:
 
     sCmd =
         QString(
-            "CatGT%1%2%3%4%5%6%7%8%9%10%11%12%13%14%15%16%17%18"
-            "%19%20%21%22%23%24%25%26%27%28%29%30%31%32%33%34%35")
+            "CatGT%1%2%3%4%5%6%7%8%9%10%11%12%13%14%15%16%17%18%19"
+            "%20%21%22%23%24%25%26%27%28%29%30%31%32%33%34%35%36")
         .arg( sreq )
         .arg( sgt )
         .arg( no_run_fld ? " -no_run_fld" : "" )
@@ -1670,6 +1688,7 @@ error:
         .arg( sloccar_um )
         .arg( sloccar )
         .arg( gblcar ? " -gblcar" : "" )
+        .arg( gbldmx ? " -gbldmx" : "" )
         .arg( sgfix )
         .arg( schnexc )
         .arg( sXTR )
