@@ -939,12 +939,7 @@ static int lfCase( int ip )
             fullband = true;
         else {
             R->fromString( 0, kvp["~imroTbl"].toString() );
-            for( int ic = 0, nC = R->nChan(); ic < nC; ++ic ) {
-                if( !R->apFlt( ic ) ) {
-                    fullband = true;
-                    break;
-                }
-            }
+            fullband = R->anyChanFullBand();
         }
     delete R;
 

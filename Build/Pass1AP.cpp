@@ -183,8 +183,7 @@ bool Pass1AP::filtersAndScaling()
     if( R ) {
         R->fromString( 0, meta.kvp["~imroTbl"].toString() );
         maxInt  = R->maxInt();
-        Tmul    = maxInt * R->apGain( 0 )
-                    / (1000 * meta.kvp["imAiRangeMax"].toDouble());
+        Tmul    = maxInt * R->apGain( 0 ) / (1000 * R->maxVolts());
         R->muxTable( nADC, nGrp, muxTbl );
         delete R;
     }
