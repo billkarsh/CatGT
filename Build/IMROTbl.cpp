@@ -189,8 +189,8 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
                 col2vis_od  = {0,1};
                 _shankpitch = 0;
                 _shankwid   = 125;
-                _x0_ev      = 27;
-                _x0_od      = 27;
+                _x0_ev      = 11;
+                _x0_od      = 11;
                 _xpitch     = 103;
                 _zpitch     = 20;
                 break;
@@ -293,16 +293,15 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
                 break;
             case 1200:  // NHP 128 channel analog 25mm
             case 1210:  // NHP 128 channel analog 45mm
-//@OBX Need true NP1200 table geometry.
-//@OBX Need NXT part number from Marleen.
+//@OBX Need true NP1200 xoffsets.
                 _ncolhwr    = 2;
                 _ncolvis    = 4;
                 col2vis_ev  = {1,3};
                 col2vis_od  = {0,2};
                 _shankpitch = 0;
-                _shankwid   = 70;
-                _x0_ev      = 27;
-                _x0_od      = 11;
+                _shankwid   = 125;
+                _x0_ev      = 54.5;
+                _x0_od      = 38.5;
                 _xpitch     = 32;
                 _zpitch     = 20;
                 break;
@@ -347,16 +346,27 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
                 _zpitch     = 15;
                 break;
             case 2020:  // 2.0 multi shank (Ph 2C)
-//@OBX Need true NP2020 table geometry.
                 _ncolhwr    = 2;
                 _ncolvis    = 2;
                 col2vis_ev  = {0,1};
                 col2vis_od  = {0,1};
-                _shankpitch = 0;
+                _shankpitch = 250;
                 _shankwid   = 70;
                 _x0_ev      = 27;
                 _x0_od      = 27;
                 _xpitch     = 32;
+                _zpitch     = 15;
+                break;
+            case 3000:  // Passive NXT probe
+                _ncolhwr    = 1;
+                _ncolvis    = 4;
+                col2vis_ev  = {3};
+                col2vis_od  = {3};
+                _shankpitch = 0;
+                _shankwid   = 70;
+                _x0_ev      = 53;
+                _x0_od      = 53;
+                _xpitch     = 15;
                 _zpitch     = 15;
                 break;
             default:
@@ -385,18 +395,6 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
         _x0_od      = 11;
         _xpitch     = 32;
         _zpitch     = 20;
-    }
-    else if( pn == "NXT3000" ) {
-        _ncolhwr    = 1;
-        _ncolvis    = 4;
-        col2vis_ev  = {3};
-        col2vis_od  = {3};
-        _shankpitch = 0;
-        _shankwid   = 70;
-        _x0_ev      = 53;
-        _x0_od      = 53;
-        _xpitch     = 32;
-        _zpitch     = 15;
     }
     else {
         // likely early model 1.0
@@ -518,20 +516,9 @@ void IMROTbl::toGeomMap_snsFileChans(
 }
 
 
-void IMROTbl::andOutRefs( ShankMap &S ) const
-{
-    for( int ic = 0, n = S.e.size(); ic < n; ++ic ) {
-
-        if( chIsRef( ic ) )
-            S.e[ic].u = 0;
-    }
-}
-
-
 int IMROTbl::maxBank( int ch, int shank ) const
 {
-    Q_UNUSED( shank );
-
+    Q_UNUSED( shank )
     return (nElecPerShank() - ch - 1) / nAP();
 }
 
@@ -1015,14 +1002,14 @@ bool IMROTbl::pnToType( int &type, const QString &pn )
                 type = 24;
                 supp = true;
                 break;
+            case 3000:  // Passive NXT probe
+                type = 1200;
+                supp = true;
+                break;
             default:    // likely early model 1.0
                 supp = true;
                 break;
         }
-    }
-    else if( pn == "NXT3000" ) {
-        type = 1200;
-        supp = true;
     }
     else {
         // likely early model 1.0
@@ -1088,6 +1075,7 @@ IMROTbl* IMROTbl::alloc( const QString &pn )
                 return new IMROTbl_T1123( pn );
             case 1200:  // NHP 128 channel analog 25mm
             case 1210:  // NHP 128 channel analog 45mm
+            case 3000:  // Passive NXT probe
                 return new IMROTbl_T1200( pn );
             case 1300:  // Opto
                 return new IMROTbl_T1300( pn );
@@ -1106,8 +1094,6 @@ IMROTbl* IMROTbl::alloc( const QString &pn )
     }
     else if( pn == "Probe3A" )
         return new IMROTbl_T3A( pn );
-    else if( pn == "NXT3000" )
-        return new IMROTbl_T1200( pn );
 
 // likely early model 1.0
     return new IMROTbl_T0( pn );

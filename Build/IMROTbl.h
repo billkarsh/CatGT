@@ -134,7 +134,6 @@ public:
         GeomMap             &G,
         const QVector<uint> &saved,
         int                 offset ) const;
-    void andOutRefs( ShankMap &S ) const;
 
     virtual int shnk( int ch ) const = 0;
     virtual int bank( int ch ) const = 0;

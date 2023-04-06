@@ -239,7 +239,9 @@ bool Pass1AP::filtersAndScaling()
         if( it_kvp != meta.kvp.end() )
             geomMap->fromString( it_kvp.value().toString() );
         else if( GBL.locout_um ) {
-            Log() << QString("Missing ~snsGeomMap tag needed for loccar_um '%1'.")
+            Log() << QString(
+                        "Missing ~snsGeomMap tag needed for loccar_um '%1'."
+                        " Try using locar instead.")
                         .arg( fim.fileName() );
             return false;
         }
@@ -262,7 +264,9 @@ bool Pass1AP::filtersAndScaling()
         if( it_kvp != meta.kvp.end() )
             shankMap->fromString( it_kvp.value().toString() );
         else if( GBL.locout ) {
-            Log() << QString("Missing ~snsShankMap tag needed for loccar '%1'.")
+            Log() << QString(
+                        "Missing ~snsShankMap tag needed for loccar '%1'."
+                        " Try using locar_um instead.")
                         .arg( fim.fileName() );
             return false;
         }
