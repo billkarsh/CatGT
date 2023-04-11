@@ -100,7 +100,7 @@ Options:
 -loccar_um=40,140        ;apply ap local CAR annulus (exclude radius, include radius)
 -loccar=2,8              ;apply ap local CAR annulus (exclude radius, include radius)
 -gblcar                  ;apply ap global CAR filter over all channels
--gbldmx                  ;apply ap global demuxed CAR filter over all channels
+-gbldmx                  ;apply ap global demuxed CAR filter over channel groups
 -gfix=0.40,0.10,0.02     ;rmv ap artifacts: ||amp(mV)||, ||slope(mV/sample)||, ||noise(mV)||
 -chnexcl={prb;chans}     ;this probe, exclude listed chans from ap loccar, gblcar, gfix
 -xa=0,0,2,3.0,4.5,25     ;extract pulse signal from analog chan (js,ip,word,thresh1(V),thresh2(V),millisec)
@@ -688,6 +688,10 @@ Options:
 <p>Supercat creates an output file: <code>dest/supercat_run_ga/run_ga_sc_offsets.txt</code>. This tablulates, for each stream, where the first sample of each input &quot;tcat&quot; file is relative to the start of the concatenated output file. It records these offsets in units of samples, and again in units of seconds on that stream's clock.</p>
 <hr />
 <h2 id="change-log">Change Log</h2>
+<p>Version 3.9</p>
+<ul>
+<li>Fix supercat of LF files.</li>
+</ul>
 <p>Version 3.8</p>
 <ul>
 <li>Fix crash when no CAR options specified.</li>

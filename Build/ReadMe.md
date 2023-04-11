@@ -1119,6 +1119,10 @@ on that stream's clock.
 
 ## Change Log
 
+Version 3.9
+
+- Fix supercat of LF files.
+
 Version 3.8
 
 - Fix crash when no CAR options specified.

@@ -246,8 +246,8 @@ struct Elem {
         bool            catgt_fld )
         :   dir(dir), run(run), g(g),
             no_run_fld(no_run_fld), catgt_fld(catgt_fld)    {}
-    double& head( t_js js, int ip ) {return iq2head[1000*js + ip];}
-    double& tail( t_js js, int ip ) {return iq2tail[1000*js + ip];}
+    double& head( t_js js, int ip ) {return iq2head[1000*(js==LF?AP:js) + ip];}
+    double& tail( t_js js, int ip ) {return iq2tail[1000*(js==LF?AP:js) + ip];}
     void unpack();
 };
 
