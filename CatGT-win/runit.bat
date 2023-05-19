@@ -19,7 +19,7 @@
 set LOCALARGS=-dir=Y:\jic\Susu_datasets -run=SC011_022219 -g=0 -t=0,570 ^
 -prb_fld -t_miss_ok ^
 -ap -prb=2 ^
--apfilter=butter,12,300,9000 -gfix=0.40,0.10,0.02 ^
+-apfilter=butter,12,300,9000 -gblcar -gfix=0.40,0.10,0.02 ^
 -dest=Y:\jic\Susu_datasets\SC011_022219_g0
 
 if [%1]==[] (set ARGS=%LOCALARGS%) else (set ARGS=%*)
