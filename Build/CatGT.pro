@@ -38,7 +38,11 @@ HEADERS +=              \
     IMROTbl_T1200.h     \
     IMROTbl_T1300.h     \
     IMROTbl_T21.h       \
+    IMROTbl_T21base.h   \
     IMROTbl_T24.h       \
+    IMROTbl_T24base.h   \
+    IMROTbl_T2003.h     \
+    IMROTbl_T2013.h     \
     IMROTbl_T3A.h       \
     KVParams.h          \
     Pass1.h             \
@@ -70,7 +74,11 @@ SOURCES +=              \
     IMROTbl_T1123.cpp   \
     IMROTbl_T1200.cpp   \
     IMROTbl_T21.cpp     \
+    IMROTbl_T21base.cpp \
     IMROTbl_T24.cpp     \
+    IMROTbl_T24base.cpp \
+    IMROTbl_T2003.cpp   \
+    IMROTbl_T2013.cpp   \
     IMROTbl_T3A.cpp     \
     KVParams.cpp        \
     main.cpp            \
@@ -102,5 +110,5 @@ QMAKE_TARGET_COMPANY = Bill Karsh
 QMAKE_TARGET_PRODUCT = CatGT
 QMAKE_TARGET_DESCRIPTION = Joins, filters, edits, extracts events
 QMAKE_TARGET_COPYRIGHT = (c) 2020, Bill Karsh, All rights reserved
-VERSION = 3.9
+VERSION = 4.0
 

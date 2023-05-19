@@ -1119,6 +1119,10 @@ on that stream's clock.
 
 ## Change Log
 
+Version 4.0
+
+- Update probe support.
+
 Version 3.9
 
 - Fix supercat of LF files.

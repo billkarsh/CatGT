@@ -36,11 +36,12 @@ struct IMRO_ROI {
 // Editing helper
 //
 struct IMRO_GUI {
-    std::vector<int>    gains;
-    int                 grid;
-    bool                apEnab,
-                        lfEnab,
-                        hpEnab;
+    std::vector<QString>    refs;
+    std::vector<int>        gains;
+    int                     grid;
+    bool                    apEnab,
+                            lfEnab,
+                            hpEnab;
     IMRO_GUI() : grid(1), apEnab(false), lfEnab(false), hpEnab(false)   {}
 };
 
@@ -74,6 +75,7 @@ protected:
                         col2vis_od;
     float               _shankpitch,
                         _shankwid,
+                        _tiplength,
                         _x0_ev,
                         _x0_od,
                         _xpitch,
@@ -94,6 +96,8 @@ public:
     virtual int nElec() const = 0;
     virtual int nShank() const = 0;
             int nElecPerShank() const   {return nElec()/nShank();}
+            float tipLength() const     {return _tiplength;}
+            float zPitch() const        {return _zpitch;}
             int nCol_hwr() const        {return _ncolhwr;}
             int nCol_vis() const        {return _ncolvis;}
             int nRow() const            {return nElecPerShank()/_ncolhwr;}

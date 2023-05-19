@@ -12,6 +12,8 @@
 #include "IMROTbl_T1300.h"
 #include "IMROTbl_T21.h"
 #include "IMROTbl_T24.h"
+#include "IMROTbl_T2003.h"
+#include "IMROTbl_T2013.h"
 #include "IMROTbl_T3A.h"
 #include "GeomMap.h"
 #include "ShankMap.h"
@@ -100,6 +102,7 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
         col2vis_od  = {0,2};
         _shankpitch = 0;
         _shankwid   = 70;
+        _tiplength  = 209;
         _x0_ev      = 27;
         _x0_od      = 11;
         _xpitch     = 32;
@@ -114,6 +117,7 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
         col2vis_od  = {0,1};
         _shankpitch = 0;
         _shankwid   = 70;
+        _tiplength  = 206;
         _x0_ev      = 27;
         _x0_od      = 27;
         _xpitch     = 32;
@@ -128,6 +132,7 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
         col2vis_od  = {0,1};
         _shankpitch = 250;
         _shankwid   = 70;
+        _tiplength  = 206;
         _x0_ev      = 27;
         _x0_od      = 27;
         _xpitch     = 32;
@@ -149,6 +154,7 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
                 col2vis_od  = {0,2};
                 _shankpitch = 0;
                 _shankwid   = 70;
+                _tiplength  = 209;
                 _x0_ev      = 27;
                 _x0_od      = 11;
                 _xpitch     = 32;
@@ -164,6 +170,7 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
                 col2vis_od  = {0,1};
                 _shankpitch = 0;
                 _shankwid   = 70;
+                _tiplength  = 209;
                 _x0_ev      = 27;
                 _x0_od      = 27;
                 _xpitch     = 32;
@@ -177,6 +184,7 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
                 col2vis_od  = {0,2};
                 _shankpitch = 0;
                 _shankwid   = 125;
+                _tiplength  = 373;
                 _x0_ev      = 27;
                 _x0_od      = 11;
                 _xpitch     = 87;
@@ -189,6 +197,7 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
                 col2vis_od  = {0,1};
                 _shankpitch = 0;
                 _shankwid   = 125;
+                _tiplength  = 373;
                 _x0_ev      = 11;
                 _x0_od      = 11;
                 _xpitch     = 103;
@@ -202,6 +211,7 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
                 col2vis_od  = {0,2};
                 _shankpitch = 0;
                 _shankwid   = 125;
+                _tiplength  = 373;
                 _x0_ev      = 27;
                 _x0_od      = 11;
                 _xpitch     = 87;
@@ -214,6 +224,7 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
                 col2vis_od  = {0,1};
                 _shankpitch = 0;
                 _shankwid   = 125;
+                _tiplength  = 373;
                 _x0_ev      = 11;
                 _x0_od      = 11;
                 _xpitch     = 103;
@@ -226,6 +237,7 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
                 col2vis_od  = {0,1,2,3,4,5,6,7};
                 _shankpitch = 0;
                 _shankwid   = 70;
+                _tiplength  = 206.5;
                 _x0_ev      = 14;
                 _x0_od      = 14;
                 _xpitch     = 6;
@@ -238,6 +250,7 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
                 col2vis_od  = {0,1,2,3,4,5,6,7};
                 _shankpitch = 0;
                 _shankwid   = 70;
+                _tiplength  = 203.5;
                 _x0_ev      = 14;
                 _x0_od      = 14;
                 _xpitch     = 6;
@@ -250,6 +263,7 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
                 col2vis_od  = {0,1};
                 _shankpitch = 0;
                 _shankwid   = 70;
+                _tiplength  = 205.75;
                 _x0_ev      = 6.75f;
                 _x0_od      = 6.75f;
                 _xpitch     = 4.5f;
@@ -262,6 +276,7 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
                 col2vis_od  = {0};
                 _shankpitch = 0;
                 _shankwid   = 70;
+                _tiplength  = 205.25;
                 _x0_ev      = 6.25f;
                 _x0_od      = 6.25f;
                 _xpitch     = 3;
@@ -274,6 +289,7 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
                 col2vis_od  = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
                 _shankpitch = 0;
                 _shankwid   = 70;
+                _tiplength  = 205.25;
                 _x0_ev      = 12.5f;
                 _x0_od      = 12.5f;
                 _xpitch     = 3;
@@ -286,6 +302,7 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
                 col2vis_od  = {0,1,2,3,4,5,6,7,8,9,10,11};
                 _shankpitch = 0;
                 _shankwid   = 70;
+                _tiplength  = 205.75;
                 _x0_ev      = 10.25f;
                 _x0_od      = 10.25f;
                 _xpitch     = 4.5f;
@@ -300,6 +317,7 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
                 col2vis_od  = {0,2};
                 _shankpitch = 0;
                 _shankwid   = 125;
+                _tiplength  = 372;
                 _x0_ev      = 54.5;
                 _x0_od      = 38.5;
                 _xpitch     = 32;
@@ -312,6 +330,7 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
                 col2vis_od  = {0,1};
                 _shankpitch = 0;
                 _shankwid   = 70;
+                _tiplength  = 209;
                 _x0_ev      = 11;
                 _x0_od      = 11;
                 _xpitch     = 48;
@@ -326,6 +345,7 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
                 col2vis_od  = {0,1};
                 _shankpitch = 0;
                 _shankwid   = 70;
+                _tiplength  = 206;
                 _x0_ev      = 27;
                 _x0_od      = 27;
                 _xpitch     = 32;
@@ -340,6 +360,7 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
                 col2vis_od  = {0,1};
                 _shankpitch = 250;
                 _shankwid   = 70;
+                _tiplength  = 206;
                 _x0_ev      = 27;
                 _x0_od      = 27;
                 _xpitch     = 32;
@@ -352,6 +373,7 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
                 col2vis_od  = {0,1};
                 _shankpitch = 250;
                 _shankwid   = 70;
+                _tiplength  = 206;
                 _x0_ev      = 27;
                 _x0_od      = 27;
                 _xpitch     = 32;
@@ -364,6 +386,8 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
                 col2vis_od  = {3};
                 _shankpitch = 0;
                 _shankwid   = 70;
+//@OBX Need true NP3000 tiplength.
+                _tiplength  = 206;
                 _x0_ev      = 53;
                 _x0_od      = 53;
                 _xpitch     = 15;
@@ -377,6 +401,7 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
                 col2vis_od  = {0,2};
                 _shankpitch = 0;
                 _shankwid   = 70;
+                _tiplength  = 209;
                 _x0_ev      = 27;
                 _x0_od      = 11;
                 _xpitch     = 32;
@@ -391,6 +416,7 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
         col2vis_od  = {0,2};
         _shankpitch = 0;
         _shankwid   = 70;
+        _tiplength  = 209;
         _x0_ev      = 27;
         _x0_od      = 11;
         _xpitch     = 32;
@@ -404,6 +430,7 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
         col2vis_od  = {0,2};
         _shankpitch = 0;
         _shankwid   = 70;
+        _tiplength  = 209;
         _x0_ev      = 27;
         _x0_od      = 11;
         _xpitch     = 32;
@@ -896,10 +923,15 @@ bool IMROTbl::edit_isAllowed( tconstImroSites vX, const IMRO_ROI &B ) const
 
 // How type value, per se, is consulted in the code:
 // - CimCfg::ImProbeDat::setProbeType().
-// - IMROTbl::alloc().
+// - CimCfg::ImProbeDat::nHSDocks().
 // - IMROTbl::default_imroLE().
+// - CmdWorker::getStreamSN().
+// - CimAcqImec::opto_XXX().
+// - CimAcqImec::_xx_calibrateGain().
+// - CimAcqImec::_xx_calibrateOpto().
 // - IMROEditorLaunch().
-// - ImAcqStream::ImAcqStream(), indirectly through maxInt().
+// - Dev tab: Display in probe table.
+// - IM tab: Copy probe.
 //
 // Return true if supported.
 //
@@ -991,15 +1023,21 @@ bool IMROTbl::pnToType( int &type, const QString &pn )
                 supp = true;
                 break;
             case 2000:  // NP 2.0 SS scrambled el 1280
-            case 2003:  // Neuropixels 2.0 single shank probe
-            case 2004:  // Neuropixels 2.0 single shank probe with cap
                 type = 21;
                 supp = true;
                 break;
+            case 2003:  // Neuropixels 2.0 single shank probe
+            case 2004:  // Neuropixels 2.0 single shank probe with cap
+                type = 2003;
+                supp = true;
+                break;
             case 2010:  // NP 2.0 MS el 1280
+                type = 24;
+                supp = true;
+                break;
             case 2013:  // Neuropixels 2.0 multishank probe
             case 2014:  // Neuropixels 2.0 multishank probe with cap
-                type = 24;
+                type = 2013;
                 supp = true;
                 break;
             case 3000:  // Passive NXT probe
@@ -1080,13 +1118,15 @@ IMROTbl* IMROTbl::alloc( const QString &pn )
             case 1300:  // Opto
                 return new IMROTbl_T1300( pn );
             case 2000:  // NP 2.0 SS scrambled el 1280
+                return new IMROTbl_T21( pn );
             case 2003:  // Neuropixels 2.0 single shank probe
             case 2004:  // Neuropixels 2.0 single shank probe with cap
-                return new IMROTbl_T21( pn );
+                return new IMROTbl_T2003( pn );
             case 2010:  // NP 2.0 MS el 1280
+                return new IMROTbl_T24( pn );
             case 2013:  // Neuropixels 2.0 multishank probe
             case 2014:  // Neuropixels 2.0 multishank probe with cap
-                return new IMROTbl_T24( pn );
+                return new IMROTbl_T2013( pn );
             default:
                 // likely early model 1.0
                 return new IMROTbl_T0( pn );
@@ -1103,8 +1143,10 @@ IMROTbl* IMROTbl::alloc( const QString &pn )
 QString IMROTbl::default_imroLE( int type )
 {
     switch( type ) {
-        case 21: return "*Default (bank 0, ref ext)";
-        case 24: return "*Default (shnk 0, bank 0, ref ext)";
+        case 21:
+        case 2003: return "*Default (bank 0, ref ext)";
+        case 24:
+        case 2013: return "*Default (shnk 0, bank 0, ref ext)";
         case -3: return "*Default (bank 0, ref ext, gain 500/250)";
         default: return "*Default (bank 0, ref ext, gain 500/250, flt on)";
     }
