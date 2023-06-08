@@ -591,6 +591,10 @@ replacing with zeros. You specify three things.
 
 - Yes, `-gblcar` and `-gfix` make sense used together.
 
+>*You are strongly advised to apply high-pass filtering when using -gfix
+because the result of -gfix is to zero the output. This makes step
+transitions which will be smaller if the DC-component is removed.*
+
 #### Tuning gfix parameters
 
 Use the SpikeGLX FileViewer to select appropriate amplitude and slope

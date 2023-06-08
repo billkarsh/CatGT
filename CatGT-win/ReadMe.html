@@ -361,6 +361,9 @@ ls -s &lt;path/myoriginalname.meta&gt; &lt;...ZZZ/goodname_g0_t0.imec0.ap.meta&g
 <ul>
 <li>Yes, <code>-gblcar</code> and <code>-gfix</code> make sense used together.</li>
 </ul>
+<blockquote>
+<p><em>You are strongly advised to apply high-pass filtering when using -gfix because the result of -gfix is to zero the output. This makes step transitions which will be smaller if the DC-component is removed.</em></p>
+</blockquote>
 <h4 id="tuning-gfix-parameters">Tuning gfix parameters</h4>
 <p>Use the SpikeGLX FileViewer to select appropriate amplitude and slope values for a given run. Be sure to turn high-pass filtering ON and spatial <code>&lt;S&gt;</code> filters OFF to match the conditions the CatGT artifact detector will use. Zoom the time scale (ctrl + click&amp;drag) to see the individual sample points and their connecting segments. Set the slope this way: Zoom in on the artifact initial peak, the points with greatest amplitude. Suppose consecutive points {A,B,C,D} make up the peak and {B,C,D} exceed the amplitude threshold. Then there are three slopes {B-A,C-B,D-C} connecting these points. Select the largest value. That is, set the slope to the fastest voltage change near the peak. An artifact will usually be several times faster than a neuronal spike.</p>
 <h3 id="chnexcl-option">chnexcl option</h3>
