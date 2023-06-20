@@ -241,7 +241,7 @@ bool Pass1AP::filtersAndScaling()
         else if( GBL.locout_um ) {
             Log() << QString(
                         "Missing ~snsGeomMap tag needed for loccar_um '%1'."
-                        " Try using locar instead.")
+                        " Try using loccar instead.")
                         .arg( fim.fileName() );
             return false;
         }
@@ -266,7 +266,7 @@ bool Pass1AP::filtersAndScaling()
         else if( GBL.locout ) {
             Log() << QString(
                         "Missing ~snsShankMap tag needed for loccar '%1'."
-                        " Try using locar_um instead.")
+                        " Try using loccar_um instead.")
                         .arg( fim.fileName() );
             return false;
         }

@@ -493,7 +493,7 @@ ls -s &lt;path/myoriginalname.meta&gt; &lt;...ZZZ/goodname_g0_t0.imec0.ap.meta&g
 <p>NOTE: If the files to operate on are now in an output folder named <code>catgt_run_name</code> then <em>DO PUT</em> tag <code>catgt_</code> in the <code>-run</code> parameter like example (2) below:</p>
 </blockquote>
 <blockquote>
-<p>NOTE: Second pass is restricted to event extraction. An error is flagged if the second pass specifies any concatenation or filter options.</p>
+<p>NOTE: Second pass is restricted to event extraction. An error is flagged if the second pass specifies any concatenation or filter options. Extraction passes should always include -no_tshift.</p>
 </blockquote>
 <p><strong>Examples</strong></p>
 <ul>
@@ -502,14 +502,14 @@ ls -s &lt;path/myoriginalname.meta&gt; &lt;...ZZZ/goodname_g0_t0.imec0.ap.meta&g
 </ol>
 <ul>
 <li>Pass 1: <code>&gt;CatGT -dir=aaa -run=bbb -g=ga,gb -t=ta,tb</code>.</li>
-<li>Pass 2: <code>&gt;CatGT -dir=aaa -run=bbb -g=ga -t=cat</code>.</li>
+<li>Pass 2: <code>&gt;CatGT -dir=aaa -run=bbb -g=ga -t=cat -no_tshift</code>.</li>
 </ul></li>
 <li><ol start="2" style="list-style-type: decimal">
 <li>Saving to dest folders --</li>
 </ol>
 <ul>
 <li>Pass 1: <code>&gt;CatGT -dir=aaa -run=bbb -g=ga,gb -t=ta,tb -dest=ccc</code>.</li>
-<li>Pass 2: <code>&gt;CatGT -dir=ccc -run=catgt_bbb -g=ga -t=cat -dest=ccc</code>.</li>
+<li>Pass 2: <code>&gt;CatGT -dir=ccc -run=catgt_bbb -g=ga -t=cat -dest=ccc -no_tshift</code>.</li>
 </ul></li>
 </ul>
 <h3 id="save-option">save option</h3>

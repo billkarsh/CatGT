@@ -1148,7 +1148,7 @@ void Elem::unpack()
 static void PrintUsage()
 {
     Log();
-    Log() << "*** ERROR: MISSING CRITICAL PARAMETERS ***\n";
+    Log() << "*** ERROR: MISSING CRITICAL PARAMETERS ***";
     Log() << "------------------------";
     Log() << "Purpose:";
     Log() << "+ Optionally join trials with given run_name and index ranges [ga,gb] [ta,tb]...";
@@ -1207,7 +1207,7 @@ static void PrintUsage()
     Log() << "-supercat_skip_ni_ob_bin ;do not supercat ni/ob binary files";
     Log() << "-dest=path               ;alternate path for output files (must exist)";
     Log() << "-out_prb_fld             ;if using -dest, create output subfolder per probe";
-    Log() << "------------------------\n";
+    Log() << "------------------------";
 }
 
 /* ---------------------------------------------------------------- */

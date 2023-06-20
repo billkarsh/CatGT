@@ -844,17 +844,18 @@ extract nonneural events from the ensuing output files which are now named
 like example (2) below:
 
 >NOTE: Second pass is restricted to event extraction. An error is flagged
-if the second pass specifies any concatenation or filter options.
+if the second pass specifies any concatenation or filter options. Extraction
+passes should always include -no_tshift.
 
 **Examples**
 
 - (1) Saving to native folders --
     + Pass 1: `>CatGT -dir=aaa -run=bbb -g=ga,gb -t=ta,tb`.
-    + Pass 2: `>CatGT -dir=aaa -run=bbb -g=ga -t=cat`.
+    + Pass 2: `>CatGT -dir=aaa -run=bbb -g=ga -t=cat -no_tshift`.
 
 - (2) Saving to dest folders --
     + Pass 1: `>CatGT -dir=aaa -run=bbb -g=ga,gb -t=ta,tb -dest=ccc`.
-    + Pass 2: `>CatGT -dir=ccc -run=catgt_bbb -g=ga -t=cat -dest=ccc`.
+    + Pass 2: `>CatGT -dir=ccc -run=catgt_bbb -g=ga -t=cat -dest=ccc -no_tshift`.
 
 ### save option
 
