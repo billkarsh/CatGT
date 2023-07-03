@@ -4,6 +4,8 @@
 #include "Biquad.h"
 #include "Subset.h"
 
+#include <math.h>
+
 
 // With FFT-based filtering one must use a long enough FFT to adequately
 // sample low frequencies. A one second span is good down to 1 Hz (really,
@@ -45,6 +47,130 @@ Pass1::~Pass1()
 
     if( hipass ) delete hipass;
     if( lopass ) delete lopass;
+}
+
+
+bool Pass1::parseMaxZ()
+{
+    if( !doWrite )
+        return true;
+
+    if( js_in < AP )
+        return true;
+
+    foreach( const QString &s, GBL.vmaxZ ) {
+
+        QStringList sl = s.split(
+                            QRegExp("^\\s+|\\s*,\\s*|\\s+$"),
+                            QString::SkipEmptyParts );
+
+        if( sl[0].toInt() != ip )
+            continue;
+
+        /* -------------------- */
+        /* Found maxZ directive */
+        /* -------------------- */
+
+        // Form the save bits
+
+        QBitArray   bsave;
+        int         nAP, nLF;
+
+        IMROTbl *R = GBL.getProbe( meta.kvp );
+        if( !R ) {
+            Log() << QString("Can't identify probe type in metadata '%1'.")
+                        .arg( fim.fileName() );
+            return false;
+        }
+        R->fromString( 0, meta.kvp["~imroTbl"].toString() );
+
+        nAP = R->nAP();
+        nLF = R->nLF();
+
+        bsave.resize( nAP );
+
+        int maxRow; // inclusive
+        switch( sl[1].toInt() ) {
+            case 0:
+                maxRow = sl[2].toInt();
+                break;
+            case 1:
+                maxRow =
+                ceil( (sl[2].toDouble() - R->zPitch())
+                    / R->zPitch() );
+                break;
+            default:
+                maxRow =
+                ceil( (sl[2].toDouble() - R->tipLength() - R->zPitch())
+                    / R->zPitch() );
+        }
+        maxRow = qBound( 0, maxRow, R->nRow() - 1 );
+
+        for( int ic = 0; ic < nAP; ++ic ) {
+            int col, row;
+            R->elShankColRow( col, row, ic );
+            if( row <= maxRow )
+                bsave.setBit( ic );
+        }
+
+        delete R;
+
+        // Add Save record if doesn't already exist
+
+        bool exists = false;
+        foreach( const Save &S, GBL.vS ) {
+            if( S.js == js_in && S.ip1 == ip ) {
+                exists = true;
+                break;
+            }
+        }
+
+        if( !exists ) {
+
+            QBitArray   B;
+
+            if( js_in == AP )
+                B = bsave;
+            else {
+                B.resize( nAP + nLF );
+                for( int i = 0; i < nAP; ++i ) {
+                    if( bsave.testBit( i ) )
+                        B.setBit( nAP + i );
+                }
+            }
+
+            QString arg = QString("%1,%2,%2,%3,%4")
+                            .arg( js_in ).arg( ip )
+                            .arg( Subset::bits2RngStr( B ) )
+                            .arg( nAP + nLF );
+            Save::parse( STR2CHR( arg ) );
+            qSort( GBL.vS.begin(), GBL.vS.end() );
+        }
+
+        // Create/modify AP chnexcl list
+
+        if( js_out != AP )
+            break;
+
+        QBitArray   bexc = ~bsave;
+
+        if( !bexc.count( true ) )
+            break;
+
+        if( GBL.mexc.contains( ip ) ) {
+
+            Subset::rngStr2Vec( GBL.mexc[ip],
+                Subset::vec2RngStr( GBL.mexc[ip] )
+                + ","
+                + Subset::bits2RngStr( bexc ) );
+        }
+        else
+            Subset::bits2Vec( GBL.mexc[ip], bexc );
+
+        break;
+    }
+
+    return true;
 }
 
 

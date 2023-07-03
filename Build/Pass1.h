@@ -47,6 +47,7 @@ protected:
         sv0(-1), svLim(-1), i_nxt(0), i_lim(0), doWrite(false)      {}
     virtual ~Pass1();
 
+    bool parseMaxZ();
     bool o_open( int g0 );
     void initDigitalFields( double rngMax );
     bool openDigitalFiles( int g0 );

@@ -81,6 +81,9 @@ bool Pass1AP::go()
         case 2: return false;
     }
 
+    if( !parseMaxZ() )
+        return false;
+
     if( !GBL.makeOutputProbeFolder( g0, ip ) )
         return false;
 

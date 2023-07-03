@@ -254,59 +254,60 @@ struct Elem {
 class CGBL
 {
 public:
-    double          syncper,        // measured in supercat_trim
-                    startsecs,
-                    maxsecs,
-                    locin_um,
-                    locout_um,
-                    gfixamp,        // amplitude
-                    gfixslp,        // slope
-                    gfixbas;        // baseline
-    Filter          apflt,
-                    lfflt;
-    QString         sCmd,
-                    run,
-                    inpar,          // derived
-                    dest,
-                    aux_obase,      // derived
-                    im_obase,       // derived
-                    prb_obase;      // derived
+    double              syncper,        // measured in supercat_trim
+                        startsecs,
+                        maxsecs,
+                        locin_um,
+                        locout_um,
+                        gfixamp,        // amplitude
+                        gfixslp,        // slope
+                        gfixbas;        // baseline
+    Filter              apflt,
+                        lfflt;
+    QString             sCmd,
+                        run,
+                        inpar,          // derived
+                        dest,
+                        aux_obase,      // derived
+                        im_obase,       // derived
+                        prb_obase;      // derived
     QMap<int,QVector<uint>> mexc;
-    QVector<GT3>    gtlist;
-    QVector<uint>   vobx,
-                    vprb;
-    QVector<XTR*>   vX;
-    QVector<Save>   vS;
-    QVector<Elem>   velem;
-    KVParams        fyi;            // generated
-    int             ga,
-                    gb,
-                    ta,
-                    tb,
-                    zfilmax,
-                    locin,
-                    locout,
-                    inarow;
-    bool            no_run_fld,
-                    prb_fld,
-                    prb_miss_ok,
-                    exported,
-                    catgt_fld,      // derived
-                    t_miss_ok,
-                    ni,
-                    ob,
-                    ap,
-                    lf,
-                    prb_3A,
-                    tshift,
-                    gblcar,
-                    gbldmx,
-                    gfixdo,
-                    auto_sync,
-                    force_ni_ob,
-                    sc_trim,
-                    sc_skipbin,
-                    out_prb_fld;
+    QVector<GT3>        gtlist;
+    QVector<uint>       vobx,
+                        vprb;
+    QVector<XTR*>       vX;
+    QVector<Save>       vS;
+    QVector<QString>    vmaxZ;
+    QVector<Elem>       velem;
+    KVParams            fyi;            // generated
+    int                 ga,
+                        gb,
+                        ta,
+                        tb,
+                        zfilmax,
+                        locin,
+                        locout,
+                        inarow;
+    bool                no_run_fld,
+                        prb_fld,
+                        prb_miss_ok,
+                        exported,
+                        catgt_fld,      // derived
+                        t_miss_ok,
+                        ni,
+                        ob,
+                        ap,
+                        lf,
+                        prb_3A,
+                        tshift,
+                        gblcar,
+                        gbldmx,
+                        gfixdo,
+                        auto_sync,
+                        force_ni_ob,
+                        sc_trim,
+                        sc_skipbin,
+                        out_prb_fld;
 
 public:
     CGBL()
@@ -388,6 +389,7 @@ public:
 
 private:
     bool parseChnexcl( const QString &s );
+    bool parseMaxZ();
     bool parseElems( const QString &s );
     bool checkExtractors();
     bool checkSaves();

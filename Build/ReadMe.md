@@ -114,6 +114,7 @@ Options:
 -inarow=5                ;extractor {xa,xd,xia,xid} antibounce stay high/low sample count
 -no_auto_sync            ;disable the automatic extraction of sync edges in all streams
 -save=2,0,5,20:60        ;save subset of probe chans (js,ip1,ip2,chan-list)
+-maxZ=0,0,100            ;probe inserted to given depth (ip,depth-type,depth-value)
 -pass1_force_ni_ob_bin   ;write pass one ni/ob binary tcat file even if not changed
 -supercat={dir,run_ga}   ;concatenate existing output files across runs (see ReadMe)
 -supercat_trim_edges     ;supercat after trimming each stream to matched sync edges
@@ -712,7 +713,9 @@ be farther from baseline than theshold-1 to ensure pulses attain a desired
 deflection amplitude. Using two separate threshold levels allows detecting
 the earliest time that pulse departs from baseline (threshold-1) and
 separately testing that the deflection is great enough to be considered a
-real event and not noise (threshold-2).
+real event and not noise (threshold-2). See Fig. 1.
+
+![Fig. 1: Dual Thresholds](catgt_analog_extract.png)
 
 #### Extractors xd
 
@@ -867,11 +870,14 @@ channels, or to split out the shanks of a multishank probe.
 
 -save=js,ip1,ip2,channel-list
 
-* **js,ip1**: Identify the input probe stream, where, js = {2=AP, 3=LF}.
+* **js,ip1**: Identify the input probe stream, where, js = input stream type = {2=AP, 3=LF}.
 * **ip2**: User-provided output stream number; a non-negative integer that
 can be the same as ip1 or not (see examples below).
 * **channel-list**: Standard SpikeGLX-type list of channels; these name
 originally acquired channels.
+
+>*If processing a 2.0 AP input file -> LF output file, use js = 2 to match
+the input file type.*
 
 #### Example 1
 
@@ -902,15 +908,41 @@ Split NP 2.0 4-shank stream imec0.ap (all channels saved) into four shanks,
 giving each a new stream number. The original imro selected the lowest
 (384/4 = 96) electrodes from each shank.
 
--save=0,0,10,0:47,96:143,384
--save=0,0,11,48:95,144:191,384
--save=0,0,12,192:239,288:335,384
--save=0,0,13,240:287,336:384
+-save=2,0,10,0:47,96:143,384
+-save=2,0,11,48:95,144:191,384
+-save=2,0,12,192:239,288:335,384
+-save=2,0,13,240:287,336:384
 
 * You can enter as many -save options on one command line as needed,
 and several options can refer to the same input file if needed:
 **One file in -> many files out**.
 * ip2 can be any non-negative integer.
+
+### maxZ option
+
+It's very common to insert a probe only partially into the brain. The
+electrodes that remain outside the brain see primarily environment noise.
+These channels pollute CAR operations unless they are excluded. Also,
+you can trim these channels out of your files to make them smaller.
+
+Use maxZ to specify an insertion depth for an imec probe (js=2). This
+will automatically create/adjust the -chnexcl option for the probe, and
+it will create a -save option listing only the inserted channels.
+
+The parameters are -maxZ=ip,depth-type,depth-value.
+
+There are three convenient ways to specify the insertion depth:
+
+|Depth-type     | Depth-value|
+|---------------| ---------------|
+|---------------| ---------------|
+|0              | zero-based row index|
+|1              | microns in geomMap (z=0 at center of bottom row)|
+|2              | microns from tip (z=0 at probe tip)|
+
+> Note that you can specify your own -chnexcl entry and -maxZ for the same
+probe (ip); the result is the union. However, you must not specify both
+-save and -maxZ for the same probe; that is flagged as an error.
 
 ------
 
@@ -1062,6 +1094,7 @@ Options:
 -inarow=5                ;ignored
 -no_auto_sync            ;forbidden with supercat_trim_edges
 -save=2,0,5,20:60        ;ignored
+-maxZ=0,0,100            ;ignored
 -pass1_force_ni_ob_bin   ;ignored
 -dest=path               ;required
 -out_prb_fld             ;create output subfolder per probe
@@ -1123,6 +1156,10 @@ on that stream's clock.
 ------
 
 ## Change Log
+
+Version 4.1
+
+- Add -maxZ option.
 
 Version 4.0
 

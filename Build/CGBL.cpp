@@ -1201,6 +1201,7 @@ static void PrintUsage()
     Log() << "-inarow=5                ;extractor {xa,xd,xia,xid} antibounce stay high/low sample count";
     Log() << "-no_auto_sync            ;disable the automatic extraction of sync edges in all streams";
     Log() << "-save=2,0,5,20:60        ;save subset of probe chans (js,ip1,ip2,chan-list)";
+    Log() << "-maxZ=0,0,100            ;probe inserted to given depth (ip,depth-type,depth-value)";
     Log() << "-pass1_force_ni_ob_bin   ;write pass one ni/ob binary tcat file even if not changed";
     Log() << "-supercat={dir,run_ga}   ;concatenate existing output files across runs (see ReadMe)";
     Log() << "-supercat_trim_edges     ;supercat after trimming each stream to matched sync edges";
@@ -1456,6 +1457,8 @@ bool CGBL::SetCmdLine( int argc, char* argv[] )
             if( !Save::parse( sarg ) )
                 return false;
         }
+        else if( GetArgStr( sarg, "-maxZ=", argv[i] ) )
+            vmaxZ.push_back( sarg );
         else if( IsArg( "-pass1_force_ni_ob_bin", argv[i] ) )
             force_ni_ob = true;
         else if( GetArgStr( sarg, "-supercat=", argv[i] ) )
@@ -1593,6 +1596,7 @@ error:
             sXTR        = "",
             sinarow     = "",
             sSave       = "",
+            sMaxZ       = "",
             ssuper      = "",
             sdest       = "";
 
@@ -1653,6 +1657,9 @@ error:
     foreach( const Save &S, vS )
         sSave += S.sparam();
 
+    foreach( const QString &s, vmaxZ )
+        sMaxZ += QString(" -maxZ=%1").arg( s );
+
     if( velem.size() )
         ssuper = QString(" -supercat=%1").arg( formatElems() );
 
@@ -1664,7 +1671,7 @@ error:
     sCmd =
         QString(
             "CatGT%1%2%3%4%5%6%7%8%9%10%11%12%13%14%15%16%17%18%19"
-            "%20%21%22%23%24%25%26%27%28%29%30%31%32%33%34%35%36")
+            "%20%21%22%23%24%25%26%27%28%29%30%31%32%33%34%35%36%37")
         .arg( sreq )
         .arg( sgt )
         .arg( no_run_fld ? " -no_run_fld" : "" )
@@ -1695,6 +1702,7 @@ error:
         .arg( sinarow )
         .arg( auto_sync ? "" : " -no_auto_sync" )
         .arg( sSave )
+        .arg( sMaxZ )
         .arg( force_ni_ob ? " -pass1_force_ni_ob_bin" : "" )
         .arg( ssuper )
         .arg( sc_trim ? " -supercat_trim_edges" : "" )
@@ -1713,6 +1721,11 @@ error:
 
     if( inarow < 0 )
         inarow = 5;
+
+// MaxZ adjustments
+
+    if( velem.isEmpty() && !parseMaxZ() )
+        return false;
 
 // Inpath adjustments
 
@@ -2294,6 +2307,56 @@ bool CGBL::parseChnexcl( const QString &s )
 
         seen.insert( prb );
         mexc[prb] = C;
+    }
+
+    return true;
+}
+
+
+// Now, just check for bad params, or {-save + -maxZ} conflicts.
+// Parse again later when metadata available.
+//
+bool CGBL::parseMaxZ()
+{
+    QSet<int>   seen;
+
+    foreach( const QString &s, vmaxZ ) {
+
+        QStringList sl = s.split(
+                            QRegExp("^\\s+|\\s*,\\s*|\\s+$"),
+                            QString::SkipEmptyParts );
+        int         ns = sl.size(),
+                    ip,
+                    tp;
+
+        if( ns != 3 ) {
+format_err:
+            Log() << QString("Error: -maxZ=%1 has bad format.").arg( s );
+            return false;
+        }
+
+        ip = sl[0].toInt();
+        tp = sl[1].toInt();
+
+        if( tp < 0 || tp > 2 )
+            goto format_err;
+
+        if( seen.contains( ip ) ) {
+            Log() << QString("Error: -maxZ names probe %1 twice.").arg( ip );
+            return false;
+        }
+
+        foreach( const Save &S, vS ) {
+
+            if( S.js >= AP && S.ip1 == ip ) {
+                Log() <<
+                    QString("Error: Can't have -save and -maxZ for probe %1.")
+                    .arg( ip );
+                return false;
+            }
+        }
+
+        seen.insert( ip );
     }
 
     return true;
