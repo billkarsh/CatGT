@@ -1133,12 +1133,12 @@ void Save::close()
 
 void Elem::unpack()
 {
-    GBL.inpar       = dir;
-    GBL.run         = run;
-    GBL.ga          = g;
-    GBL.gb          = g;
-    GBL.no_run_fld  = no_run_fld;
-    GBL.catgt_fld   = catgt_fld;
+    GBL.inpar           = dir;
+    GBL.run             = run;
+    GBL.ga              = g;
+    GBL.gb              = g;
+    GBL.no_run_fld      = no_run_fld;
+    GBL.in_catgt_fld    = in_catgt_fld;
 }
 
 /* --------------------------------------------------------------- */
@@ -1207,6 +1207,7 @@ static void PrintUsage()
     Log() << "-supercat_trim_edges     ;supercat after trimming each stream to matched sync edges";
     Log() << "-supercat_skip_ni_ob_bin ;do not supercat ni/ob binary files";
     Log() << "-dest=path               ;alternate path for output files (must exist)";
+    Log() << "-no_catgt_fld            ;if using -dest, do not create catgt_run subfolder";
     Log() << "-out_prb_fld             ;if using -dest, create output subfolder per probe";
     Log() << "------------------------";
 }
@@ -1469,6 +1470,8 @@ bool CGBL::SetCmdLine( int argc, char* argv[] )
             sc_skipbin = true;
         else if( GetArgStr( sarg, "-dest=", argv[i] ) )
             dest = trim_adjust_slashes( sarg );
+        else if( IsArg( "-no_catgt_fld", argv[i] ) )
+            no_catgt_fld = true;
         else if( IsArg( "-out_prb_fld", argv[i] ) )
             out_prb_fld = true;
         else {
@@ -1497,27 +1500,28 @@ bad_param:
             goto error;
         }
 
-        startsecs   = 0;
-        maxsecs     = 0;
-        locin_um    = 0;
-        locout_um   = 0;
-        gfixamp     = 0;
-        gfixslp     = 0;
-        gfixbas     = 0;
+        startsecs       = 0;
+        maxsecs         = 0;
+        locin_um        = 0;
+        locout_um       = 0;
+        gfixamp         = 0;
+        gfixslp         = 0;
+        gfixbas         = 0;
         apflt.clear();
         lfflt.clear();
         mexc.clear();
         gtlist.clear();
         gt_set_tcat();
-        zfilmax     = -1;
-        locin       = 0;
-        locout      = 0;
-        inarow      = -1;
-        t_miss_ok   = false;
-        tshift      = false;
-        gblcar      = false;
-        gbldmx      = false;
-        gfixdo      = false;
+        zfilmax         = -1;
+        locin           = 0;
+        locout          = 0;
+        inarow          = -1;
+        t_miss_ok       = false;
+        tshift          = false;
+        gblcar          = false;
+        gbldmx          = false;
+        gfixdo          = false;
+        no_catgt_fld    = false;
     }
     else {
 
@@ -1665,13 +1669,15 @@ error:
 
     if( !dest.isEmpty() )
         sdest = QString(" -dest=%1").arg( dest );
-    else
-        out_prb_fld = false;
+    else {
+        no_catgt_fld = false;
+        out_prb_fld  = false;
+    }
 
     sCmd =
         QString(
-            "CatGT%1%2%3%4%5%6%7%8%9%10%11%12%13%14%15%16%17%18%19"
-            "%20%21%22%23%24%25%26%27%28%29%30%31%32%33%34%35%36%37")
+            "CatGT%1%2%3%4%5%6%7%8%9%10%11%12%13%14%15%16%17%18%19%20"
+            "%21%22%23%24%25%26%27%28%29%30%31%32%33%34%35%36%37%38")
         .arg( sreq )
         .arg( sgt )
         .arg( no_run_fld ? " -no_run_fld" : "" )
@@ -1708,6 +1714,7 @@ error:
         .arg( sc_trim ? " -supercat_trim_edges" : "" )
         .arg( sc_skipbin ? " -supercat_skip_ni_ob_bin" : "" )
         .arg( sdest )
+        .arg( no_catgt_fld ? " -no_catgt_fld" : "" )
         .arg( out_prb_fld ? " -out_prb_fld" : "" );
 
     Log() << QString("Cmdline: %1").arg( sCmd );
@@ -1967,8 +1974,15 @@ void CGBL::fyi_ct_write()
             dir;
 
     if( !dest.isEmpty() ) {
-        fyi["supercat_element"] = QString("{%1,catgt_%2}").arg( dest ).arg( srun );
-        dir = QString("%1/catgt_%2").arg( dest ).arg( srun );
+        if( no_catgt_fld ) {
+            fyi["supercat_element"] = QString("{%1,%2}").arg( dest ).arg( srun );
+            dir = dest;
+        }
+        else {
+            fyi["supercat_element"] =
+                QString("{%1,catgt_%2}").arg( dest ).arg( srun );
+            dir = QString("%1/catgt_%2").arg( dest ).arg( srun );
+        }
     }
     else {
         fyi["supercat_element"] = QString("{%1,%2}").arg( inpar ).arg( srun );
@@ -2005,7 +2019,7 @@ bool CGBL::makeOutputProbeFolder( int g0, int ip )
 
         if( out_prb_fld ) {
 
-            // Create probe subfolder: dest/catgt_run_g0/run_g0_imec0
+            // Create probe subfolder: dest/tag_run_g0/run_g0_imec0
 
             prb_obase += QString("/%1_g%2_imec%3").arg( run ).arg( g0 ).arg( ip );
 
@@ -2546,7 +2560,7 @@ QString CGBL::formatElems()
 
         s += QString("{%1,%2%3_g%4}")
                 .arg( E.dir )
-                .arg( E.catgt_fld ? "catgt_" : "" )
+                .arg( E.in_catgt_fld ? "catgt_" : "" )
                 .arg( E.run ).arg( E.g );
     }
 
@@ -2570,11 +2584,11 @@ bool CGBL::pass1FromCatGT()
             return false;
         }
 
-        catgt_fld   = true;
-        no_run_fld  = false;
+        in_catgt_fld    = true;
+        no_run_fld      = false;
     }
 
-    if( catgt_fld || gt_is_tcat() )
+    if( in_catgt_fld || gt_is_tcat() )
         gb = ga;
 
     return true;
@@ -2598,25 +2612,29 @@ bool CGBL::makeTaggedDest()
 {
     if( !dest.isEmpty() ) {
 
-        QString tag = (velem.isEmpty() ? "catgt_" : "supercat_");
-        int     g0  = gt_get_first( 0 );
+        int g0  = gt_get_first( 0 );
 
         im_obase = dest;
 
-        // -------------------------------------------------------
-        // Create run subfolder for all streams: dest/catgt_run_g0
-        // -------------------------------------------------------
+        // -----------------------------------------------------
+        // Create run subfolder for all streams: dest/tag_run_g0
+        // -----------------------------------------------------
 
-        im_obase += QString("/%1%2_g%3").arg( tag ).arg( run ).arg( g0 );
+        if( velem.isEmpty() ) {
+            if( !no_catgt_fld )
+                im_obase += QString("/catgt_%1_g%2").arg( run ).arg( g0 );
+        }
+        else
+            im_obase += QString("/supercat_%1_g%2").arg( run ).arg( g0 );
 
         if( !QDir().exists( im_obase ) && !QDir().mkdir( im_obase ) ) {
             Log() << QString("Error creating dir '%1'.").arg( im_obase );
             return false;
         }
 
-        // ----------------------------------------------
-        // NI/OB file base: dest/catgt_run_g0/run_g0_tcat
-        // ----------------------------------------------
+        // --------------------------------------------
+        // NI/OB file base: dest/tag_run_g0/run_g0_tcat
+        // --------------------------------------------
 
         aux_obase = QString("%1/%2_g%3_tcat")
                         .arg( im_obase ).arg( run ).arg( g0 );
@@ -2679,7 +2697,7 @@ bool CGBL::addAutoExtractors()
         KVParams    kvp;
         int         t0, g0 = gt_get_first( &t0 );
 
-        if( catgt_fld || velem.size() )
+        if( in_catgt_fld || velem.size() )
             t0 = -1;
 
         if( openInputMeta( fim, kvp, g0, t0, NI, 0, false ) )
@@ -2786,7 +2804,7 @@ QString CGBL::inPath( int g, t_js js, int ip )
 
         s += "/";
 
-        if( catgt_fld )
+        if( in_catgt_fld )
             s += "catgt_";
 
         s += QString("%1").arg( srun );

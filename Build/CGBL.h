@@ -235,17 +235,17 @@ struct Elem {
                         run;
     int                 g;
     bool                no_run_fld,
-                        catgt_fld;
+                        in_catgt_fld;
     Elem()
-        :   g(0), no_run_fld(false), catgt_fld(false)       {}
+        :   g(0), no_run_fld(false), in_catgt_fld(false)        {}
     Elem(
         const QString   &dir,
         const QString   &run,
         int             g,
         bool            no_run_fld,
-        bool            catgt_fld )
+        bool            in_catgt_fld )
         :   dir(dir), run(run), g(g),
-            no_run_fld(no_run_fld), catgt_fld(catgt_fld)    {}
+            no_run_fld(no_run_fld), in_catgt_fld(in_catgt_fld)  {}
     double& head( t_js js, int ip ) {return iq2head[1000*(js==LF?AP:js) + ip];}
     double& tail( t_js js, int ip ) {return iq2tail[1000*(js==LF?AP:js) + ip];}
     void unpack();
@@ -292,7 +292,7 @@ public:
                         prb_fld,
                         prb_miss_ok,
                         exported,
-                        catgt_fld,      // derived
+                        in_catgt_fld,   // derived
                         t_miss_ok,
                         ni,
                         ob,
@@ -307,6 +307,7 @@ public:
                         force_ni_ob,
                         sc_trim,
                         sc_skipbin,
+                        no_catgt_fld,
                         out_prb_fld;
 
 public:
@@ -317,11 +318,11 @@ public:
             ga(-1), gb(-1), ta(-2), tb(-2),
             zfilmax(-1), locin(0), locout(0), inarow(-1),
             no_run_fld(false), prb_fld(false), prb_miss_ok(false),
-            exported(false), catgt_fld(false), t_miss_ok(false),
+            exported(false), in_catgt_fld(false), t_miss_ok(false),
             ni(false), ob(false), ap(false), lf(false), prb_3A(false),
             tshift(true), gblcar(false), gbldmx(false), gfixdo(false),
             auto_sync(true), force_ni_ob(false), sc_trim(false),
-            sc_skipbin(false), out_prb_fld(false)   {}
+            sc_skipbin(false), no_catgt_fld(false), out_prb_fld(false)  {}
 
     bool SetCmdLine( int argc, char* argv[] );
 

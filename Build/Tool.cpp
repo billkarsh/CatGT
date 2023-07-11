@@ -647,18 +647,20 @@ void FOffsets::dwnSmp( int ip )
 
 void FOffsets::ct_write()
 {
-    if( GBL.catgt_fld || !gFOff.mrate.size() )
+    if( GBL.in_catgt_fld || !gFOff.mrate.size() )
         return;
 
     QString dir,
             srun = QString("%1_g%2")
                     .arg( GBL.run ).arg( GBL.gt_get_first( 0 ) );
 
-    if( !GBL.dest.isEmpty() )
-        dir = QString("%1/catgt_%2/").arg( GBL.dest ).arg( srun );
+    if( !GBL.dest.isEmpty() ) {
+        dir = GBL.dest + "/";
+        if( !GBL.no_catgt_fld )
+            dir += QString("catgt_%1/").arg( srun );
+    }
     else {
         dir = GBL.inpar + "/";
-
         if( !GBL.no_run_fld )
             dir += QString("%1/").arg( srun );
     }

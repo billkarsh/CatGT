@@ -120,6 +120,7 @@ Options:
 -supercat_trim_edges     ;supercat after trimming each stream to matched sync edges
 -supercat_skip_ni_ob_bin ;do not supercat ni/ob binary files
 -dest=path               ;alternate path for output files (must exist)
+-no_catgt_fld            ;if using -dest, do not create catgt_run subfolder
 -out_prb_fld             ;if using -dest, create output subfolder per probe
 ```
 
@@ -419,8 +420,9 @@ this file contains a range.
 e.g., `-g=0,100`, but there is just one t-index for each gate `t=0`.
 
 - The `-dest=myPath` option will store the output in a destination folder
-of your choosing. It will further create an output subfolder for the run
-having a `catgt_` tag: `myPath/catgt_run_name_ga`.
+of your choosing. If you do not specify the `-no_catgt_fld` option, it will
+further create an output subfolder for the run having a `catgt_` tag:
+`myPath/catgt_run_name_ga`.
 
 - A meta file is also created for each output binary, e.g.:
 `path/run_name_g5_tcat.imec1.ap.meta`.
@@ -976,10 +978,16 @@ did that CatGT run:
 - (2) Saved to native folders **without run folder (-no_run_fld option)** --
     + dir:    The parent directory of the data files themselves.
     + run_ga: The run_name and g-index parts of the tcat output files.
+    + *You must use -no_run_fld for the supercat run*.
 
-- (3) Saving to dest folders --
+- (3) Saving to dest folders **with catgt_ folder** --
     + dir:    The parent directory of the catgt_run_ga folder.
     + run_ga: 'catgt_' tagged folder name, e.g., **catgt_myrun_g7**.
+
+- (4) Saving to dest folders **without catgt_ folder (-no_catgt_fld option)** --
+    + dir:    The parent directory of the data files themselves.
+    + run_ga: The run_name and g-index parts of the tcat output files.
+    + *You must use -no_run_fld for the supercat run*.
 
 >Note that if `-no_run_fld` is used, it is applied to all elements.
 
@@ -1097,6 +1105,7 @@ Options:
 -maxZ=0,0,100            ;ignored
 -pass1_force_ni_ob_bin   ;ignored
 -dest=path               ;required
+-no_catgt_fld            ;ignored
 -out_prb_fld             ;create output subfolder per probe
 ```
 
@@ -1156,6 +1165,10 @@ on that stream's clock.
 ------
 
 ## Change Log
+
+Version 4.2
+
+- Add -no_catgt_fld option.
 
 Version 4.1
 
