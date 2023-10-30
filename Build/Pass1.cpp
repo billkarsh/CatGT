@@ -139,6 +139,8 @@ bool Pass1::parseMaxZ()
                 }
             }
 
+            // Note that SY is appended to the channel list as ",%4"
+
             QString arg = QString("%1,%2,%2,%3,%4")
                             .arg( js_in ).arg( ip )
                             .arg( Subset::bits2RngStr( B ) )
