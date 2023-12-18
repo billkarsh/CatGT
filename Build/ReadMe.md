@@ -1166,6 +1166,10 @@ on that stream's clock.
 
 ## Change Log
 
+Version 4.3
+
+- Supercat can join runs with varied sample rates.
+
 Version 4.2
 
 - Add -no_catgt_fld option.

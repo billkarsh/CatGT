@@ -168,10 +168,22 @@ qint64 Pass2::checkCounts( int ie )
         return 0;
     }
 
+    double  rate;
+
+    switch( js ) {
+        case NI: rate = kvpn["niSampRate"].toDouble(); break;
+        case OB: rate = kvpn["obSampRate"].toDouble(); break;
+        case AP:
+        case LF: rate = kvpn["imSampRate"].toDouble(); break;
+    }
+
+    GBL.velem[ie].rate( js, ip ) = rate;
+    gFOff.addRate( rate, js, ip );
+
     if( GBL.sc_trim ) {
         Elem    &E = GBL.velem[ie];
-        return  qint64(E.tail( js, ip ) * meta.srate + 1)
-                - qint64(E.head( js, ip ) * meta.srate)
+        return  qint64(E.tail( js, ip ) * rate + 1)
+                - qint64(E.head( js, ip ) * rate)
                 - (ie ? 1 : 0);
     }
 
@@ -191,8 +203,9 @@ static bool copyBinary(
     t_js                js,
     int                 ip )
 {
-    qint64  head     = GBL.velem[ie].head( js, ip ) * meta.srate,
-            tail     = GBL.velem[ie].tail( js, ip ) * meta.srate + 1,
+    double  rate     = GBL.velem[ie].rate( js, ip );
+    qint64  head     = GBL.velem[ie].head( js, ip ) * rate,
+            tail     = GBL.velem[ie].tail( js, ip ) * rate + 1,
             bufBytes = sizeof(BTYPE) * buf.size(),
             finBytes = fin.size();
 
@@ -287,20 +300,23 @@ static bool copyBinary(
 //
 static void copyOffsetTimes(
     QFile   &fin,
-    double  secs,
+    qint64  samps,
+    double  srate0,
     int     ie,
     t_js    js,
     int     ip,
     XTR     *X )
 {
     double  t,
+            secs = samps / srate0,
+            conv = GBL.velem[ie].rate( js, ip ) / srate0,
             head = GBL.velem[ie].head( js, ip ),
             tail = GBL.velem[ie].tail( js, ip );
     QString line;
     bool    ok;
 
     if( ie )
-        secs -= head;
+        secs -= head * conv;
 
     while( !(line = fin.readLine()).isEmpty() ) {
 
@@ -308,7 +324,7 @@ static void copyOffsetTimes(
 
         if( ok ) {
             if( t > head && t <= tail )
-                *X->ts << QString("%1\n").arg( t + secs, 0, 'f', 6 );
+                *X->ts << QString("%1\n").arg( t * conv + secs, 0, 'f', 6 );
         }
         else
             *X->ts << line;
@@ -316,9 +332,16 @@ static void copyOffsetTimes(
 }
 
 
-static void copyOffsetTimes( QFile &fin, double secs, XTR *X )
+static void copyOffsetTimes(
+    QFile   &fin,
+    qint64  samps,
+    double  rate,
+    double  rate0,
+    XTR     *X )
 {
-    double  t;
+    double  t,
+            secs = samps / rate0,
+            conv = rate  / rate0;
     QString line;
     bool    ok;
 
@@ -327,7 +350,7 @@ static void copyOffsetTimes( QFile &fin, double secs, XTR *X )
         t = line.toDouble( &ok );
 
         if( ok )
-            *X->ts << QString("%1\n").arg( t + secs, 0, 'f', 6 );
+            *X->ts << QString("%1\n").arg( t * conv + secs, 0, 'f', 6 );
         else
             *X->ts << line;
     }
@@ -353,9 +376,11 @@ bool Pass2::copyFile( QFile &fout, int ie, t_ex ex, XTR *X )
             return false;
     }
     else if( GBL.sc_trim )
-        copyOffsetTimes( fin, samps / meta.srate, ie, js, ip, X );
-    else
-        copyOffsetTimes( fin, samps / meta.srate, X );
+        copyOffsetTimes( fin, samps, meta.srate, ie, js, ip, X );
+    else {
+        copyOffsetTimes(
+            fin, samps, GBL.velem[ie].rate( js, ip ), meta.srate, X );
+    }
 
     return true;
 }
@@ -376,13 +401,14 @@ bool Pass2::copyFilesBF( int ie, BitField *B )
 
         double  t,
                 secs = samps / meta.srate,
+                conv = GBL.velem[ie].rate( js, ip ) / meta.srate,
                 head = GBL.velem[ie].head( js, ip ),
                 tail = GBL.velem[ie].tail( js, ip );
         QString LT, LV;
         bool    ok;
 
         if( ie )
-            secs -= head;
+            secs -= head * conv;
 
         while( !(LT = ftin.readLine()).isEmpty() ) {
 
@@ -391,7 +417,7 @@ bool Pass2::copyFilesBF( int ie, BitField *B )
 
             if( ok ) {
                 if( t > head && t <= tail ) {
-                    *B->ts  << QString("%1\n").arg( t + secs, 0, 'f', 6 );
+                    *B->ts  << QString("%1\n").arg( t * conv + secs, 0, 'f', 6 );
                     *B->tsv << LV;
                 }
             }
@@ -403,8 +429,9 @@ bool Pass2::copyFilesBF( int ie, BitField *B )
     }
     else {
 
-        // offet times
-        copyOffsetTimes( ftin, samps / meta.srate, B );
+        // offset times
+        copyOffsetTimes(
+            ftin, samps, GBL.velem[ie].rate( js, ip ), meta.srate, B );
 
         // append unmodified values
         QString line;

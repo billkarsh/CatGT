@@ -620,7 +620,7 @@ void FOffsets::init( double rate, t_js js, int ip )
 {
     QString s = stream( js, ip );
 
-    mrate[s] = rate;
+    mrate0[s] = rate;
     moff[s].push_back( GBL.startsecs > 0 ? -qint64(GBL.startsecs * rate) : 0 );
 }
 
@@ -628,6 +628,12 @@ void FOffsets::init( double rate, t_js js, int ip )
 void FOffsets::addOffset( qint64 off, t_js js, int ip )
 {
     moff[stream( js, ip )].push_back( off );
+}
+
+
+void FOffsets::addRate( double rate, t_js js, int ip )
+{
+    mrate[stream( js, ip )].push_back( rate );
 }
 
 
@@ -647,7 +653,7 @@ void FOffsets::dwnSmp( int ip )
 
 void FOffsets::ct_write()
 {
-    if( GBL.in_catgt_fld || !gFOff.mrate.size() )
+    if( GBL.in_catgt_fld || !gFOff.mrate0.size() )
         return;
 
     QString dir,
@@ -671,7 +677,7 @@ void FOffsets::ct_write()
 
 void FOffsets::sc_write()
 {
-    if( GBL.velem.size() < 2 || !gFOff.mrate.size() )
+    if( GBL.velem.size() < 2 || !gFOff.mrate0.size() )
         return;
 
     QString srun = QString("%1_g%2")
@@ -699,27 +705,45 @@ void FOffsets::writeEntries( QString file )
     f.open( QIODevice::WriteOnly | QIODevice::Text );
     QTextStream ts( &f );
 
-    QMap<QString,QVector<qint64>>::const_iterator it, end = moff.end();
+    // Offsets
+    {
+        QMap<QString,QVector<qint64>>::const_iterator it, end = moff.end();
 
-    for( it = moff.begin(); it != end; ++it ) {
+        for( it = moff.begin(); it != end; ++it ) {
 
-        const QVector<qint64>   &V = it.value();
+            const QVector<qint64>   &V = it.value();
 
-        ts << "smp_" << it.key() << ":";
-        foreach( qint64 d, V )
-            ts << "\t" << d;
-        ts << "\n";
+            ts << "smp_" << it.key() << ":";
+            foreach( qint64 d, V )
+                ts << "\t" << d;
+            ts << "\n";
+        }
+
+        for( it = moff.begin(); it != end; ++it ) {
+
+            double                  rate    = mrate0[it.key()];
+            const QVector<qint64>   &V      = it.value();
+
+            ts << "sec_" << it.key() << ":";
+            foreach( qint64 d, V )
+                ts << "\t" << QString("%1").arg( d / rate, 0, 'f', 6 );
+            ts << "\n";
+        }
     }
 
-    for( it = moff.begin(); it != end; ++it ) {
+    // Rates
+    {
+        QMap<QString,QVector<double>>::const_iterator it, end = mrate.end();
 
-        double                  rate    = mrate[it.key()];
-        const QVector<qint64>   &V      = it.value();
+        for( it = mrate.begin(); it != end; ++it ) {
 
-        ts << "sec_" << it.key() << ":";
-        foreach( qint64 d, V )
-            ts << "\t" << QString("%1").arg( d / rate, 0, 'f', 6 );
-        ts << "\n";
+            const QVector<double>   &V = it.value();
+
+            ts << "srate_" << it.key() << ":";
+            foreach( double d, V )
+                ts << "\t" << QString("%1").arg( d, 0, 'f', 6 );
+            ts << "\n";
+        }
     }
 
     ts.flush();

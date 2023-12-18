@@ -71,10 +71,12 @@ private:
 
 struct FOffsets {
 // Offset of each input file start within concatenated whole
-    QMap<QString,double>            mrate;
+    QMap<QString,double>            mrate0;
     QMap<QString,QVector<qint64>>   moff;
+    QMap<QString,QVector<double>>   mrate;
     void init( double rate, t_js js, int ip );
     void addOffset( qint64 off, t_js js, int ip );
+    void addRate( double rate, t_js js, int ip );
     void dwnSmp( int ip );
     void ct_write();
     void sc_write();

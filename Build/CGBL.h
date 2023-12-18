@@ -229,7 +229,8 @@ struct Save {
 
 struct Elem {
 // supercat element
-    QMap<int,double>    iq2head,
+    QMap<int,double>    iq2rate,
+                        iq2head,
                         iq2tail;
     QString             dir,
                         run;
@@ -246,6 +247,7 @@ struct Elem {
         bool            in_catgt_fld )
         :   dir(dir), run(run), g(g),
             no_run_fld(no_run_fld), in_catgt_fld(in_catgt_fld)  {}
+    double& rate( t_js js, int ip ) {return iq2rate[1000*(js==LF?AP:js) + ip];}
     double& head( t_js js, int ip ) {return iq2head[1000*(js==LF?AP:js) + ip];}
     double& tail( t_js js, int ip ) {return iq2tail[1000*(js==LF?AP:js) + ip];}
     void unpack();
