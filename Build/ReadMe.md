@@ -54,7 +54,7 @@ working directory.
 
 Notes:
 
-+ Since version 1.4.0 runit.bat can, itself, take command-line parameters; you can still edit runit.bat directly if you prefer.
++ Runit.bat can, itself, take command-line parameters; you can still edit runit.bat directly if you prefer.
 + It is easiest to learn by editing a copy of `runit.bat`. Double-click on a bat file to run it.
 + Options must not have spaces, generally.
 + File paths and names must not have spaces (a standard script file limitation).
@@ -308,6 +308,9 @@ proceeds like two nested loops:
         }
     }
 ```
+
+>You can also concatenate different runs together. To do that, read the
+>sections under [**Supercat Multiple Runs**](#supercat-multiple-runs).
 
 #### Using CatGT output files as input for an extraction pass
 
@@ -1050,8 +1053,8 @@ that case, do the first pass with `pass1_force_ni_ob_bin` which will ensure
 that the NI and OB binary files are made and tagged `tcat` so supercat can
 find them.
 
->As of version 1.9, any operations on a stream always produce a new
-'tcat' meta file so that supercat can later track file lengths.
+>Any operations on a stream always produce a new 'tcat' meta file so that
+supercat can later track file lengths.
 
 ### supercat (other parameters)
 

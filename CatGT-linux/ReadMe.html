@@ -55,7 +55,7 @@
 <p><code>&gt;runit.bat -dir=data_dir -run=run_name -g=ga,gb -t=ta,tb &lt;which streams&gt; [ options ]</code></p>
 <p>Notes:</p>
 <ul>
-<li>Since version 1.4.0 runit.bat can, itself, take command-line parameters; you can still edit runit.bat directly if you prefer.</li>
+<li>Runit.bat can, itself, take command-line parameters; you can still edit runit.bat directly if you prefer.</li>
 <li>It is easiest to learn by editing a copy of <code>runit.bat</code>. Double-click on a bat file to run it.</li>
 <li>Options must not have spaces, generally.</li>
 <li>File paths and names must not have spaces (a standard script file limitation).</li>
@@ -218,6 +218,9 @@ Options:
                 stop processing this stream
         }
     }</code></pre>
+<blockquote>
+<p>You can also concatenate different runs together. To do that, read the sections under <a href="#supercat-multiple-runs"><strong>Supercat Multiple Runs</strong></a>.</p>
+</blockquote>
 <h4 id="using-catgt-output-files-as-input-for-an-extraction-pass">Using CatGT output files as input for an extraction pass</h4>
 <p>Operate on CatGT output files (in order to do event extraction) by setting the -t parameter to: <code>-t=cat</code>. Note that you must specify the single <code>ga</code> that labels that tcat file. (More on this in the Extractor notes below).</p>
 <h4 id="running-catgt-on-nonstandard-file-names">Running CatGT on nonstandard file names</h4>
@@ -659,7 +662,7 @@ ls -s &lt;path/myoriginalname.meta&gt; &lt;...ZZZ/goodname_g0_t0.imec0.ap.meta&g
 <p>Your first-pass CatGT runs might have extracted edge files but produced no new binary NI or OB files (that happens if no trial range is specified in the g- or t-indices). The supercat_skip_ni_ob_bin option reminds supercat not to process the missing binary files.</p>
 <p>On the other hand, you might want to make a supercat of NI or OB binary files even though you aren't modifying those data in the first pass. In that case, do the first pass with <code>pass1_force_ni_ob_bin</code> which will ensure that the NI and OB binary files are made and tagged <code>tcat</code> so supercat can find them.</p>
 <blockquote>
-<p>As of version 1.9, any operations on a stream always produce a new 'tcat' meta file so that supercat can later track file lengths.</p>
+<p>Any operations on a stream always produce a new 'tcat' meta file so that supercat can later track file lengths.</p>
 </blockquote>
 <h3 id="supercat-other-parameters">supercat (other parameters)</h3>
 <p>Here's how all the other parameters work for a supercat session...</p>
