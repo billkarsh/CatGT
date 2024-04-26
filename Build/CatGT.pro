@@ -19,6 +19,7 @@ QT += widgets
 
 HEADERS +=              \
     Biquad.h            \
+    CAR.h               \
     CGBL.h              \
     ChanMap.h           \
     Cmdline.h           \
@@ -61,6 +62,7 @@ HEADERS +=              \
 
 SOURCES +=              \
     Biquad.cpp          \
+    CAR.cpp             \
     CGBL.cpp            \
     ChanMap.cpp         \
     Cmdline.cpp         \

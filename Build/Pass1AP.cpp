@@ -5,54 +5,10 @@
 #include "GeomMap.h"
 #include "ShankMap.h"
 
-#include <QSet>
-
 #define MAX10BIT    512
 #define GFIXOFF     128+32
 #define GFIXBUFSMP  (GFIXOFF+192)
 
-
-
-
-/* ---------------------------------------------------------------- */
-/* MedCAR --------------------------------------------------------- */
-/* ---------------------------------------------------------------- */
-
-void MedCAR::init( const SUList &SU, int nC, int nAP )
-{
-    const SUElem    *su = &SU[0];
-
-    for( int ig = 0; ig < nAP; ++ig ) {
-        if( su[ig].u )
-            idx.push_back( ig );
-    }
-
-    this->nC = nC;
-    arrange.resize( nU = idx.size() );
-
-    ibeg = arrange.begin();
-    iend = arrange.end();
-    imid = ibeg + nU / 2;
-}
-
-
-void MedCAR::apply( qint16 *d, int ntpts )
-{
-    const int   *pidx = &idx[0];
-    qint16      *parr = &arrange[0];
-
-    for( int it = 0; it < ntpts; ++it, d += nC ) {
-
-        for( int ig = 0; ig < nU; ++ig )
-            parr[ig] = d[pidx[ig]];
-
-        std::nth_element( ibeg, imid, iend );
-        int median = *imid;
-
-        for( int ig = 0; ig < nU; ++ig )
-            d[pidx[ig]] -= median;
-    }
-}
 
 /* ---------------------------------------------------------------- */
 /* Pass1AP -------------------------------------------------------- */
@@ -72,8 +28,8 @@ bool Pass1AP::go()
 
     doWrite = GBL.gt_nIndices() > 1
                     || GBL.startsecs > 0 || GBL.apflt.isenabled()
-                    || GBL.tshift || GBL.locout_um || GBL.locout
-                    || GBL.gblcar || GBL.gbldmx    || GBL.gfixdo;
+                    || GBL.tshift || GBL.locout_um > 0 || GBL.locout
+                    || GBL.gblcar || GBL.gbldmx        || GBL.gfixdo;
 
     switch( GBL.openInputMeta( fim, meta.kvp, g0, t0, AP, ip, GBL.prb_miss_ok ) ) {
         case 0: break;
@@ -143,12 +99,12 @@ void Pass1AP::neural( qint16 *data, int ntpts )
 
 // CAR
 
-    if( GBL.locout_um || GBL.locout )
-        sAveApplyLocal( data, &loccarBuf[0], ntpts, meta.nC, meta.nN );
+    if( GBL.locout_um > 0 || GBL.locout )
+        car.lcl_auto( data, ntpts, ig2ic, ic2ig );
     else if( GBL.gbldmx )
-        sAveApplyDmxTbl( data, ntpts, meta.nC, meta.nN, 1 );
+        car.gbl_dmx_tbl_auto( data, ntpts, ic2ig );
     else if( GBL.gblcar )
-        medCAR.apply( data, ntpts );
+        car.gbl_med_auto( data, ntpts );
 }
 
 
@@ -183,7 +139,7 @@ bool Pass1AP::filtersAndScaling()
         R->fromString( 0, meta.kvp["~imroTbl"].toString() );
         maxInt  = R->maxInt();
         Tmul    = maxInt * R->apGain( 0 ) / (1000 * R->maxVolts());
-        R->muxTable( nADC, nGrp, muxTbl );
+        car.setAuto( R );
         delete R;
     }
     else {
@@ -196,8 +152,10 @@ bool Pass1AP::filtersAndScaling()
 // Channel mapping
 // ---------------
 
-    if( GBL.locout_um || GBL.locout ||
-        GBL.gblcar    || GBL.gbldmx || GBL.gfixdo ) {
+    if( GBL.locout_um > 0 || GBL.locout ||
+        GBL.gblcar        || GBL.gbldmx || GBL.gfixdo ) {
+
+        car.setChans( meta.nC, meta.nN );
 
         // ---------------------
         // Saved channel ID list
@@ -218,7 +176,7 @@ bool Pass1AP::filtersAndScaling()
         int nAcqChan = sl[0].toInt();
 
         ig2ic.resize( meta.nN );
-        ic2ig.fill( -1, qMax( nAcqChan, nADC * nGrp ) );
+        ic2ig.fill( -1, qMax( nAcqChan, car.getMuxTblSize() ) );
 
         for( int ig = 0; ig < meta.nN; ++ig ) {
 
@@ -235,22 +193,20 @@ bool Pass1AP::filtersAndScaling()
         if( geomMap )
             delete geomMap;
 
-        geomMap = new GeomMap;
+        geomMap = 0;
 
         KVParams::const_iterator    it_kvp = meta.kvp.find( "~snsGeomMap" );
 
-        if( it_kvp != meta.kvp.end() )
+        if( it_kvp != meta.kvp.end() ) {
+            geomMap = new GeomMap;
             geomMap->fromString( it_kvp.value().toString() );
-        else if( GBL.locout_um ) {
+        }
+        else if( GBL.locout_um > 0 ) {
             Log() << QString(
                         "Missing ~snsGeomMap tag needed for loccar_um '%1'."
                         " Try using loccar instead.")
                         .arg( fim.fileName() );
             return false;
-        }
-        else {
-            delete geomMap;
-            geomMap = 0;
         }
 
         // --------
@@ -260,22 +216,20 @@ bool Pass1AP::filtersAndScaling()
         if( shankMap )
             delete shankMap;
 
-        shankMap = new ShankMap;
+        shankMap = 0;
 
         it_kvp = meta.kvp.find( "~snsShankMap" );
 
-        if( it_kvp != meta.kvp.end() )
+        if( it_kvp != meta.kvp.end() ) {
+            shankMap = new ShankMap;
             shankMap->fromString( it_kvp.value().toString() );
+        }
         else if( GBL.locout ) {
             Log() << QString(
                         "Missing ~snsShankMap tag needed for loccar '%1'."
                         " Try using loccar_um instead.")
                         .arg( fim.fileName() );
             return false;
-        }
-        else {
-            delete shankMap;
-            shankMap = 0;
         }
 
         if( !geomMap && !shankMap ) {
@@ -315,45 +269,35 @@ bool Pass1AP::filtersAndScaling()
         // Transfer to SU
         // --------------
 
-        if( geomMap ) {
-            for( int ie = 0; ie < meta.nN; ++ie ) {
-                const GeomMapDesc   &E = geomMap->e[ie];
-                SU.push_back( SUElem( E.s, E.u ) );
-            }
-        }
-        else {
-            for( int ie = 0; ie < meta.nN; ++ie ) {
-                const ShankMapDesc  &E = shankMap->e[ie];
-                SU.push_back( SUElem( E.s, E.u ) );
-            }
-        }
+        if( geomMap )
+            car.setSU( geomMap );
+        else
+            car.setSU( shankMap );
 
         // ---------------------
         // Unmap unused channels
         // ---------------------
 
-        const SUElem    *su = &SU[0];
+        const SUElem    *su = &car.getSU()[0];
 
         for( int ig = 0; ig < meta.nN; ++ig ) {
-
             if( !su[ig].u )
                 ic2ig[ig2ic[ig]] = -1;
         }
 
-        // ---
-        // TSM
-        // ---
+        // --------
+        // Lcl_init
+        // --------
 
-        if( GBL.locout_um ) {
-            sAveTable_geomMap( meta.nN );
-            loccarBuf.resize( meta.nC );
+        if( GBL.locout_um > 0 ) {
+            car.lcl_init( geomMap,
+                GBL.locin_um * GBL.locin_um,
+                GBL.locout_um * GBL.locout_um, true );
         }
-        else if( GBL.locout ) {
-            sAveTable_shankMap( meta.nN );
-            loccarBuf.resize( meta.nC );
-        }
+        else if( GBL.locout )
+            car.lcl_init( shankMap, GBL.locin, GBL.locout, true );
 
-        medCAR.init( SU, meta.nC, meta.nN );
+        car.gbl_med_auto_init();
     }
 
     return true;
@@ -459,541 +403,6 @@ void Pass1AP::gfixZeros( qint64 L, int N )
 }
 
 
-// For each channel [0,nAP), calculate a neighborhood of
-// indices into a timepoint's channels.
-// - Annulus with {inner, outer} radii {GBL.locin_um, GBL.locout_um}.
-// - The list is sorted for cache friendliness.
-//
-void Pass1AP::sAveTable_geomMap( int nAP )
-{
-    TSM.clear();
-    TSM.resize( nAP );
-
-    float   ri2 = GBL.locin_um * GBL.locin_um,
-            ro2 = GBL.locout_um * GBL.locout_um;
-
-    for( int ig = 0; ig < nAP; ++ig ) {
-
-        const GeomMapDesc   &E = geomMap->e[ig];
-
-        if( !E.u )
-            continue;
-
-        // ----------------------------------
-        // Form set of excluded inner indices
-        // ----------------------------------
-
-        QSet<int>   inner;
-
-        for( int ie = 0; ie < nAP; ++ie ) {
-
-            if( ie == ig )
-                continue;
-
-            const GeomMapDesc   &e = geomMap->e[ie];
-
-            if( e.u && e.s == E.s ) {
-
-                float   dx = e.x - E.x,
-                        dz = e.z - E.z;
-
-                if( dx*dx + dz*dz <= ri2 )
-                    inner.insert( ie );
-            }
-        }
-
-        // -------------------------
-        // Fill with annulus members
-        // -------------------------
-
-        std::vector<int>    &V = TSM[ig];
-
-        for( int ie = 0; ie < nAP; ++ie ) {
-
-            if( ie == ig )
-                continue;
-
-            const GeomMapDesc   &e = geomMap->e[ie];
-
-            if( e.u && e.s == E.s ) {
-
-                float   dx = e.x - E.x,
-                        dz = e.z - E.z;
-
-                if( dx*dx + dz*dz <= ro2 && !inner.contains( ie ) )
-                    V.push_back( ie );
-            }
-        }
-
-        qSort( V );
-    }
-}
-
-
-// For each channel [0,nAP), calculate an 8-way
-// neighborhood of indices into a timepoint's channels.
-// - Annulus with {inner, outer} radii {GBL.locin, GBL.locout}.
-// - The list is sorted for cache friendliness.
-//
-void Pass1AP::sAveTable_shankMap( int nAP )
-{
-    TSM.clear();
-    TSM.resize( nAP );
-
-    QMap<ShankMapDesc,uint> ISM;
-    shankMap->inverseMap( ISM );
-
-    int rIn  = GBL.locin,
-        rOut = GBL.locout;
-
-    for( int ig = 0; ig < nAP; ++ig ) {
-
-        const ShankMapDesc  &E = shankMap->e[ig];
-
-        if( !E.u )
-            continue;
-
-        // ----------------------------------
-        // Form set of excluded inner indices
-        // ----------------------------------
-
-        QSet<int>   inner;
-
-        int xL  = qMax( int(E.c)  - rIn, 0 ),
-            xH  = qMin( uint(E.c) + rIn + 1, shankMap->nc ),
-            yL  = qMax( int(E.r)  - rIn, 0 ),
-            yH  = qMin( uint(E.r) + rIn + 1, shankMap->nr );
-
-        for( int ix = xL; ix < xH; ++ix ) {
-
-            for( int iy = yL; iy < yH; ++iy ) {
-
-                QMap<ShankMapDesc,uint>::iterator   it;
-
-                it = ISM.find( ShankMapDesc( E.s, ix, iy, 1 ) );
-
-                if( it != ISM.end() )
-                    inner.insert( it.value() );
-            }
-        }
-
-        // -------------------------
-        // Fill with annulus members
-        // -------------------------
-
-        std::vector<int>    &V = TSM[ig];
-
-        xL  = qMax( int(E.c)  - rOut, 0 );
-        xH  = qMin( uint(E.c) + rOut + 1, shankMap->nc );
-        yL  = qMax( int(E.r)  - rOut, 0 );
-        yH  = qMin( uint(E.r) + rOut + 1, shankMap->nr );
-
-        for( int ix = xL; ix < xH; ++ix ) {
-
-            for( int iy = yL; iy < yH; ++iy ) {
-
-                QMap<ShankMapDesc,uint>::iterator   it;
-
-                it = ISM.find( ShankMapDesc( E.s, ix, iy, 1 ) );
-
-                if( it != ISM.end() ) {
-
-                    int i = it.value();
-
-                    // Exclude inners
-
-                    if( !inner.contains( i ) )
-                        V.push_back( i );
-                }
-            }
-        }
-
-        qSort( V );
-    }
-}
-
-
-void Pass1AP::sAveApplyLocal(
-    qint16  *d,
-    qint16  *tmp,
-    int     ntpts,
-    int     nC,
-    int     nAP )
-{
-    nAP = ig2ic[nAP-1];    // highest acquired channel saved
-
-    for( int it = 0; it < ntpts; ++it, d += nC ) {
-
-        memcpy( tmp, d, nC*sizeof(qint16) );
-
-        for( int ic = 0; ic <= nAP; ++ic ) {
-
-            int ig = ic2ig[ic];
-
-            if( ig >= 0 ) {
-
-                const std::vector<int>  &V = TSM[ig];
-
-                int nv = V.size();
-
-                if( nv ) {
-
-                    const int   *v  = &V[0];
-                    int         sum = 0;
-
-                    for( int iv = 0; iv < nv; ++iv )
-                        sum += d[v[iv]];
-
-                    tmp[ig] = d[ig] - sum/nv;
-                }
-            }
-        }
-
-        memcpy( d, tmp, nC*sizeof(qint16) );
-    }
-}
-
-
-// Space averaging for all values.
-//
-#if 0
-// ----------------
-// Per-shank method
-// ----------------
-void Pass1AP::sAveApplyGlobal(
-    qint16  *d,
-    int     ntpts,
-    int     nC,
-    int     nAP,
-    int     dwnSmp )
-{
-    if( nAP <= 0 )
-        return;
-
-    const SUElem        *su     = &SU[0];
-    int                 ns      = shankMap->ns,
-                        dStep   = nC * dwnSmp;
-    std::vector<int>    _A( ns ),
-                        _N( ns );
-    std::vector<float>  _S( ns );
-    int                 *A  = &_A[0],
-                        *N  = &_N[0];
-    float               *S  = &_S[0];
-
-    for( int it = 0; it < ntpts; it += dwnSmp, d += dStep ) {
-
-        for( int is = 0; is < ns; ++is ) {
-            S[is] = 0;
-            N[is] = 0;
-            A[is] = 0;
-        }
-
-        for( int ig = 0; ig < nAP; ++ig ) {
-
-            const SUElem    *e = &su[ig];
-
-            if( e->u ) {
-                S[e->s] += d[ig];
-                ++N[e->s];
-            }
-        }
-
-        for( int is = 0; is < ns; ++is ) {
-
-            if( N[is] > 1 )
-                A[is] = S[is] / N[is];
-        }
-
-        for( int ig = 0; ig < nAP; ++ig ) {
-            const SUElem    *e = &su[ig];
-            if( e->u )
-                d[ig] -= A[e->s];
-        }
-    }
-}
-#else
-// ------------------
-// Whole-probe method
-// ------------------
-void Pass1AP::sAveApplyGlobal(
-    qint16  *d,
-    int     ntpts,
-    int     nC,
-    int     nAP,
-    int     dwnSmp )
-{
-    if( nAP <= 0 )
-        return;
-
-    const SUElem    *su     = &SU[0];
-    int             dStep   = nC * dwnSmp;
-
-    for( int it = 0; it < ntpts; it += dwnSmp, d += dStep ) {
-
-        double  S = 0;
-        int     A = 0,
-                N = 0;
-
-        for( int ig = 0; ig < nAP; ++ig ) {
-
-            if( su[ig].u ) {
-                S += d[ig];
-                ++N;
-            }
-        }
-
-        if( N > 1 )
-            A = S / N;
-
-        for( int ig = 0; ig < nAP; ++ig ) {
-            if( su[ig].u )
-                d[ig] -= A;
-        }
-    }
-}
-#endif
-
-
-// Space averaging for all values.
-//
-// Stride method was used for 3A probes before mux tables.
-//
-#if 0
-// ----------------
-// Per-shank method
-// ----------------
-void Pass1AP::sAveApplyDmxStride(
-    qint16  *d,
-    int     ntpts,
-    int     nC,
-    int     nAP,
-    int     stride,
-    int     dwnSmp )
-{
-    if( nAP <= 0 )
-        return;
-
-    nAP = ig2ic[nAP-1];    // highest acquired channel saved
-
-    const SUElem        *su     = &SU[0];
-    int                 ns      = (geomMap ? geomMap->ns : shankMap->ns),
-                        dStep   = nC * dwnSmp;
-    std::vector<int>    _A( ns ),
-                        _N( ns );
-    std::vector<float>  _S( ns );
-    int                 *A  = &_A[0],
-                        *N  = &_N[0];
-    float               *S  = &_S[0];
-
-    for( int it = 0; it < ntpts; it += dwnSmp, d += dStep ) {
-
-        for( int ic0 = 0; ic0 < stride; ++ic0 ) {
-
-            for( int is = 0; is < ns; ++is ) {
-                S[is] = 0;
-                N[is] = 0;
-                A[is] = 0;
-            }
-
-            for( int ic = ic0; ic <= nAP; ic += stride ) {
-
-                int ig = ic2ig[ic];
-
-                if( ig >= 0 ) {
-
-                    int s = su[ig].s;
-
-                    S[s] += d[ig];
-                    ++N[s];
-                }
-            }
-
-            for( int is = 0; is < ns; ++is ) {
-
-                if( N[is] > 1 )
-                    A[is] = S[is] / N[is];
-            }
-
-            for( int ic = ic0; ic <= nAP; ic += stride ) {
-                int ig = ic2ig[ic];
-                if( ig >= 0 )
-                    d[ig] -= A[su[ig].s];
-            }
-        }
-    }
-}
-#else
-// ------------------
-// Whole-probe method
-// ------------------
-void Pass1AP::sAveApplyDmxStride(
-    qint16  *d,
-    int     ntpts,
-    int     nC,
-    int     nAP,
-    int     stride,
-    int     dwnSmp )
-{
-    if( nAP <= 0 )
-        return;
-
-    nAP = ig2ic[nAP-1];    // highest acquired channel saved
-
-    int dStep = nC * dwnSmp;
-
-    for( int it = 0; it < ntpts; it += dwnSmp, d += dStep ) {
-
-        for( int ic0 = 0; ic0 < stride; ++ic0 ) {
-
-            double  S = 0;
-            int     A = 0,
-                    N = 0;
-
-            for( int ic = ic0; ic <= nAP; ic += stride ) {
-
-                int ig = ic2ig[ic];
-
-                if( ig >= 0 ) {
-
-                    S += d[ig];
-                    ++N;
-                }
-            }
-
-            if( N > 1 )
-                A = S / N;
-
-            for( int ic = ic0; ic <= nAP; ic += stride ) {
-
-                int ig = ic2ig[ic];
-
-                if( ig >= 0 )
-                    d[ig] -= A;
-            }
-        }
-    }
-}
-#endif
-
-
-// Space averaging for all values.
-//
-#if 0
-// ----------------
-// Per-shank method
-// ----------------
-void Pass1AP::sAveApplyDmxTbl(
-    qint16  *d,
-    int     ntpts,
-    int     nC,
-    int     nAP,
-    int     dwnSmp )
-{
-    if( nAP <= 0 )
-        return;
-
-    const SUElem        *su     = &SU[0];
-    int                 ns      = (geomMap ? geomMap->ns : shankMap->ns),
-                        dStep   = nC * dwnSmp;
-    std::vector<int>    _A( ns ),
-                        _N( ns );
-    std::vector<float>  _S( ns );
-    const int           *T  = &muxTbl[0];
-    int                 *A  = &_A[0],
-                        *N  = &_N[0];
-    float               *S  = &_S[0];
-
-    for( int it = 0; it < ntpts; it += dwnSmp, d += dStep ) {
-
-        for( int irow = 0; irow < nGrp; ++irow ) {
-
-            for( int is = 0; is < ns; ++is ) {
-                S[is] = 0;
-                N[is] = 0;
-                A[is] = 0;
-            }
-
-            for( int icol = 0; icol < nADC; ++icol ) {
-
-                int ig = ic2ig[T[nADC*irow + icol]];
-
-                if( ig >= 0 ) {
-
-                    int s = su[ig].s;
-
-                    S[s] += d[ig];
-                    ++N[s];
-                }
-            }
-
-            for( int is = 0; is < ns; ++is ) {
-
-                if( N[is] > 1 )
-                    A[is] = S[is] / N[is];
-            }
-
-            for( int icol = 0; icol < nADC; ++icol ) {
-
-                int ig = ic2ig[T[nADC*irow + icol]];
-
-                if( ig >= 0 )
-                    d[ig] -= A[su[ig].s];
-            }
-        }
-    }
-}
-#else
-// ------------------
-// Whole-probe method
-// ------------------
-void Pass1AP::sAveApplyDmxTbl(
-    qint16  *d,
-    int     ntpts,
-    int     nC,
-    int     nAP,
-    int     dwnSmp )
-{
-    if( nAP <= 0 )
-        return;
-
-    int *T      = &muxTbl[0];
-    int dStep   = nC * dwnSmp;
-
-    for( int it = 0; it < ntpts; it += dwnSmp, d += dStep ) {
-
-        for( int irow = 0; irow < nGrp; ++irow ) {
-
-            double  S = 0;
-            int     A = 0,
-                    N = 0;
-
-            for( int icol = 0; icol < nADC; ++icol ) {
-
-                int ig = ic2ig[T[nADC*irow + icol]];
-
-                if( ig >= 0 ) {
-
-                    S += d[ig];
-                    ++N;
-                }
-            }
-
-            if( N > 1 )
-                A = S / N;
-
-            for( int icol = 0; icol < nADC; ++icol ) {
-
-                int ig = ic2ig[T[nADC*irow + icol]];
-
-                if( ig >= 0 )
-                    d[ig] -= A;
-            }
-        }
-    }
-}
-#endif
-
-
 class gfixIter
 {
 public:
@@ -1061,9 +470,10 @@ private:
                 *T;
     int         nADC, nGrp, icol, irow;
 public:
-    gfixIterTable( const int *ic2ig, const int *T, int nADC, int nGrp )
-    :   ic2ig(ic2ig), T(T), nADC(nADC), nGrp(nGrp), irow(-1)
+    gfixIterTable( const int *ic2ig, const CAR &car )
+    :   ic2ig(ic2ig), irow(-1)
     {
+        T = car.getMuxTbl( nADC, nGrp );
     }
     virtual ~gfixIterTable()    {}
     virtual bool nextGroup()
@@ -1111,7 +521,7 @@ void Pass1AP::gFixDetect(
     if( stride > 0 )
         nAP = ig2ic[nAP-1]; // highest acquired channel saved
 
-    const SUElem    *su     = &SU[0];
+    const SUElem    *su     = &car.getSU()[0];
     const int       Tamp    = GBL.gfixamp * Tmul,
                     Tslp    = GBL.gfixslp * Tmul,
                     Tbas    = GBL.gfixbas * Tmul;
@@ -1131,7 +541,7 @@ void Pass1AP::gFixDetect(
         else if( stride > 0 )
             G = new gfixIterStride( &ic2ig[0], nAP, stride );
         else
-            G = new gfixIterTable( &ic2ig[0], &muxTbl[0], nADC, nGrp );
+            G = new gfixIterTable( &ic2ig[0], car );
 
         bool loaded = false;
 
