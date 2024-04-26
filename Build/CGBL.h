@@ -229,6 +229,23 @@ struct Save {
     void close();
 };
 
+struct SepShanks {
+// -sepShanks directive
+    QString     sUsr;
+    int         ip,
+                ipj[4];
+    SepShanks()                             {}
+    SepShanks( const QString &s ) : sUsr(s) {}
+    virtual ~SepShanks()                    {}
+    bool operator<( const SepShanks &rhs ) const
+        {
+            return (ip < rhs.ip);
+        }
+    bool parse( QSet<int> &seen );
+    QString sparam() const;
+    bool split( const KVParams &kvp, const QFileInfo &fim );
+};
+
 struct MaxZ {
 // -maxZ directive
     double      z;
@@ -304,6 +321,7 @@ public:
                         vprb;
     QVector<XTR*>       vX;
     QVector<Save>       vS;
+    QVector<SepShanks>  vSK;
     QVector<MaxZ>       vMZ;
     QVector<Elem>       velem;
     KVParams            fyi;            // generated
@@ -417,6 +435,7 @@ public:
 
 private:
     bool parseChnexcl( const QString &s );
+    bool parseSepShanks();
     bool parseMaxZ();
     bool parseElems( const QString &s );
     bool checkExtractors();

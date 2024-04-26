@@ -1206,6 +1206,154 @@ void Save::close()
 }
 
 /* --------------------------------------------------------------- */
+/* SepShanks ----------------------------------------------------- */
+/* --------------------------------------------------------------- */
+
+// Now, just check for bad params.
+// Parse again later when metadata available.
+//
+bool SepShanks::parse( QSet<int> &seen )
+{
+    QStringList sl = sUsr.split(
+                        QRegExp("^\\s+|\\s*,\\s*|\\s+$"),
+                        QString::SkipEmptyParts );
+    int         ns = sl.size();
+
+    if( ns != 5 ) {
+        Log() << QString("Error: -sepShanks=%1 has bad format.").arg( sUsr );
+        return false;
+    }
+
+    ip = sl[0].toInt();
+
+    for( int j = 0; j < 4; ++j )
+        ipj[j] = sl[j+1].toInt();
+
+    if( ip < 0 ) {
+        Log() << QString("Error: -sepShanks=%1 has negative ip.").arg( sUsr );
+        return false;
+    }
+
+    if( (ipj[0] == ip) + (ipj[1] == ip) + (ipj[2] == ip) + (ipj[3] == ip) > 1 ) {
+        Log() << QString("Error: -sepShanks=%1 more than one ipj = ip.").arg( sUsr );
+        return false;
+    }
+
+    if( (ipj[0] < 0) && (ipj[1] < 0) && (ipj[2] < 0) && (ipj[3] < 0) ) {
+        Log() << QString("Error: -sepShanks=%1 all ipj negative.").arg( sUsr );
+        return false;
+    }
+
+    if( (ipj[1] == ipj[0]) || (ipj[2] == ipj[0]) || (ipj[3] == ipj[0]) ||
+        (ipj[2] == ipj[1]) || (ipj[3] == ipj[1]) || (ipj[3] == ipj[2]) ) {
+        Log() << QString("Error: -sepShanks=%1 duplicate ipj.").arg( sUsr );
+        return false;
+    }
+
+    if( seen.contains( ip ) ) {
+        Log() << QString("Error: -sepShanks names probe %1 twice.").arg( ip );
+        return false;
+    }
+
+    seen.insert( ip );
+
+    return true;
+}
+
+
+QString SepShanks::sparam() const
+{
+    return QString(" -sepShanks=%1").arg( sUsr );
+}
+
+
+bool SepShanks::split( const KVParams &kvp, const QFileInfo &fim )
+{
+// already used?
+
+    if( ip < 0 )
+        return true;
+
+// Prep imro
+
+    IMROTbl *R = GBL.getProbe( kvp );
+    if( !R ) {
+        Log() << QString("Can't identify probe type in metadata '%1'.")
+                    .arg( fim.fileName() );
+        return false;
+    }
+
+    if( R->nShank() == 1 ) {
+        ip = -1;
+        delete R;
+        return true;
+    }
+
+    R->fromString( 0, kvp["~imroTbl"].toString() );
+
+    int nAP = R->nAP(),
+        nSY = R->nSY();
+
+// Prep saved chan list
+
+    QVector<uint>   snsFileChans;
+    if( !GBL.getSavedChannels( snsFileChans, kvp, fim ) ) {
+        delete R;
+        return false;
+    }
+
+// Prep shank lists
+
+    QBitArray   K[4];
+
+    for( int j = 0; j < 4; ++j )
+        K[j].resize( nAP + nSY );
+
+// Fill
+
+    for( int ic = 0, nc = snsFileChans.size(); ic < nc; ++ic ) {
+
+        int C = snsFileChans[ic];
+
+        if( C < nAP )
+            K[R->shnk( C )].setBit( C );
+        else if( nSY == 1 ) {
+            // each shank gets common SY
+            for( int j = 0; j < 4; ++j )
+                K[j].setBit( C );
+        }
+        else {
+            // each shank gets own SY
+            K[C - nAP].setBit( C );
+        }
+    }
+
+// Split
+
+    for( int j = 0; j < 4; ++j ) {
+
+        if( ipj[j] < 0 )
+            continue;
+
+        QBitArray   B = K[j];
+        B.truncate( nAP );
+        if( !B.count( true ) )
+            continue;
+
+        QString arg = QString("2,%1,%2,%3")
+                        .arg( ip ).arg( ipj[j] )
+                        .arg( Subset::bits2RngStr( K[j] ) );
+
+        Save::parse( STR2CHR( arg ) );
+        qSort( GBL.vS );
+    }
+
+    ip = -1;
+    delete R;
+    return true;
+}
+
+/* --------------------------------------------------------------- */
 /* MaxZ ---------------------------------------------------------- */
 /* --------------------------------------------------------------- */
 
@@ -1421,6 +1569,7 @@ static void PrintUsage()
     Log() << "-inarow=5                ;extractor {xa,xd,xia,xid} antibounce stay high/low sample count";
     Log() << "-no_auto_sync            ;disable the automatic extraction of sync edges in all streams";
     Log() << "-save=2,0,5,20:60        ;save subset of probe chans (js,ip1,ip2,chan-list)";
+    Log() << "-sepShanks=0,0,1,2,-1    ;save each shank in sep file (ip,ip0,ip1,ip2,ip3)";
     Log() << "-maxZ=0,0,100            ;probe inserted to given depth (ip,depth-type,depth-value)";
     Log() << "-pass1_force_ni_ob_bin   ;write pass one ni/ob binary tcat file even if not changed";
     Log() << "-supercat={dir,run_ga}   ;concatenate existing output files across runs (see ReadMe)";
@@ -1678,6 +1827,8 @@ bool CGBL::SetCmdLine( int argc, char* argv[] )
             if( !Save::parse( sarg ) )
                 return false;
         }
+        else if( GetArgStr( sarg, "-sepShanks=", argv[i] ) )
+            vSK.push_back( SepShanks( sarg ) );
         else if( GetArgStr( sarg, "-maxZ=", argv[i] ) )
             vMZ.push_back( MaxZ( sarg ) );
         else if( IsArg( "-pass1_force_ni_ob_bin", argv[i] ) )
@@ -1800,7 +1951,7 @@ error:
 
     if( velem.isEmpty() ) {
 
-        if( !checkSaves() || !parseMaxZ() )
+        if( !checkSaves() || !parseSepShanks() || !parseMaxZ() )
             return false;
     }
 
@@ -1823,6 +1974,7 @@ error:
             sXTR        = "",
             sinarow     = "",
             sSave       = "",
+            sSepK       = "",
             sMaxZ       = "",
             ssuper      = "",
             sdest       = "";
@@ -1884,6 +2036,9 @@ error:
     foreach( const Save &S, vS )
         sSave += S.sparam();
 
+    foreach( const SepShanks &K, vSK )
+        sSepK += K.sparam();
+
     foreach( const MaxZ &Z, vMZ )
         sMaxZ += Z.sparam();
 
@@ -1900,7 +2055,7 @@ error:
     sCmd =
         QString(
             "CatGT%1%2%3%4%5%6%7%8%9%10%11%12%13%14%15%16%17%18%19%20"
-            "%21%22%23%24%25%26%27%28%29%30%31%32%33%34%35%36%37%38")
+            "%21%22%23%24%25%26%27%28%29%30%31%32%33%34%35%36%37%38%39")
         .arg( sreq )
         .arg( sgt )
         .arg( no_run_fld ? " -no_run_fld" : "" )
@@ -1931,6 +2086,7 @@ error:
         .arg( sinarow )
         .arg( auto_sync ? "" : " -no_auto_sync" )
         .arg( sSave )
+        .arg( sSepK )
         .arg( sMaxZ )
         .arg( force_ni_ob ? " -pass1_force_ni_ob_bin" : "" )
         .arg( ssuper )
@@ -2541,6 +2697,24 @@ bool CGBL::parseChnexcl( const QString &s )
         mexc[prb] = C;
     }
 
+    return true;
+}
+
+
+// Now, just check for bad params.
+// Parse again later when metadata available.
+//
+bool CGBL::parseSepShanks()
+{
+    QSet<int>   seen;
+
+    for( int ik = 0, nk = vSK.size(); ik < nk; ++ik ) {
+
+        if( !vSK[ik].parse( seen ) )
+            return false;
+    }
+
+    qSort( vSK );
     return true;
 }
 

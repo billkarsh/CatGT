@@ -21,6 +21,9 @@ bool Pass1AP2LF::go()
         case 2: return false;
     }
 
+    if( !splitShanks() )
+        return false;
+
     if( !parseMaxZ( theZ ) )
         return false;
 

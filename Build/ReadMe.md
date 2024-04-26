@@ -114,6 +114,7 @@ Options:
 -inarow=5                ;extractor {xa,xd,xia,xid} antibounce stay high/low sample count
 -no_auto_sync            ;disable the automatic extraction of sync edges in all streams
 -save=2,0,5,20:60        ;save subset of probe chans (js,ip1,ip2,chan-list)
+-sepShanks=0,0,1,2,-1    ;save each shank in sep file (ip,ip0,ip1,ip2,ip3)
 -maxZ=0,0,100            ;probe inserted to given depth (ip,depth-type,depth-value)
 -pass1_force_ni_ob_bin   ;write pass one ni/ob binary tcat file even if not changed
 -supercat={dir,run_ga}   ;concatenate existing output files across runs (see ReadMe)
@@ -928,6 +929,35 @@ renaming it to imec5.ap.
 * Notice that the channel indices are given with respect to the original
 data stream rather than the saved file.
 
+**Example 2 FYI Entries**
+
+The `fyi` file gets additional entries to help you connect renamed binary
+output files with the digital extractions (like sync edges) that they are
+paired with...
+
+Suppose auto-sync is in effect. With or without this -save option, the
+output fyi file for the run would point at the extracted sync edges
+using this entry:
+
+```
+sync_imec3=path/run_name_g0_tcat.imec3.ap.xd_384_6_500.txt
+```
+
+Because this -save option remaps ip=3 to ip=5, the fyi file also gets this
+entry:
+
+```
+sync_imec5=path/run_name_g0_tcat.imec3.ap.xd_384_6_500.txt
+```
+
+Likewise, any custom extraction for the input ip1 would generate entries
+like this:
+
+```
+times_imec3_0=path/extraction_output_file_3
+times_imec5_0=path/extraction_output_file_3
+```
+
 #### Example 3
 
 Split NP 2.0 4-shank stream imec0.ap (all channels saved) into four shanks,
@@ -939,10 +969,37 @@ giving each a new stream number. The original imro selected the lowest
 -save=2,0,12,192:239,288:335,384
 -save=2,0,13,240:287,336:384
 
-* You can enter as many -save options on one command line as needed,
-and several options can refer to the same input file if needed:
-**One file in -> many files out**.
-* ip2 can be any non-negative integer.
+### sepShanks option
+
+This is a convenient way to split a multishank probe (js=2) into its
+respective shanks.
+
+-sepShanks=ip,ip0,ip1,ip2,ip3
+
+* **ip**: Identifies the input probe stream.
+* **ip0:ip3**: User-provided output stream numbers, one for each of up to
+4 shanks. Each ipj maps shank-j to a file index that you assign.
+* Generally the ipj should be unique (separate files).
+* One of the ipj can be the same as input stream: ip.
+* One or more ipj can be -1 to omit that shank.
+* If the imro selects no sites on a given shank, that shank is omitted.
+* The SY channel(s) are automatically included.
+* Include no more than one -sepShanks option for a given probe index.
+
+#### Example 1
+
+(Same case as Example 3 under the -save option)
+
+Split NP 2.0 4-shank stream imec0.ap (all channels saved) into four shanks,
+giving each a new stream number.
+
+-sepShanks=0,10,11,12,13
+
+#### Example 2
+
+Save only the second shank for 4-shank stream imec5.ap.
+
+-sepShanks=5,-1,5,-1,-1
 
 ### maxZ option
 
@@ -969,8 +1026,13 @@ There are three convenient ways to specify the insertion depth:
 |2              | microns from tip (z=0 at probe tip)|
 
 > Note that you can specify your own -chnexcl entry and -maxZ for the same
-probe (ip); the result is the union. However, you must not specify both
--save and -maxZ for the same probe; that is flagged as an error.
+probe (ip); the result is the union: excluding everything you specified
+with -chnexcl AND excluding channels that are outside the brain via -maxZ.
+
+> You can also specify your own (-save or -sepShanks) option and -maxZ for
+the same probe. In this case each (-save or -sepShanks) option is edited
+to produce the intersection: those channels you specified via
+(-save or -sepShanks) that are also within the brain via -maxZ.
 
 ------
 
@@ -1128,6 +1190,7 @@ Options:
 -inarow=5                ;ignored
 -no_auto_sync            ;forbidden with supercat_trim_edges
 -save=2,0,5,20:60        ;ignored
+-sepShanks=0,0,1,2,-1    ;ignored
 -maxZ=0,0,100            ;ignored
 -pass1_force_ni_ob_bin   ;ignored
 -dest=path               ;required
@@ -1196,6 +1259,7 @@ Version 4.4
 
 - Support NP2020 quad-probes.
 - Allow -maxZ and -save options on same probe.
+- Add -sepShanks option.
 
 Version 4.3
 

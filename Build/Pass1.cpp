@@ -48,6 +48,30 @@ Pass1::~Pass1()
 }
 
 
+bool Pass1::splitShanks()
+{
+    if( !doWrite )
+        return true;
+
+    if( js_in != AP )
+        return true;
+
+    for( int ik = 0, nk = GBL.vSK.size(); ik < nk; ++ik ) {
+
+        SepShanks   &K = GBL.vSK[ik];
+
+        if( K.ip > ip )
+            return true;
+        if( K.ip < ip )
+            continue;
+
+        return K.split( meta.kvp, fim );
+    }
+
+    return true;
+}
+
+
 bool Pass1::parseMaxZ( int &theZ )
 {
     theZ = -1;

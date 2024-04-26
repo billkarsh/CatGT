@@ -38,6 +38,9 @@ bool Pass1AP::go()
         case 2: return false;
     }
 
+    if( !splitShanks() )
+        return false;
+
     if( !parseMaxZ( theZ ) )
         return false;
 
