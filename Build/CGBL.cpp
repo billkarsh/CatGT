@@ -104,6 +104,24 @@ bool Filter::parse( const QString &s )
 /* Extractors ---------------------------------------------------- */
 /* --------------------------------------------------------------- */
 
+bool XTR::openOutFiles( int g0 )
+{
+    return openOutTimesFile( g0, ex );
+}
+
+
+void XTR::close() const
+{
+    if( ts ) {
+        ts->flush();
+        delete ts;
+    }
+
+    if( f )
+        delete f;
+}
+
+
 bool XTR::openOutTimesFile( int g0, t_ex ex )
 {
     QString file,
@@ -137,8 +155,10 @@ bool XTR::openOutTimesFile( int g0, t_ex ex )
 
 // fyi entry
 
-    if( usrord == -1 )
+    if( usrord == -1 ) {
         GBL.fyi[QString("sync_%1").arg( strm )] = file;
+        remapped_ip( -1 );
+    }
     else {
         XTR *X0;
         // find first XTR for the stream (i)
@@ -154,6 +174,7 @@ bool XTR::openOutTimesFile( int g0, t_ex ex )
                     if( this == GBL.vX[k] ) {
                         k -= i + (X0->usrord == -1);
                         GBL.fyi[QString("times_%1_%2").arg( strm ).arg( k )] = file;
+                        remapped_ip( k );
                         break;
                     }
                 }
@@ -166,21 +187,55 @@ bool XTR::openOutTimesFile( int g0, t_ex ex )
 }
 
 
-bool XTR::openOutFiles( int g0 )
+// Connect remapped ip to extractions...
+//
+// Extractions are run on input ip1.
+// -save entries remap ip1 to ip2.
+//
+// openOutTimesFile():
+// Original fyi entry already made for ip1:
+// - (k=-1) auto-sync: "sync_imec(ip1)=file"
+// - (k>=0) times:     "times_imec(ip1)_k=file"
+//
+// Here we make additional fyi entries:
+// - (k=-1) "sync_imec(ip2)=sync_imec(ip1)"
+// - (k>=0) "times_imec(ip2)_k=times_imec(ip1)_k"
+//
+void XTR::remapped_ip( int k )
 {
-    return openOutTimesFile( g0, ex );
-}
+    if( js != AP )
+        return;
 
+    QString lhs, rhs;
 
-void XTR::close() const
-{
-    if( ts ) {
-        ts->flush();
-        delete ts;
+    if( k < 0 ) {
+        lhs = QString("sync_imec%1");
+        rhs = GBL.fyi[QString(lhs).arg( ip )].toString();
+    }
+    else {
+        lhs = QString("times_imec%1_") + QString("%1").arg( k );
+        rhs = GBL.fyi[QString(lhs).arg( ip )].toString();
     }
 
-    if( f )
-        delete f;
+    for( int is = 0, ns = GBL.vS.size(); is < ns; ++is ) {
+
+        const Save  &S = GBL.vS[is];
+
+        if( S.js > AP )
+            return;
+        if( S.js < AP )
+            continue;
+
+        if( S.ip1 > ip )
+            return;
+        if( S.ip1 < ip )
+            continue;
+
+        if( S.ip2 == S.ip1 )
+            continue;
+
+        GBL.fyi[QString(lhs).arg( S.ip2 )] = rhs;
+    }
 }
 
 

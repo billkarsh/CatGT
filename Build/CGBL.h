@@ -122,6 +122,7 @@ struct XTR {
     virtual void close() const;
 protected:
     bool openOutTimesFile( int g0, t_ex ex );
+    void remapped_ip( int k );
 };
 
 struct Pulse : public XTR {
