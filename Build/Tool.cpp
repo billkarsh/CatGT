@@ -958,8 +958,12 @@ static int lfCase( int ip )
 
     IMROTbl *R = GBL.getProbe( kvp );
 
-        if( !R )
-            return 0;
+        if( !R ) {
+            Log() <<
+            QString("LF convert error: probe %1: Unknown probe type.")
+            .arg( ip );
+            return 2;
+        }
 
         if( !R->nLF() )
             fullband = true;
@@ -973,7 +977,7 @@ static int lfCase( int ip )
         Log() <<
         QString("LF convert error: probe %1: No LF files, AP not full-band.")
         .arg( ip );
-        return 0;
+        return 2;
     }
 
 // it's full-band... seek lf filter
@@ -984,7 +988,7 @@ static int lfCase( int ip )
     }
 
     Log() <<
-    QString("Can't create lf stream for probe %1 without lf low pass filter.")
+    QString("LF convert error: probe %1: No lf low pass filter.")
     .arg( ip );
 
     return 2;
@@ -1167,6 +1171,19 @@ static bool _supercat_streamSelectEdges( int ie, t_js js, int ip )
 
         if( ok )
             tlast = t;
+    }
+
+// -------------------
+// At least two edges?
+// -------------------
+
+    if( tlast == 0 || GBL.velem[ie].iq2head.isEmpty() ||
+        tlast - GBL.velem[ie].head( js, ip ) < 2.0 ) {
+
+        Log() <<
+        QString("-supercat_trim_edges found fewer than 2 edges in file '%1'.")
+        .arg( fib.filePath() );
+        return false;
     }
 
 // --------

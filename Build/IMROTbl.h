@@ -41,10 +41,13 @@ struct IMRO_GUI {
     std::vector<QString>    refs;
     std::vector<int>        gains;
     int                     grid;
+    qint8                   nBase;
     bool                    apEnab,
                             lfEnab,
                             hpEnab;
-    IMRO_GUI() : grid(1), apEnab(false), lfEnab(false), hpEnab(false)   {}
+    IMRO_GUI()
+        :   grid(1), nBase(1),
+            apEnab(false), lfEnab(false), hpEnab(false) {}
 };
 
 // Editing helper
@@ -97,6 +100,7 @@ public:
 
     virtual int nElec() const = 0;
     virtual int nShank() const = 0;
+    virtual int nSvyShank() const       {return nShank();}
             int nElecPerShank() const   {return nElec()/nShank();}
             float tipLength() const     {return _tiplength;}
             float zPitch() const        {return _zpitch;}
@@ -106,8 +110,9 @@ public:
     virtual int nChan() const = 0;
     virtual int nAP() const = 0;
     virtual int nLF() const = 0;
-            int nSY() const             {return 1;}
+    virtual int nSY() const             {return 1;}
     virtual int nBanks() const = 0;
+    virtual int nChanPerBank() const    {return nAP();}
     virtual int nRefs() const = 0;
     virtual int maxInt() const = 0;
     virtual double maxVolts() const = 0;
@@ -116,7 +121,7 @@ public:
     // {0=NP1000, 1=NP2000, 2=NP2010, 3=NP1110}-like
     virtual int chanMapping() const     {return 0;}
 
-    // {0=NP1000, 2=NP2000}-like
+    // {0=NP1000, 2=NP2000, 4=NP2020}-like
     virtual int apiFetchType() const    {return 0;}
 
     virtual bool operator==( const IMROTbl &rhs ) const = 0;
@@ -127,8 +132,8 @@ public:
     virtual QString toString() const = 0;
     virtual bool fromString( QString *msg, const QString &s ) = 0;
 
-    virtual bool loadFile( QString &msg, const QString &path ) = 0;
-    virtual bool saveFile( QString &msg, const QString &path ) const = 0;
+    virtual bool loadFile( QString &msg, const QString &path );
+    virtual bool saveFile( QString &msg, const QString &path ) const;
 
     void toShankMap_hwr( ShankMap &S ) const;
     void toShankMap_vis( ShankMap &S ) const;
@@ -184,9 +189,9 @@ public:
         {vX.clear(); Q_UNUSED( s )}
     virtual void edit_ROI2tbl( tconstImroROIs vR, const IMRO_Attr &A )
         {Q_UNUSED( vR ) Q_UNUSED( A )}
-    int edit_defaultROI( tImroROIs vR ) const;
-    bool edit_isCanonical( int &nb, tImroROIs vR ) const;
-    int edit_tbl2ROI( tImroROIs vR ) const;
+    virtual void edit_defaultROI( int *nBoxes, tImroROIs vR ) const;
+    virtual bool edit_isCanonical( int *nBoxes, tImroROIs vR ) const;
+    void edit_tbl2ROI( int *nBoxes, tImroROIs vR ) const;
     void edit_exclude( tImroSites vX, tconstImroROIs vR ) const;
     bool edit_isAllowed( tconstImroSites vX, const IMRO_ROI &B ) const;
 

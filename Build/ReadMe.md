@@ -1169,6 +1169,10 @@ on that stream's clock.
 
 ## Change Log
 
+Version 4.4
+
+- Support NP2020 quad-probes.
+
 Version 4.3
 
 - Supercat can join runs with varied sample rates.

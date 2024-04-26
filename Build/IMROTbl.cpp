@@ -14,17 +14,19 @@
 #include "IMROTbl_T24.h"
 #include "IMROTbl_T2003.h"
 #include "IMROTbl_T2013.h"
+#include "IMROTbl_T2020.h"
 #include "IMROTbl_T3A.h"
 #include "GeomMap.h"
 #include "ShankMap.h"
-
-#include <QSet>
+#include "Util.h"
 
 #ifdef HAVE_IMEC
 #include "IMEC/NeuropixAPI.h"
 using namespace Neuropixels;
 #endif
 
+#include <QFileInfo>
+#include <QSet>
 
 /* ---------------------------------------------------------------- */
 /* IMRO_Site ------------------------------------------------------ */
@@ -439,6 +441,67 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
 }
 
 
+bool IMROTbl::loadFile( QString &msg, const QString &path )
+{
+    QFile       f( path );
+    QFileInfo   fi( path );
+
+    if( !fi.exists() ) {
+
+        msg = QString("Can't find '%1'").arg( fi.fileName() );
+        return false;
+    }
+    else if( f.open( QIODevice::ReadOnly | QIODevice::Text ) ) {
+
+        QString reason;
+
+        if( fromString( &reason, f.readAll() ) ) {
+
+            msg = QString("Loaded (type=%1) file '%2'")
+                    .arg( type ).arg( fi.fileName() );
+            return true;
+        }
+        else {
+            msg = QString("Error: %1 in file '%2'")
+                    .arg( reason ).arg( fi.fileName() );
+            return false;
+        }
+    }
+    else {
+        msg = QString("Error opening '%1'").arg( fi.fileName() );
+        return false;
+    }
+}
+
+
+bool IMROTbl::saveFile( QString &msg, const QString &path ) const
+{
+    QFile       f( path );
+    QFileInfo   fi( path );
+
+    if( f.open( QIODevice::WriteOnly | QIODevice::Text ) ) {
+
+        int n = f.write( STR2CHR( toString() ) );
+
+        if( n > 0 ) {
+
+            msg = QString("Saved (type=%1) file '%2'")
+                    .arg( type )
+                    .arg( fi.fileName() );
+            return true;
+        }
+        else {
+            msg = QString("Error writing '%1'").arg( fi.fileName() );
+            return false;
+        }
+    }
+    else {
+        msg = QString("Error opening '%1'").arg( fi.fileName() );
+        return false;
+    }
+}
+
+
 void IMROTbl::toShankMap_hwr( ShankMap &S ) const
 {
     S.ns = nShank();
@@ -546,7 +609,7 @@ void IMROTbl::toGeomMap_snsFileChans(
 int IMROTbl::maxBank( int ch, int shank ) const
 {
     Q_UNUSED( shank )
-    return (nElecPerShank() - ch - 1) / nAP();
+    return (nElecPerShank() - 1 - ch % nChanPerBank()) / nChanPerBank();
 }
 
 
@@ -721,13 +784,11 @@ int IMROTbl::selectAPFlts( int slot, int port, int dock ) const
 /* Edit ----------------------------------------------------------- */
 /* ---------------------------------------------------------------- */
 
-// Return ROI count.
-//
-int IMROTbl::edit_defaultROI( tImroROIs vR ) const
+void IMROTbl::edit_defaultROI( int *nBoxes, tImroROIs vR ) const
 {
     vR.clear();
-    vR.push_back( IMRO_ROI( 0, 0, nAP() / _ncolhwr ) );
-    return 1;
+    vR.push_back( IMRO_ROI( 0, 0, nChanPerBank() / _ncolhwr ) );
+    nBoxes[0] = 1;
 }
 
 
@@ -736,13 +797,13 @@ int IMROTbl::edit_defaultROI( tImroROIs vR ) const
 // - Boxes enclose all AP channels.
 // - Canonical attributes all channels.
 //
-bool IMROTbl::edit_isCanonical( int &nb, tImroROIs vR ) const
+bool IMROTbl::edit_isCanonical( int *nBoxes, tImroROIs vR ) const
 {
 // Calculate Boxes menu entries
 
     QSet<int>   boxesMenu = {1};
     IMRO_GUI    G = edit_GUI();
-    int         rows_per_box = nAP() / _ncolvis;
+    int         rows_per_box = nChanPerBank() / _ncolvis;
 
     for( int nb = 2; nb <= IMRO_ROI_MAX; nb *= 2 ) {
 
@@ -752,19 +813,19 @@ bool IMROTbl::edit_isCanonical( int &nb, tImroROIs vR ) const
             break;
     }
 
-// If canonical all boxes are same size.
+// If canonical, all boxes are same size.
 // That size must be the min size in the set.
 // Split large boxes if they are multiples of the min size.
 
-    if( nb ) {
+    if( nBoxes[0] ) {
 
         int minrows = 1000000,
             nbsplit = 0;
 
-        for( int ib = 0; ib < nb; ++ib )
+        for( int ib = 0; ib < nBoxes[0]; ++ib )
             minrows = qMin( minrows, vR[ib].rLim - vR[ib].r0 );
 
-        for( int ib = 0; ib < nb; ++ib ) {
+        for( int ib = 0; ib < nBoxes[0]; ++ib ) {
 
             if( nbsplit >= 0 ) {
 
@@ -782,25 +843,27 @@ bool IMROTbl::edit_isCanonical( int &nb, tImroROIs vR ) const
                         vR.push_back( Rnew );
                     }
                 }
-                else
+                else {
                     nbsplit = -1;
+                    break;
+                }
             }
         }
 
         if( nbsplit >= 0 )
-            nb = nbsplit;
+            nBoxes[0] = nbsplit;
     }
 
 // Check box count
 
-    if( !boxesMenu.contains( nb ) )
+    if( !boxesMenu.contains( nBoxes[0] ) )
         return false;
 
 // Assess boxes
 
     int nr = 0;
 
-    for( int ib = 0; ib < nb; ++ib ) {
+    for( int ib = 0; ib < nBoxes[0]; ++ib ) {
 
         const IMRO_ROI  &B = vR[ib];
 
@@ -821,10 +884,14 @@ bool IMROTbl::edit_isCanonical( int &nb, tImroROIs vR ) const
 // Within range, scan across for contiguous 1s.
 // That defines ROI boxes.
 //
-// Return ROI count.
+// Fill in ROI count(s):
+// - nBoxes[shank] if NP2020.
+// - nBoxes[0] = sum if !NP2020.
 //
-int IMROTbl::edit_tbl2ROI( tImroROIs vR ) const
+void IMROTbl::edit_tbl2ROI( int *nBoxes, tImroROIs vR ) const
 {
+    int nB[4] = {0,0,0,0};
+
     vR.clear();
 
     ShankMap    M;
@@ -903,12 +970,18 @@ int IMROTbl::edit_tbl2ROI( tImroROIs vR ) const
             else if( roi.c0 >= 0 ) {
                 ++roi.cLim;
                 vR.push_back( roi );
+                ++nB[B0.s];
                 roi.c0 = -1;
             }
         }
     }
 
-    return vR.size();
+    if( apiFetchType() == 4 )
+        memcpy( nBoxes, nB, 4*sizeof(int) );
+    else {
+        nBoxes[0] = vR.size();
+        memset( &nBoxes[1], 0, 3*sizeof(int) );
+    }
 }
 
 
@@ -930,7 +1003,7 @@ void IMROTbl::edit_exclude( tImroSites vX, tconstImroROIs vR ) const
         }
     }
 
-    qSort( vX.begin(), vX.end() );
+    qSort( vX );
 }
 
 
@@ -976,7 +1049,7 @@ bool IMROTbl::pnToType( int &type, const QString &pn )
 {
     bool    supp = false;
 
-    type = 0;       // NP 1.0 SS el 960
+    type = -1;
 
 // Old codes ---------------------------------
     if( pn.startsWith( "PRB_1_4" ) ) {
@@ -1077,18 +1150,15 @@ bool IMROTbl::pnToType( int &type, const QString &pn )
                 type = 2013;
                 supp = true;
                 break;
+            case 2020:  // Neuropixels 2.0 multi shank (Ph 2C)
+                type = 2020;
+                supp = true;
+                break;
             case 3000:  // Passive NXT probe
                 type = 1200;
                 supp = true;
                 break;
-            default:    // likely early model 1.0
-                supp = true;
-                break;
         }
-    }
-    else {
-        // likely early model 1.0
-        supp = true;
     }
 
     return supp;
@@ -1164,16 +1234,16 @@ IMROTbl* IMROTbl::alloc( const QString &pn )
             case 2013:  // Neuropixels 2.0 multishank probe
             case 2014:  // Neuropixels 2.0 multishank probe with cap
                 return new IMROTbl_T2013( pn );
+            case 2020:  // Neuropixels 2.0 multi shank (Ph 2C)
+                return new IMROTbl_T2020( pn );
             default:
-                // likely early model 1.0
-                return new IMROTbl_T0( pn );
+                return 0;
         }
     }
     else if( pn == "Probe3A" )
         return new IMROTbl_T3A( pn );
 
-// likely early model 1.0
-    return new IMROTbl_T0( pn );
+    return 0;
 }
 
 
@@ -1181,7 +1251,8 @@ QString IMROTbl::default_imroLE( int type )
 {
     switch( type ) {
         case 21:
-        case 2003: return "*Default (bank 0, ref ext)";
+        case 2003:
+        case 2020: return "*Default (bank 0, ref ext)";
         case 24:
         case 2013: return "*Default (shnk 0, bank 0, ref ext)";
         case -3: return "*Default (bank 0, ref ext, gain 500/250)";

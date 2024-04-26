@@ -43,6 +43,7 @@ HEADERS +=              \
     IMROTbl_T24base.h   \
     IMROTbl_T2003.h     \
     IMROTbl_T2013.h     \
+    IMROTbl_T2020.h     \
     IMROTbl_T3A.h       \
     KVParams.h          \
     Pass1.h             \
@@ -79,6 +80,7 @@ SOURCES +=              \
     IMROTbl_T24base.cpp \
     IMROTbl_T2003.cpp   \
     IMROTbl_T2013.cpp   \
+    IMROTbl_T2020.cpp   \
     IMROTbl_T3A.cpp     \
     KVParams.cpp        \
     main.cpp            \
