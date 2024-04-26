@@ -1469,7 +1469,7 @@ bool CGBL::SetCmdLine( int argc, char* argv[] )
         else if( IsArg( "-supercat_skip_ni_ob_bin", argv[i] ) )
             sc_skipbin = true;
         else if( GetArgStr( sarg, "-dest=", argv[i] ) )
-            dest = trim_adjust_slashes( sarg );
+            dest = QDir(trim_adjust_slashes( sarg )).absolutePath();
         else if( IsArg( "-no_catgt_fld", argv[i] ) )
             no_catgt_fld = true;
         else if( IsArg( "-out_prb_fld", argv[i] ) )
@@ -1560,7 +1560,7 @@ error:
 // One type of CAR
 
     int nSel = 0;
-    if( GBL.locout_um || GBL.locout )
+    if( GBL.locout_um > 0 || GBL.locout )
         ++nSel;
     if( GBL.gblcar )
         ++nSel;
@@ -2508,7 +2508,7 @@ bool CGBL::checkExtractors()
 
 bool CGBL::checkSaves()
 {
-    qSort( vS.begin(), vS.end() );
+    qSort( vS );
 
     bool ok = true;
 

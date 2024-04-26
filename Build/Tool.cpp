@@ -924,7 +924,7 @@ bool P1EOF::getMeta( int g, int t, t_js js, int ip, bool t_miss_ok )
 // Return:
 // 0 - treat as 1.0 lf stream.
 // 1 - convert: full-band + lflopass filter.
-// 2 - skip: no filter specified.
+// 2 - skip: problem.
 //
 static int lfCase( int ip )
 {
