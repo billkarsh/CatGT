@@ -7,6 +7,8 @@
 #include <QDir>
 #include <QSet>
 
+#include <math.h>
+
 #define DIGTOL  0.20
 
 
@@ -1040,17 +1042,34 @@ void BitField::close() const
 
 bool Save::parse( const char *s )
 {
-    char    c[1024];
-    int     js, ip1, ip2;
+    int js, ip1, ip2, n;
 
-    if( 4 != sscanf( s, "%d,%d,%d,%s", &js, &ip1, &ip2, c ) ) {
+    if( 3 > sscanf( s, "%d,%d,%d%n", &js, &ip1, &ip2, &n ) ) {
         Log() << "Save options need 4 arguments: -save=js,ip1,ip2,chan-list";
         return false;
     }
 
-    Save    S( t_js(js), ip1, ip2, c );
+    if( ip2 < 0 ) {
+        Log() << "Save option ip2 cannot be negative.";
+        return false;
+    }
 
-    if( Subset::isAllChansStr( c ) )
+// trim leading "   ,   "
+
+    QString C( s + n );
+    n = 0;
+    for( int i = 0, sz = C.size(); i < sz; ++i ) {
+        if( C[i] == ' ' || C[i] == ',' )
+            ++n;
+        else
+            break;
+    }
+    if( n )
+        C.remove( 0, n );
+
+    Save    S( t_js(js), ip1, ip2, C );
+
+    if( Subset::isAllChansStr( C ) )
         Log() << "Skipping directive to save all:" << S.sparam();
     else
         GBL.vS.push_back( S );
@@ -1066,7 +1085,7 @@ QString Save::sparam() const
 }
 
 
-bool Save::init( const KVParams &kvp, const QFileInfo &fim )
+bool Save::init( const KVParams &kvp, const QFileInfo &fim, int theZ )
 {
 // Reinit these for summing: In AP2LF mode the record is used twice
     iKeep.clear();
@@ -1085,14 +1104,18 @@ bool Save::init( const KVParams &kvp, const QFileInfo &fim )
     const QStringList   sl = kvp["acqApLfSy"].toString().split(
                                 QRegExp("^\\s+|\\s*,\\s*"),
                                 QString::SkipEmptyParts );
-    int cSY = sl[0].toInt() + sl[1].toInt();
+    int nAP = sl[0].toInt(),
+        cSY = nAP + sl[1].toInt();
+
+    if( js == AP )
+        nAP = 0;    // offset channel indices for bitsAP test
 
     for( int ic = 0, nU = cUsr.size(); ic < nU; ++ic ) {
 
         int cU  = cUsr[ic],
             idx = snsFileChans.indexOf( cU );
 
-        if( idx >= 0 ) {
+        if( idx >= 0 && (theZ < 0 || GBL.vMZ[theZ].bitsAP.testBit( cU - nAP ))  ) {
             cUsr2.push_back( cU );
             iKeep.push_back( idx );
             nN += (cU < cSY);
@@ -1125,6 +1148,148 @@ void Save::close()
         delete o_f;
         o_f = 0;
     }
+}
+
+/* --------------------------------------------------------------- */
+/* MaxZ ---------------------------------------------------------- */
+/* --------------------------------------------------------------- */
+
+// Now, just check for bad params.
+// Parse again later when metadata available.
+//
+bool MaxZ::parse( QSet<int> &seen )
+{
+    QStringList sl = sUsr.split(
+                        QRegExp("^\\s+|\\s*,\\s*|\\s+$"),
+                        QString::SkipEmptyParts );
+    int         ns = sl.size();
+
+    if( ns != 3 ) {
+        Log() << QString("Error: -maxZ=%1 has bad format.").arg( sUsr );
+        return false;
+    }
+
+    ip   = sl[0].toInt();
+    type = sl[1].toInt();
+    z    = sl[2].toDouble();
+
+    if( type < 0 || type > 2 ) {
+        Log() << QString("Error: -maxZ=%1 has bad type value.").arg( sUsr );
+        return false;
+    }
+
+    if( seen.contains( ip ) ) {
+        Log() << QString("Error: -maxZ names probe %1 twice.").arg( ip );
+        return false;
+    }
+
+    seen.insert( ip );
+
+    return true;
+}
+
+
+QString MaxZ::sparam() const
+{
+    return QString(" -maxZ=%1").arg( sUsr );
+}
+
+
+bool MaxZ::apply(
+    const KVParams  &kvp,
+    const QFileInfo &fim,
+    int             js_in,
+    int             js_out )
+{
+// Form bitsAP
+
+    int nAP, nLF, nSY;
+
+    IMROTbl *R = GBL.getProbe( kvp );
+    if( !R ) {
+        Log() << QString("Can't identify probe type in metadata '%1'.")
+                    .arg( fim.fileName() );
+        return false;
+    }
+    R->fromString( 0, kvp["~imroTbl"].toString() );
+
+    nAP = R->nAP();
+    nLF = R->nLF();
+    nSY = R->nSY();
+
+    bitsAP.resize( nAP );
+
+    int maxRow; // inclusive
+    switch( type ) {
+        case 0:
+            maxRow = int(z);
+            break;
+        case 1:
+            maxRow =
+            ceil( (z - R->zPitch()) / R->zPitch() );
+            break;
+        default:
+            maxRow =
+            ceil( (z - R->tipLength() - R->zPitch()) / R->zPitch() );
+    }
+    maxRow = qBound( 0, maxRow, R->nRow() - 1 );
+
+    for( int ic = 0; ic < nAP; ++ic ) {
+        int col, row;
+        R->elShankColRow( col, row, ic );
+        if( row <= maxRow )
+            bitsAP.setBit( ic );
+    }
+
+    delete R;
+
+    // Create/modify AP chnexcl list
+
+    if( js_out == AP ) {
+
+        QBitArray   bexc = ~bitsAP;
+
+        if( bexc.count( true ) ) {
+
+            if( GBL.mexc.contains( ip ) ) {
+
+                Subset::rngStr2Vec( GBL.mexc[ip],
+                    Subset::vec2RngStr( GBL.mexc[ip] )
+                    + ","
+                    + Subset::bits2RngStr( bexc ) );
+            }
+            else
+                Subset::bits2Vec( GBL.mexc[ip], bexc );
+        }
+    }
+
+    // Add Save record if doesn't already exist.
+    // This is a simple save-all directive that
+    // will be edited later.
+
+    foreach( const Save &S, GBL.vS ) {
+        if( S.js == js_in && S.ip1 == ip )
+            return true;
+    }
+
+    QString sNU;
+    if( js_in == AP )
+        sNU = QString("0:%1").arg( nAP - 1 );
+    else
+        sNU = QString("%1:%2").arg( nAP ).arg( nAP + nLF - 1 );
+
+    QString sSY = QString("%1").arg( nAP + nLF );
+    if( nSY > 1 )
+        sSY += QString(":%1").arg( nAP + nLF + nSY - 1 );
+
+    QString arg = QString("%1,%2,%2,%3,%4")
+                    .arg( js_in ).arg( ip )
+                    .arg( sNU ).arg( sSY );
+
+    Save::parse( STR2CHR( arg ) );
+    qSort( GBL.vS );
+
+    return true;
 }
 
 /* --------------------------------------------------------------- */
@@ -1459,7 +1624,7 @@ bool CGBL::SetCmdLine( int argc, char* argv[] )
                 return false;
         }
         else if( GetArgStr( sarg, "-maxZ=", argv[i] ) )
-            vmaxZ.push_back( sarg );
+            vMZ.push_back( MaxZ( sarg ) );
         else if( IsArg( "-pass1_force_ni_ob_bin", argv[i] ) )
             force_ni_ob = true;
         else if( GetArgStr( sarg, "-supercat=", argv[i] ) )
@@ -1578,8 +1743,11 @@ error:
 
 // Check and sort save options
 
-    if( !checkSaves() )
-        return false;
+    if( velem.isEmpty() ) {
+
+        if( !checkSaves() || !parseMaxZ() )
+            return false;
+    }
 
 // Echo
 
@@ -1661,8 +1829,8 @@ error:
     foreach( const Save &S, vS )
         sSave += S.sparam();
 
-    foreach( const QString &s, vmaxZ )
-        sMaxZ += QString(" -maxZ=%1").arg( s );
+    foreach( const MaxZ &Z, vMZ )
+        sMaxZ += Z.sparam();
 
     if( velem.size() )
         ssuper = QString(" -supercat=%1").arg( formatElems() );
@@ -1728,11 +1896,6 @@ error:
 
     if( inarow < 0 )
         inarow = 5;
-
-// MaxZ adjustments
-
-    if( velem.isEmpty() && !parseMaxZ() )
-        return false;
 
 // Inpath adjustments
 
@@ -2327,52 +2490,20 @@ bool CGBL::parseChnexcl( const QString &s )
 }
 
 
-// Now, just check for bad params, or {-save + -maxZ} conflicts.
+// Now, just check for bad params.
 // Parse again later when metadata available.
 //
 bool CGBL::parseMaxZ()
 {
     QSet<int>   seen;
 
-    foreach( const QString &s, vmaxZ ) {
+    for( int iz = 0, nz = vMZ.size(); iz < nz; ++iz ) {
 
-        QStringList sl = s.split(
-                            QRegExp("^\\s+|\\s*,\\s*|\\s+$"),
-                            QString::SkipEmptyParts );
-        int         ns = sl.size(),
-                    ip,
-                    tp;
-
-        if( ns != 3 ) {
-format_err:
-            Log() << QString("Error: -maxZ=%1 has bad format.").arg( s );
+        if( !vMZ[iz].parse( seen ) )
             return false;
-        }
-
-        ip = sl[0].toInt();
-        tp = sl[1].toInt();
-
-        if( tp < 0 || tp > 2 )
-            goto format_err;
-
-        if( seen.contains( ip ) ) {
-            Log() << QString("Error: -maxZ names probe %1 twice.").arg( ip );
-            return false;
-        }
-
-        foreach( const Save &S, vS ) {
-
-            if( S.js >= AP && S.ip1 == ip ) {
-                Log() <<
-                    QString("Error: Can't have -save and -maxZ for probe %1.")
-                    .arg( ip );
-                return false;
-            }
-        }
-
-        seen.insert( ip );
     }
 
+    qSort( vMZ );
     return true;
 }
 

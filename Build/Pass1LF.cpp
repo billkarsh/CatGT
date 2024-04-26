@@ -21,7 +21,7 @@ bool Pass1LF::go()
         case 2: return false;
     }
 
-    if( !parseMaxZ() )
+    if( !parseMaxZ( theZ ) )
         return false;
 
     if( !GBL.makeOutputProbeFolder( g0, ip ) )
@@ -33,7 +33,7 @@ bool Pass1LF::go()
     meta.read( LF );
 
     for( int is = sv0; is < svLim; ++is ) {
-        if( !GBL.vS[is].init( meta.kvp, fim ) )
+        if( !GBL.vS[is].init( meta.kvp, fim, theZ ) )
             return false;
     }
 

@@ -4,6 +4,7 @@
 #include "IMROTbl.h"
 #include "KVParams.h"
 
+#include <QBitArray>
 #include <QFileInfo>
 #include <QVector>
 
@@ -189,17 +190,17 @@ struct BitField : public XTR {
 };
 
 struct Save {
-// selective save directive
-    QVector<uint>   iKeep;  // indices relative to infile samples
+// selective -save directive
+    QVector<uint>   iKeep;      // indices relative to infile samples
     QFile           *o_f;
     QString         o_name,
-                    sUsr_out,
-                    sUsr;   // cmdline
-    t_js            js;     // cmdline
-    int             ip1,    // cmdline
-                    ip2,    // cmdline
-                    nC,     // iKeep.size
-                    nN,     // neurals within iKeep
+                    sUsr_out,   // only for snsSaveChanSubset
+                    sUsr;       // cmdline
+    t_js            js;         // cmdline
+    int             ip1,        // cmdline
+                    ip2,        // cmdline
+                    nC,         // iKeep.size
+                    nN,         // neurals within iKeep
                     smpBytes;
     Save() : o_f(0), js(AP), ip1(0), ip2(0), nN(0)              {}
     Save( t_js js, int ip1, int ip2, const QString &s )
@@ -222,9 +223,32 @@ struct Save {
         }
     static bool parse( const char *s );
     QString sparam() const;
-    bool init( const KVParams &kvp, const QFileInfo &fim );
+    bool init( const KVParams &kvp, const QFileInfo &fim, int theZ );
     bool o_open( int g0, t_js js );
     void close();
+};
+
+struct MaxZ {
+// -maxZ directive
+    double      z;
+    QBitArray   bitsAP;
+    QString     sUsr;
+    int         ip,
+                type;
+    MaxZ() : ip(0)  {}
+    MaxZ( const QString &s ) : sUsr(s)  {}
+    virtual ~MaxZ()                     {}
+    bool operator<( const MaxZ &rhs ) const
+        {
+            return (ip < rhs.ip);
+        }
+    bool parse( QSet<int> &seen );
+    QString sparam() const;
+    bool apply(
+        const KVParams  &kvp,
+        const QFileInfo &fim,
+        int             js_in,
+        int             js_out );
 };
 
 struct Elem {
@@ -279,7 +303,7 @@ public:
                         vprb;
     QVector<XTR*>       vX;
     QVector<Save>       vS;
-    QVector<QString>    vmaxZ;
+    QVector<MaxZ>       vMZ;
     QVector<Elem>       velem;
     KVParams            fyi;            // generated
     int                 ga,

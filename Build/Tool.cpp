@@ -443,7 +443,7 @@ void Meta::writeSave( int sv0, int svLim, int g0, int t0, t_js js_out )
 
         smpBytes = S.smpBytes;
 
-        kvp["nSavedChans"]          = int(smpBytes / sizeof(qint16));
+        kvp["nSavedChans"]          = S.nC;
         kvp["snsSaveChanSubset"]    = S.sUsr_out;
 
         QString fmt = (S.js == AP ? "%1,0,%2" : "0,%1,%2");

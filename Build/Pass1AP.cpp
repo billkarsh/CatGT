@@ -24,7 +24,8 @@ Pass1AP::~Pass1AP()
 
 bool Pass1AP::go()
 {
-    int t0, g0 = GBL.gt_get_first( &t0 );
+    int t0, g0 = GBL.gt_get_first( &t0 ),
+        theZ;
 
     doWrite = GBL.gt_nIndices() > 1
                     || GBL.startsecs > 0 || GBL.apflt.isenabled()
@@ -37,7 +38,7 @@ bool Pass1AP::go()
         case 2: return false;
     }
 
-    if( !parseMaxZ() )
+    if( !parseMaxZ( theZ ) )
         return false;
 
     if( !GBL.makeOutputProbeFolder( g0, ip ) )
@@ -49,7 +50,7 @@ bool Pass1AP::go()
     meta.read( AP );
 
     for( int is = sv0; is < svLim; ++is ) {
-        if( !GBL.vS[is].init( meta.kvp, fim ) )
+        if( !GBL.vS[is].init( meta.kvp, fim, theZ ) )
             return false;
     }
 

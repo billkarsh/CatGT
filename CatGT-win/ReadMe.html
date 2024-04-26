@@ -260,8 +260,8 @@ ls -s &lt;path/myoriginalname.meta&gt; &lt;...ZZZ/goodname_g0_t0.imec0.ap.meta&g
 <p>You can control how CatGT works during file concatenation when one or more of your input files is missing, or, if input file <code>N+1</code> starts later in time than the end of input file <code>N</code>; what we term a &quot;gap&quot; in the recording.</p>
 <p>If you do not use the <code>-t_miss_ok</code> option, the default behavior is to require all files in the series to be present. Processing of a stream will stop if a binary or meta file is not found. If the expected file set is found but there is a gap between the files, the gap is filled with zeros for all channels. If instead, adjacent files overlap in time, the overlap region is represented just once in the output file.</p>
 <p>If you include <code>-t_miss_ok</code> in the command line, then processing does not stop. Rather, the entire missing file (or run of consecutive missing files) is counted as an extended gap. The gap is replaced by zeros when a next expected file set is found.</p>
-<p>By default, CatGT zero-fills gaps so as to precisely preserve the real world duration of the recording. This enables the spikes and other nonneural events that are present in the output file to be temporally aligned with other recorded data streams in the experiment.</p>
-<p>However, you might not be interested in aligning the data to other streams, so feel that zeros in the output are wasted space. Moreover, some spike sorting programs are known to crash because they can not handle long spans of time with no detected spikes. Option <code>zerofillmax</code> allows you to set an upper limit on the span of zeros that can be inserted.</p>
+<p>By default, CatGT zero-fills gaps so as to precisely preserve the real- world duration of the recording. This enables the spikes and other nonneural events that are present in the output file to be temporally aligned with other recorded data streams in the experiment.</p>
+<p>However, you might not be interested in aligning the data to other streams, so feel that zeros in the output are wasted space. Moreover, some spike sorting programs are known to crash because they cannot handle long spans of time with no detected spikes. Option <code>zerofillmax</code> allows you to set an upper limit on the span of zeros that can be inserted.</p>
 <p>For example, <code>zerofillmax=500</code> directs that gaps whose true length is &lt;= 500 ms are filled by the equivalent-length span of zeros, but longer spans are capped at 500 ms of zeros.</p>
 <p>Setting <code>zerofillmax=0</code> specifies that zero-filling is disabled.</p>
 <blockquote>
@@ -330,7 +330,7 @@ ls -s &lt;path/myoriginalname.meta&gt; &lt;...ZZZ/goodname_g0_t0.imec0.ap.meta&g
 </blockquote>
 <h3 id="gblcar-option">gblcar option</h3>
 <blockquote>
-<p><em>Note: Prior to CatGT version 3.6 the subracted value had been the statistical average (mean) over all channels. Starting with version 3.6 the median value is used instead to reduce outlier bias.</em></p>
+<p><em>Note: Prior to CatGT version 3.6 the subtracted value had been the statistical average (mean) over all channels. Starting with version 3.6 the median value is used instead to reduce outlier bias.</em></p>
 </blockquote>
 <ul>
 <li>Do CAR common median referencing using all channels.</li>
@@ -373,7 +373,7 @@ ls -s &lt;path/myoriginalname.meta&gt; &lt;...ZZZ/goodname_g0_t0.imec0.ap.meta&g
 <p>Use the SpikeGLX FileViewer to select appropriate amplitude and slope values for a given run. Be sure to turn high-pass filtering ON and spatial <code>&lt;S&gt;</code> filters OFF to match the conditions the CatGT artifact detector will use. Zoom the time scale (ctrl + click&amp;drag) to see the individual sample points and their connecting segments. Set the slope this way: Zoom in on the artifact initial peak, the points with greatest amplitude. Suppose consecutive points {A,B,C,D} make up the peak and {B,C,D} exceed the amplitude threshold. Then there are three slopes {B-A,C-B,D-C} connecting these points. Select the largest value. That is, set the slope to the fastest voltage change near the peak. An artifact will usually be several times faster than a neuronal spike.</p>
 <h3 id="chnexcl-option">chnexcl option</h3>
 <p>Use this option to prevent bad channels from corrupting calculations over mixtures of channels, such as the spatial filters {loccar, gblcar, gfix}.</p>
-<p>The option <code>-chnexcl={probe;chan_list}{probe;chan_list}...</code> takes a list of elements <em>(include the curly braces)</em> that specify a probe index; and a list of channels to exclude for that probe. Channel lists are specified like page lists in a printer dialog, <code>1,10,40:51</code> for example. Be careful to use a semicolon (;) between probe and channel list, and use only commas and colons (,:) within your channel lists.</p>
+<p>The option <code>-chnexcl={probe;chan_list}{probe;chan_list}...</code> takes a list of elements <em>(include the curly braces)</em> that specify a probe index; and a list of channels to exclude for that probe. Channel lists are specified like page lists in a printer dialog, <code>1,10,40:51</code> for example. Be careful to use a semicolon (;) between probe and channel list, and use only commas and colons (,:) within your channel lists. Include no more than one excluded channel list for a given probe index.</p>
 <p>Note that the CatGT spatial filters honor metadata items <code>~snsGeomMap</code> and <code>~snsShankMap</code>. The GeomMap replaces the ShankMap in metadata as of SpikeGLX version 20230202.</p>
 <p>A GeomMap has an entry for each saved channel that describes the (shank, x(um), z(um)) where its electrode resides on the shank, and a fourth 0/1 value, <code>use flag</code>, indicating if the channel should be used in spatial filtering. By default, SpikeGLX marks known on-shank reference channels with zeroes. Your chnexcl data force the corresponding use flags to zero before the filters are applied, and the modified <code>~snsGeomMap</code>, if present, is written to the CatGT output metadata.</p>
 <p>A ShankMap has an entry for each saved channel that describes the (shank, col, row) where its electrode resides on the shank, and a fourth 0/1 value, <code>use flag</code>, indicating if the channel should be used in spatial filtering. By default, SpikeGLX marks known on-shank reference channels with zeroes. Your chnexcl data force the corresponding use flags to zero before the filters are applied, and the modified <code>~snsShankMap</code>, if present, is written to the CatGT output metadata.</p>
@@ -453,7 +453,7 @@ ls -s &lt;path/myoriginalname.meta&gt; &lt;...ZZZ/goodname_g0_t0.imec0.ap.meta&g
 <li><p>A given channel or even bit could encode two or more types of pulse that have different durations, e.g., <code>-xd=0,0,8,0,10 -xd=0,0,8,0,20</code> scans and reports both 10 and 20 ms pulses on the same line.</p></li>
 <li><p>Each option, say <code>-xd=2,0,384,6,500</code>, creates an output file whose name reflects the parameters, e.g., <code>run_name_g0_tcat.imec0.ap.xd_384_6_500.txt</code>.</p></li>
 <li><p>The threshold is not encoded in the <code>-xa</code> filename; just word and milliseconds.</p></li>
-<li><p>The <code>run_name_g0_fyi.txt</code> file lists the full paths of all generated extraction files.</p></li>
+<li><p>The <code>run_ga_fyi.txt</code> file lists the full paths of all generated extraction files.</p></li>
 <li><p>The files report the times (s) of leading edges of detected pulses; one time per line, <code>\n</code> line endings.</p></li>
 <li><p>The time is relative to the start of the stream in which the pulse is detected (native time).</p></li>
 </ul>
@@ -528,9 +528,21 @@ ls -s &lt;path/myoriginalname.meta&gt; &lt;...ZZZ/goodname_g0_t0.imec0.ap.meta&g
 <li><strong>js,ip1</strong>: Identify the input probe stream, where, js = input stream type = {2=AP, 3=LF}.</li>
 <li><strong>ip2</strong>: User-provided output stream number; a non-negative integer that can be the same as ip1 or not (see examples below).</li>
 <li><strong>channel-list</strong>: Standard SpikeGLX-type list of channels; these name originally acquired channels.</li>
+<li>You can enter as many -save options on one command line as needed, and several options can refer to the same input file if needed: <strong>One file in -&gt; many files out</strong>.</li>
+<li>Internally, the -sepShanks and -maxZ options automatically generate additional -save options.</li>
+<li>For each -save option that remaps an input ip1 to a new ip2, the <code>run_ga_fyi.txt</code> file adds entries to connect the new ip2-labeled output to its ip1-labeled digital extractions (see example 2).</li>
 </ul>
 <blockquote>
-<p><em>If processing a 2.0 AP input file -&gt; LF output file, use js = 2 to match the input file type.</em></p>
+<p><em>Be sure to name the SYNC channel(s) or they will not be saved.</em></p>
+</blockquote>
+<blockquote>
+<p><em>If processing a 1.0 LF input file, use js = 3 to match the input file type, and use channel indices appropriate for the 1.0 LF-band, that is, values in range [384,768].</em></p>
+</blockquote>
+<blockquote>
+<p><em>If processing a 2.0 AP input file -&gt; LF output file, use js = 2 to match the input file type, and use channel indices appropriate for the 2.0 full-band, that is, values in range [0,383] and SY [384].</em></p>
+</blockquote>
+<blockquote>
+<p><em>If processing a quad-probe input file, in all cases use js = 2 to match the input file type, and use channel indices appropriate for the quad full-band, that is, values in range [0,1535] and SY [1536:1539].</em></p>
 </blockquote>
 <h4 id="example-1">Example 1</h4>
 <p>Remove the first ten channels [0..9] from NP 1.0 file imec0.ap.bin that was originally written with all AP channels saved.</p>
@@ -541,7 +553,7 @@ ls -s &lt;path/myoriginalname.meta&gt; &lt;...ZZZ/goodname_g0_t0.imec0.ap.meta&g
 <li>There are 384 neural channels [0..383], and the final sync channel is 768.</li>
 </ul>
 <h4 id="example-2">Example 2</h4>
-<p>NP 2.0 single-shank file imec3.ap.bin was originally written with SpikeGLX selective saving enabled. The first 100 channels were uninteresting, so the input file to CatGT contains channels [100..384]. Here we will keep only the lowest ten channels and the sync channel, renaming it to imec5.ap.</p>
+<p>NP 2.0 single-shank file imec3.ap.bin was originally written with SpikeGLX selective saving enabled; omitting the first 100 channels because they were uninteresting. Hence, the input file to CatGT contains channels [100..384]. Here we will keep only the lowest ten channels and the sync channel, renaming it to imec5.ap.</p>
 <p>-save=2,3,5,100:109,384</p>
 <ul>
 <li>Notice that the channel indices are given with respect to the original data stream rather than the saved file.</li>
@@ -555,7 +567,7 @@ ls -s &lt;path/myoriginalname.meta&gt; &lt;...ZZZ/goodname_g0_t0.imec0.ap.meta&g
 </ul>
 <h3 id="maxz-option">maxZ option</h3>
 <p>It's very common to insert a probe only partially into the brain. The electrodes that remain outside the brain see primarily environment noise. These channels pollute CAR operations unless they are excluded. Also, you can trim these channels out of your files to make them smaller.</p>
-<p>Use maxZ to specify an insertion depth for an imec probe (js=2). This will automatically create/adjust the -chnexcl option for the probe, and it will create a -save option listing only the inserted channels.</p>
+<p>Use maxZ to specify an insertion depth for an imec probe (js=2). This will automatically create/adjust the -chnexcl option for the probe, and it will create a -save option (if you don't already have one) listing only the inserted channels. Existing -save options are also edited (see note below). Include no more than one -maxZ option for a given probe index.</p>
 <p>The parameters are -maxZ=ip,depth-type,depth-value.</p>
 <p>There are three convenient ways to specify the insertion depth:</p>
 <table>
@@ -751,6 +763,7 @@ Options:
 <p>Version 4.4</p>
 <ul>
 <li>Support NP2020 quad-probes.</li>
+<li>Allow -maxZ and -save options on same probe.</li>
 </ul>
 <p>Version 4.3</p>
 <ul>

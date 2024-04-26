@@ -381,14 +381,14 @@ not stop. Rather, the entire missing file (or run of consecutive
 missing files) is counted as an extended gap. The gap is replaced by
 zeros when a next expected file set is found.
 
-By default, CatGT zero-fills gaps so as to precisely preserve the real
+By default, CatGT zero-fills gaps so as to precisely preserve the real-
 world duration of the recording. This enables the spikes and other nonneural
 events that are present in the output file to be temporally aligned with
 other recorded data streams in the experiment.
 
 However, you might not be interested in aligning the data to other streams,
 so feel that zeros in the output are wasted space. Moreover, some spike
-sorting programs are known to crash because they can not handle long spans
+sorting programs are known to crash because they cannot handle long spans
 of time with no detected spikes. Option `zerofillmax` allows you to set an
 upper limit on the span of zeros that can be inserted.
 
@@ -543,7 +543,7 @@ is excessive reduction of the amplitude of large-footprint spikes.*
 
 ### gblcar option
 
->*Note: Prior to CatGT version 3.6 the subracted value had been the
+>*Note: Prior to CatGT version 3.6 the subtracted value had been the
 statistical average (mean) over all channels. Starting with version
 3.6 the median value is used instead to reduce outlier bias.*
 
@@ -625,7 +625,8 @@ elements *(include the curly braces)* that specify a probe index; and a
 list of channels to exclude for that probe. Channel lists are specified
 like page lists in a printer dialog, `1,10,40:51` for example. Be careful
 to use a semicolon (;) between probe and channel list, and use only commas
-and colons (,:) within your channel lists.
+and colons (,:) within your channel lists. Include no more than one excluded
+channel list for a given probe index.
 
 Note that the CatGT spatial filters honor metadata items `~snsGeomMap`
 and `~snsShankMap`. The GeomMap replaces the ShankMap in metadata as of
@@ -758,7 +759,7 @@ reflects the parameters, e.g., `run_name_g0_tcat.imec0.ap.xd_384_6_500.txt`.
 - The threshold is not encoded in the `-xa` filename; just word and
 milliseconds.
 
-- The `run_name_g0_fyi.txt` file lists the full paths of all generated
+- The `run_ga_fyi.txt` file lists the full paths of all generated
 extraction files.
 
 - The files report the times (s) of leading edges of detected pulses;
@@ -880,9 +881,28 @@ channels, or to split out the shanks of a multishank probe.
 can be the same as ip1 or not (see examples below).
 * **channel-list**: Standard SpikeGLX-type list of channels; these name
 originally acquired channels.
+* You can enter as many -save options on one command line as needed,
+and several options can refer to the same input file if needed:
+**One file in -> many files out**.
+* Internally, the -sepShanks and -maxZ options automatically generate
+additional -save options.
+* For each -save option that remaps an input ip1 to a new ip2, the
+`run_ga_fyi.txt` file adds entries to connect the new ip2-labeled output
+to its ip1-labeled digital extractions (see example 2).
+
+>*Be sure to name the SYNC channel(s) or they will not be saved.*
+
+>*If processing a 1.0 LF input file, use js = 3 to match the input file type,
+and use channel indices appropriate for the 1.0 LF-band, that is, values in
+range [384,768].*
 
 >*If processing a 2.0 AP input file -> LF output file, use js = 2 to match
-the input file type.*
+the input file type, and use channel indices appropriate for the 2.0 full-band,
+that is, values in range [0,383] and SY [384].*
+
+>*If processing a quad-probe input file, in all cases use js = 2 to match
+the input file type, and use channel indices appropriate for the quad full-band,
+that is, values in range [0,1535] and SY [1536:1539].*
 
 #### Example 1
 
@@ -898,9 +918,10 @@ was originally written with all AP channels saved.
 #### Example 2
 
 NP 2.0 single-shank file imec3.ap.bin was originally written with SpikeGLX
-selective saving enabled. The first 100 channels were uninteresting, so the
-input file to CatGT contains channels [100..384]. Here we will keep only
-the lowest ten channels and the sync channel, renaming it to imec5.ap.
+selective saving enabled; omitting the first 100 channels because they were
+uninteresting. Hence, the input file to CatGT contains channels [100..384].
+Here we will keep only the lowest ten channels and the sync channel,
+renaming it to imec5.ap.
 
 -save=2,3,5,100:109,384
 
@@ -932,7 +953,9 @@ you can trim these channels out of your files to make them smaller.
 
 Use maxZ to specify an insertion depth for an imec probe (js=2). This
 will automatically create/adjust the -chnexcl option for the probe, and
-it will create a -save option listing only the inserted channels.
+it will create a -save option (if you don't already have one) listing only
+the inserted channels. Existing -save options are also edited (see note below).
+Include no more than one -maxZ option for a given probe index.
 
 The parameters are -maxZ=ip,depth-type,depth-value.
 
@@ -1172,6 +1195,7 @@ on that stream's clock.
 Version 4.4
 
 - Support NP2020 quad-probes.
+- Allow -maxZ and -save options on same probe.
 
 Version 4.3
 
