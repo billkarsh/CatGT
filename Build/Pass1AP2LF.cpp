@@ -36,7 +36,8 @@ bool Pass1AP2LF::go()
             return false;
     }
 
-    filtersAndScaling();
+    if( !filtersAndScaling() )
+        return false;
 
     gFOff.init( meta.srate / 12, LF, ip );
 
@@ -157,24 +158,21 @@ bool Pass1AP2LF::zero( qint64 gapBytes, qint64 zfBytes )
 }
 
 
-void Pass1AP2LF::filtersAndScaling()
+bool Pass1AP2LF::filtersAndScaling()
 {
-// ----
-// Imro
-// ----
-
-// 3A default
-
-    maxInt = MAX10BIT;
-
-// Get actual
-
     IMROTbl *R = GBL.getProbe( meta.kvp );
 
     if( R ) {
         maxInt = R->maxInt();
         delete R;
     }
+    else {
+        Log() << QString("Can't identify probe type in metadata '%1'.")
+                    .arg( fim.fileName() );
+        return false;
+    }
+
+    return true;
 }
 
 

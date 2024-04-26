@@ -18,7 +18,7 @@ public:
     virtual void digital( const qint16 *data, int ntpts )   {}
 
 private:
-    void filtersAndScaling();
+    bool filtersAndScaling();
 };
 
 #endif  // PASS1LF_H

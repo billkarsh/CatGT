@@ -9,7 +9,8 @@
 
 bool Pass1LF::go()
 {
-    int t0, g0 = GBL.gt_get_first( &t0 );
+    int t0, g0 = GBL.gt_get_first( &t0 ),
+        theZ;
 
     doWrite = GBL.gt_nIndices() > 1
                 || GBL.startsecs > 0 || GBL.lfflt.isenabled() || GBL.tshift;
@@ -36,7 +37,8 @@ bool Pass1LF::go()
             return false;
     }
 
-    filtersAndScaling();
+    if( !filtersAndScaling() )
+        return false;
 
     gFOff.init( meta.srate, LF, ip );
 
@@ -53,24 +55,21 @@ bool Pass1LF::go()
 }
 
 
-void Pass1LF::filtersAndScaling()
+bool Pass1LF::filtersAndScaling()
 {
-// ----
-// Imro
-// ----
-
-// 3A default
-
-    maxInt = MAX10BIT;
-
-// Get actual
-
     IMROTbl *R = GBL.getProbe( meta.kvp );
 
     if( R ) {
         maxInt = R->maxInt();
         delete R;
     }
+    else {
+        Log() << QString("Can't identify probe type in metadata '%1'.")
+                    .arg( fim.fileName() );
+        return false;
+    }
+
+    return true;
 }
 
 

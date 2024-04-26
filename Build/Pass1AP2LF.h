@@ -23,7 +23,7 @@ public:
     virtual bool zero( qint64 gapBytes, qint64 zfBytes );
 
 private:
-    void filtersAndScaling();
+    bool filtersAndScaling();
     void adjustMeta();
 };
 
