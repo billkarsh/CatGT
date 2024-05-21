@@ -62,6 +62,12 @@ Notes:
 + Remove all white space at line ends, especially after a caret (^).
 + Read CatGT.log. There is no interesting output in the command window.
 
+### (Windows with PowerShell)
+
+PowerShell 3.0 and later will parse your parameter list and may complain; it's especially sensitive about supercat command lines. You can prevent that with the "stop-parsing" symbol --%. Use it like this:
+
+`>runit.bat --% -dir=data_dir -run=run_name -g=ga,gb -t=ta,tb <which streams> [ options ]`
+
 ### (Linux)
 
 `>runit.sh '-dir=data_dir -run=run_name -g=ga,gb -t=ta,tb <which streams> [ options ]'`
@@ -1258,6 +1264,7 @@ on that stream's clock.
 Version 4.4
 
 - Support NP2020 quad-probes.
+- Support NXT probes.
 - Allow -maxZ and -save options on same probe.
 - Add -sepShanks option.
 

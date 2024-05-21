@@ -1,5 +1,5 @@
 
-#include "IMROTbl_T21base.h"
+#include "IMROTbl_T3010base.h"
 
 #ifdef HAVE_IMEC
 #include "IMEC/NeuropixAPI.h"
@@ -12,76 +12,33 @@ using namespace Neuropixels;
 /* struct IMRODesc ------------------------------------------------ */
 /* ---------------------------------------------------------------- */
 
-static char bF[4] = {1,7,5,3};  // multiplier per bank
-static char bA[4] = {0,4,8,12}; // addend per bank
-
-
-int IMRODesc_T21base::lowBank( int mbank )
+int IMRODesc_T3010base::chToEl( int ch, int bank )
 {
-    if( mbank & 1 )
-        return 0;
-    else if( mbank & 2 )
-        return 1;
-    else if( mbank & 4 )
-        return 2;
-
-    return 3;
+    return (ch >= 0 ? ch + bank * 912 : 0);
 }
 
 
-int IMRODesc_T21base::chToEl( int ch, int mbank )
-{
-    int     bank,
-            blkIdx,
-            rem,
-            irow;
-    bool    bRight = ch & 1;    // RHS column
-
-    blkIdx  = ch / 32;
-    rem     = (ch - 32*blkIdx - bRight) / 2;
-
-// mbank is multibank field, we take only lowest connected bank
-
-    bank = lowBank( mbank );
-
-// Find irow such that its 16-modulus is rem
-
-    for( irow = 0; irow < 16; ++irow ) {
-
-        if( rem == (irow*bF[bank] + bRight*bA[bank]) % 16 )
-            break;
-    }
-
-// Precaution against bad file input
-
-    if( irow > 15 )
-        irow = 0;
-
-    return 384*bank + 32*blkIdx + 2*irow + bRight;
-}
-
-
-// Pattern: "(chn mbank refid elec)"
+// Pattern: "(chn bank refid elec)"
 //
-QString IMRODesc_T21base::toString( int chn ) const
+QString IMRODesc_T3010base::toString( int chn ) const
 {
     return QString("(%1 %2 %3 %4)")
-            .arg( chn ).arg( mbank )
+            .arg( chn ).arg( bank )
             .arg( refid ).arg( elec );
 }
 
 
-// Pattern: "chn mbank refid elec"
+// Pattern: "chn bank refid elec"
 //
 // Note: The chn field is discarded and elec is recalculated by caller.
 //
-IMRODesc_T21base IMRODesc_T21base::fromString( const QString &s )
+IMRODesc_T3010base IMRODesc_T3010base::fromString( const QString &s )
 {
     const QStringList   sl = s.split(
                                 QRegExp("\\s+"),
                                 QString::SkipEmptyParts );
 
-    return IMRODesc_T21base(
+    return IMRODesc_T3010base(
             sl.at( 1 ).toInt(), sl.at( 2 ).toInt() );
 }
 
@@ -89,7 +46,7 @@ IMRODesc_T21base IMRODesc_T21base::fromString( const QString &s )
 /* struct Key ----------------------------------------------------- */
 /* ---------------------------------------------------------------- */
 
-bool T21Key::operator<( const T21Key &rhs ) const
+bool T3010Key::operator<( const T3010Key &rhs ) const
 {
     if( c < rhs.c )
         return true;
@@ -97,34 +54,34 @@ bool T21Key::operator<( const T21Key &rhs ) const
     if( c > rhs.c )
         return false;
 
-    return m < rhs.m;
+    return b < rhs.b;
 }
 
 /* ---------------------------------------------------------------- */
 /* struct IMROTbl ------------------------------------------------- */
 /* ---------------------------------------------------------------- */
 
-void IMROTbl_T21base::setElecs()
+void IMROTbl_T3010base::setElecs()
 {
     for( int i = 0, n = nChan(); i < n; ++i )
         e[i].setElec( i );
 }
 
 
-void IMROTbl_T21base::fillDefault()
+void IMROTbl_T3010base::fillDefault()
 {
     e.clear();
-    e.resize( imType21baseChan );
+    e.resize( imType3010baseChan );
     setElecs();
 }
 
 
-void IMROTbl_T21base::fillShankAndBank( int shank, int bank )
+void IMROTbl_T3010base::fillShankAndBank( int shank, int bank )
 {
     Q_UNUSED( shank )
 
     for( int i = 0, n = e.size(); i < n; ++i )
-        e[i].mbank = (1 << qMin( bank, maxBank( i ) ));
+        e[i].bank = qMin( bank, maxBank( i ) );
 
     setElecs();
 }
@@ -132,14 +89,14 @@ void IMROTbl_T21base::fillShankAndBank( int shank, int bank )
 
 // Return true if two tables are same w.r.t connectivity.
 //
-bool IMROTbl_T21base::isConnectedSame( const IMROTbl *rhs ) const
+bool IMROTbl_T3010base::isConnectedSame( const IMROTbl *rhs ) const
 {
-    const IMROTbl_T21base   *RHS    = (const IMROTbl_T21base*)rhs;
+    const IMROTbl_T3010base *RHS    = (const IMROTbl_T3010base*)rhs;
     int                     n       = nChan();
 
     for( int i = 0; i < n; ++i ) {
 
-        if( e[i].mbank != RHS->e[i].mbank )
+        if( e[i].bank != RHS->e[i].bank )
             return false;
     }
 
@@ -147,9 +104,9 @@ bool IMROTbl_T21base::isConnectedSame( const IMROTbl *rhs ) const
 }
 
 
-// Pattern: (type,nchan)(chn mbank refid elec)()()...
+// Pattern: (type,nchan)(chn bank refid elec)()()...
 //
-QString IMROTbl_T21base::toString() const
+QString IMROTbl_T3010base::toString() const
 {
     QString     s;
     QTextStream ts( &s, QIODevice::WriteOnly );
@@ -164,11 +121,11 @@ QString IMROTbl_T21base::toString() const
 }
 
 
-// Pattern: (type,nchan)(chn mbank refid elec)()()...
+// Pattern: (type,nchan)(chn bank refid elec)()()...
 //
 // Return true if file type compatible.
 //
-bool IMROTbl_T21base::fromString( QString *msg, const QString &s )
+bool IMROTbl_T3010base::fromString( QString *msg, const QString &s )
 {
     QStringList sl = s.split(
                         QRegExp("^\\s*\\(|\\)\\s*\\(|\\)\\s*$"),
@@ -203,7 +160,7 @@ bool IMROTbl_T21base::fromString( QString *msg, const QString &s )
     e.reserve( n - 1 );
 
     for( int i = 1; i < n; ++i )
-        e.push_back( IMRODesc_T21base::fromString( sl[i] ) );
+        e.push_back( IMRODesc_T3010base::fromString( sl[i] ) );
 
     if( e.size() != nAP() ) {
         if( msg ) {
@@ -219,14 +176,21 @@ bool IMROTbl_T21base::fromString( QString *msg, const QString &s )
 }
 
 
-int IMROTbl_T21base::elShankAndBank( int &bank, int ch ) const
+int IMROTbl_T3010base::maxBank( int ch, int shank ) const
 {
-    bank = e[ch].mbank;
+    Q_UNUSED( shank )
+    return int(ch < 368);
+}
+
+
+int IMROTbl_T3010base::elShankAndBank( int &bank, int ch ) const
+{
+    bank = e[ch].bank;
     return 0;
 }
 
 
-int IMROTbl_T21base::elShankColRow( int &col, int &row, int ch ) const
+int IMROTbl_T3010base::elShankColRow( int &col, int &row, int ch ) const
 {
     int el = e[ch].elec;
 
@@ -237,7 +201,7 @@ int IMROTbl_T21base::elShankColRow( int &col, int &row, int ch ) const
 }
 
 
-void IMROTbl_T21base::eaChansOrder( QVector<int> &v ) const
+void IMROTbl_T3010base::eaChansOrder( QVector<int> &v ) const
 {
     QMap<int,int>   el2Ch;
     int             _nAP    = nAP(),
@@ -261,7 +225,27 @@ void IMROTbl_T21base::eaChansOrder( QVector<int> &v ) const
 }
 
 
-void IMROTbl_T21base::locFltRadii( int &rin, int &rout, int iflt ) const
+// refid [0]    ext, shank=0, bank=0.
+// refid [1]    gnd, shank=0, bank=0.
+// refid [2]    tip, shank=0, bank=0.
+//
+int IMROTbl_T3010base::refTypeAndFields( int &shank, int &bank, int ch ) const
+{
+    int rid = e[ch].refid;
+
+    shank = 0;
+    bank  = 0;
+
+    if( rid == 0 )
+        return 0;
+    else if( rid == 1 )
+        return 3;
+
+    return 1;
+}
+
+
+void IMROTbl_T3010base::locFltRadii( int &rin, int &rout, int iflt ) const
 {
     switch( iflt ) {
         case 2:     rin = 2; rout = 8; break;
@@ -270,12 +254,12 @@ void IMROTbl_T21base::locFltRadii( int &rin, int &rout, int iflt ) const
 }
 
 
-void IMROTbl_T21base::muxTable( int &nADC, int &nGrp, std::vector<int> &T ) const
+void IMROTbl_T3010base::muxTable( int &nADC, int &nGrp, std::vector<int> &T ) const
 {
-    nADC = 24;
+    nADC = 58;
     nGrp = 16;
 
-    T.resize( imType21baseChan );
+    T.resize( nADC * nGrp );
 
 // Generate by pairs of columns
 
@@ -291,58 +275,21 @@ void IMROTbl_T21base::muxTable( int &nADC, int &nGrp, std::vector<int> &T ) cons
 }
 
 /* ---------------------------------------------------------------- */
-/* Hardware ------------------------------------------------------- */
-/* ---------------------------------------------------------------- */
-
-// This method connects multiple electrodes per channel.
-//
-int IMROTbl_T21base::selectSites( int slot, int port, int dock, bool write ) const
-{
-#ifdef HAVE_IMEC
-// ------------------------------------
-// Connect all according to table banks
-// ------------------------------------
-
-    for( int ic = 0, nC = nChan(); ic < nC; ++ic ) {
-
-        if( chIsRef( ic ) )
-            continue;
-
-        int             shank, bank;
-        NP_ErrorCode    err;
-
-        shank = elShankAndBank( bank, ic );
-
-        err = np_selectElectrodeMask( slot, port, dock, ic,
-                shank, electrodebanks_t(bank) );
-
-        if( err != SUCCESS )
-            return err;
-    }
-
-    if( write )
-        np_writeProbeConfiguration( slot, port, dock, true );
-#endif
-
-    return 0;
-}
-
-/* ---------------------------------------------------------------- */
 /* Edit ----------------------------------------------------------- */
 /* ---------------------------------------------------------------- */
 
-void IMROTbl_T21base::edit_init() const
+void IMROTbl_T3010base::edit_init() const
 {
 // forward
 
-    for( int c = 0; c < imType21baseChan; ++c ) {
+    for( int c = 0; c < imType3010baseChan; ++c ) {
 
-        for( int b = 0; b < imType21baseBanks; ++b ) {
+        for( int b = 0; b < imType3010baseBanks; ++b ) {
 
-            int e = IMRODesc_T21base::chToEl( c, 1 << b );
+            int e = IMRODesc_T3010base::chToEl( c, b );
 
-            if( e < imType21baseElec )
-                k2s[T21Key( c, 1 << b )] = IMRO_Site( 0, e & 1, e >> 1 );
+            if( e < imType3010baseElec )
+                k2s[T3010Key( c, b )] = IMRO_Site( 0, e & 1, e >> 1 );
             else
                 break;
         }
@@ -350,7 +297,7 @@ void IMROTbl_T21base::edit_init() const
 
 // inverse
 
-    QMap<T21Key,IMRO_Site>::iterator
+    QMap<T3010Key,IMRO_Site>::iterator
         it  = k2s.begin(),
         end = k2s.end();
 
@@ -359,34 +306,33 @@ void IMROTbl_T21base::edit_init() const
 }
 
 
-IMRO_GUI IMROTbl_T21base::edit_GUI() const
+IMRO_GUI IMROTbl_T3010base::edit_GUI() const
 {
     IMRO_GUI    G;
-    if( tip0refID() == 2 )
-        G.refs.push_back( "Ground" );
+    G.refs.push_back( "Ground" );
     G.refs.push_back( "Tip" );
     G.gains.push_back( apGain( 0 ) );
     return G;
 }
 
 
-IMRO_Attr IMROTbl_T21base::edit_Attr_def() const
+IMRO_Attr IMROTbl_T3010base::edit_Attr_def() const
 {
     return IMRO_Attr( 0, 0, 0, 0 );
 }
 
 
-IMRO_Attr IMROTbl_T21base::edit_Attr_cur() const
+IMRO_Attr IMROTbl_T3010base::edit_Attr_cur() const
 {
     return IMRO_Attr( refid( 0 ), 0, 0, 0 );
 }
 
 
-bool IMROTbl_T21base::edit_Attr_canonical() const
+bool IMROTbl_T3010base::edit_Attr_canonical() const
 {
     int ne = e.size();
 
-    if( ne != imType21baseChan )
+    if( ne != imType3010baseChan )
         return false;
 
     int refid = e[0].refid;
@@ -400,28 +346,28 @@ bool IMROTbl_T21base::edit_Attr_canonical() const
 }
 
 
-void IMROTbl_T21base::edit_exclude_1( tImroSites vX, const IMRO_Site &s ) const
+void IMROTbl_T3010base::edit_exclude_1( tImroSites vX, const IMRO_Site &s ) const
 {
-    T21Key  K = s2k[s];
+    T3010Key    K = s2k[s];
 
-    QMap<T21Key,IMRO_Site>::const_iterator
-        it  = k2s.find( T21Key( K.c, 1 ) ),
+    QMap<T3010Key,IMRO_Site>::const_iterator
+        it  = k2s.find( T3010Key( K.c, 0 ) ),
         end = k2s.end();
 
     for( ; it != end; ++it ) {
-        const T21Key  &ik = it.key();
+        const T3010Key  &ik = it.key();
         if( ik.c != K.c )
             break;
-        if( ik.m != K.m )
+        if( ik.b != K.b )
             vX.push_back( k2s[ik] );
     }
 }
 
 
-void IMROTbl_T21base::edit_ROI2tbl( tconstImroROIs vR, const IMRO_Attr &A )
+void IMROTbl_T3010base::edit_ROI2tbl( tconstImroROIs vR, const IMRO_Attr &A )
 {
     e.clear();
-    e.resize( imType21baseChan );
+    e.resize( imType3010baseChan );
 
     for( int ib = 0, nb = vR.size(); ib < nb; ++ib ) {
 
@@ -434,10 +380,10 @@ void IMROTbl_T21base::edit_ROI2tbl( tconstImroROIs vR, const IMRO_Attr &A )
 
             for( int c = c0; c < cL; ++c ) {
 
-                const T21Key        &K = s2k[IMRO_Site( 0, c, r )];
-                IMRODesc_T21base    &E = e[K.c];
+                const T3010Key      &K = s2k[IMRO_Site( 0, c, r )];
+                IMRODesc_T3010base  &E = e[K.c];
 
-                E.mbank = K.m;
+                E.bank  = K.b;
                 E.refid = A.refIdx;
             }
         }

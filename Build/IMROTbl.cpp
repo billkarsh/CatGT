@@ -15,6 +15,8 @@
 #include "IMROTbl_T2003.h"
 #include "IMROTbl_T2013.h"
 #include "IMROTbl_T2020.h"
+#include "IMROTbl_T3010.h"
+#include "IMROTbl_T3020.h"
 #include "IMROTbl_T3A.h"
 #include "GeomMap.h"
 #include "ShankMap.h"
@@ -26,7 +28,7 @@ using namespace Neuropixels;
 #endif
 
 #include <QFileInfo>
-#include <QSet>
+#include <QThread>
 
 /* ---------------------------------------------------------------- */
 /* IMRO_Site ------------------------------------------------------ */
@@ -52,6 +54,32 @@ bool IMRO_Site::operator<( const IMRO_Site &rhs ) const
 /* ---------------------------------------------------------------- */
 /* IMRO_ROI ------------------------------------------------------- */
 /* ---------------------------------------------------------------- */
+
+bool IMRO_ROI::containsC( int c ) const
+{
+// Within left?
+
+    if( c0 < 0 )
+        ;
+    else if( c < c0 )
+        return false;
+
+// Within right?
+
+    if( cLim < 0 )
+        return true;
+
+    return c < cLim;
+}
+
+
+bool IMRO_ROI::operator==( const IMRO_ROI &rhs ) const
+{
+    return s==rhs.s
+            && r0==rhs.r0 && rLim==rhs.rLim
+            && c0==rhs.c0 && cLim==rhs.cLim;
+}
+
 
 bool IMRO_ROI::operator<( const IMRO_ROI &rhs ) const
 {
@@ -368,7 +396,7 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
                 _xpitch     = 32;
                 _zpitch     = 15;
                 break;
-            case 2020:  // 2.0 multi shank (Ph 2C)
+            case 2020:  // 2.0 quad base (Ph 2C)
                 _ncolhwr    = 2;
                 _ncolvis    = 2;
                 col2vis_ev  = {0,1};
@@ -393,6 +421,34 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
                 _x0_ev      = 53;
                 _x0_od      = 53;
                 _xpitch     = 15;
+                _zpitch     = 15;
+                break;
+            case 3010:  // NXT single shank (Ph 1B)
+            case 3011:  // NXT single shank (Ph 1B) with cap
+                _ncolhwr    = 2;
+                _ncolvis    = 2;
+                col2vis_ev  = {0,1};
+                col2vis_od  = {0,1};
+                _shankpitch = 0;
+                _shankwid   = 70;
+                _tiplength  = 206;
+                _x0_ev      = 27;
+                _x0_od      = 27;
+                _xpitch     = 32;
+                _zpitch     = 15;
+                break;
+            case 3020:  // NXT multishank (Ph 1B)
+            case 3021:  // NXT multishank (Ph 1B) with cap
+                _ncolhwr    = 2;
+                _ncolvis    = 2;
+                col2vis_ev  = {0,1};
+                col2vis_od  = {0,1};
+                _shankpitch = 250;
+                _shankwid   = 70;
+                _tiplength  = 206;
+                _x0_ev      = 27;
+                _x0_od      = 27;
+                _xpitch     = 32;
                 _zpitch     = 15;
                 break;
             default:
@@ -438,6 +494,22 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
         _xpitch     = 32;
         _zpitch     = 20;
     }
+}
+
+
+// Return min row to graft into world-map, or,
+// return -1 to keep all.
+//
+int IMROTbl::svy_minRow( int shank, int bank ) const
+{
+    Q_UNUSED( shank )
+
+    int nFullBanks = nElecPerShank() / nChanPerBank();
+
+    if( bank > nFullBanks - 1 )
+        return nFullBanks * nChanPerBank() / nCol_hwr();
+
+    return -1;
 }
 
 
@@ -664,13 +736,14 @@ int IMROTbl::selectSites( int slot, int port, int dock, bool write ) const
 // Connect all according to table banks
 // ------------------------------------
 
+    NP_ErrorCode    err;
+
     for( int ic = 0, nC = nChan(); ic < nC; ++ic ) {
 
         if( chIsRef( ic ) )
             continue;
 
-        int             shank, bank;
-        NP_ErrorCode    err;
+        int shank, bank;
 
         shank = elShankAndBank( bank, ic );
 
@@ -680,8 +753,24 @@ int IMROTbl::selectSites( int slot, int port, int dock, bool write ) const
             return err;
     }
 
-    if( write )
-        np_writeProbeConfiguration( slot, port, dock, true );
+    if( write ) {
+
+        for( int itry = 1; itry <= 10; ++itry ) {
+
+            err = np_writeProbeConfiguration( slot, port, dock, true );
+
+            if( err == SUCCESS ) {
+                if( itry > 1 ) {
+                    Warning() <<
+                    QString("Probe (slot %1, port %2, dock %3): writeConfig() took %4 tries.")
+                    .arg( slot ).arg( port ).arg( dock).arg( itry );
+                }
+                break;
+            }
+
+            QThread::msleep( 100 );
+        }
+    }
 #endif
 
     return 0;
@@ -784,99 +873,36 @@ int IMROTbl::selectAPFlts( int slot, int port, int dock ) const
 /* Edit ----------------------------------------------------------- */
 /* ---------------------------------------------------------------- */
 
-void IMROTbl::edit_defaultROI( int *nBoxes, tImroROIs vR ) const
+void IMROTbl::edit_defaultROI( tImroROIs vR ) const
 {
     vR.clear();
-    vR.push_back( IMRO_ROI( 0, 0, nChanPerBank() / _ncolhwr ) );
-    nBoxes[0] = 1;
+    vR.push_back( IMRO_ROI( 0, 0, nAP() / _ncolhwr ) );
 }
 
 
-// - Box count: {1,2,4,...,IMRO_ROI_MAX}.
-// - Boxes span shanks.
+// - Boxes are whole- or half-shank width.
 // - Boxes enclose all AP channels.
 // - Canonical attributes all channels.
 //
-bool IMROTbl::edit_isCanonical( int *nBoxes, tImroROIs vR ) const
+bool IMROTbl::edit_isCanonical( tImroROIs vR ) const
 {
-// Calculate Boxes menu entries
-
-    QSet<int>   boxesMenu = {1};
-    IMRO_GUI    G = edit_GUI();
-    int         rows_per_box = nChanPerBank() / _ncolvis;
-
-    for( int nb = 2; nb <= IMRO_ROI_MAX; nb *= 2 ) {
-
-        if( (rows_per_box / nb) % G.grid == 0 )
-            boxesMenu.insert( nb );
-        else
-            break;
-    }
-
-// If canonical, all boxes are same size.
-// That size must be the min size in the set.
-// Split large boxes if they are multiples of the min size.
-
-    if( nBoxes[0] ) {
-
-        int minrows = 1000000,
-            nbsplit = 0;
-
-        for( int ib = 0; ib < nBoxes[0]; ++ib )
-            minrows = qMin( minrows, vR[ib].rLim - vR[ib].r0 );
-
-        for( int ib = 0; ib < nBoxes[0]; ++ib ) {
-
-            if( nbsplit >= 0 ) {
-
-                int nrows = vR[ib].rLim - vR[ib].r0;
-
-                if( nrows % minrows == 0 ) {
-
-                    nbsplit += nrows / minrows;
-
-                    while( nrows > minrows ) {
-                        IMRO_ROI    Rnew = vR[ib];
-                        Rnew.r0      = Rnew.rLim - minrows;
-                        vR[ib].rLim -= minrows;
-                        nrows       -= minrows;
-                        vR.push_back( Rnew );
-                    }
-                }
-                else {
-                    nbsplit = -1;
-                    break;
-                }
-            }
-        }
-
-        if( nbsplit >= 0 )
-            nBoxes[0] = nbsplit;
-    }
-
-// Check box count
-
-    if( !boxesMenu.contains( nBoxes[0] ) )
-        return false;
-
 // Assess boxes
 
-    int nr = 0;
+    int ne = 0;
 
-    for( int ib = 0; ib < nBoxes[0]; ++ib ) {
+    for( int ib = 0; ib < vR.size(); ++ib ) {
 
         const IMRO_ROI  &B = vR[ib];
+        int             w  = B.width( _ncolhwr );
 
-        int c0 = qMax( 0, B.c0 ),
-            cL = (B.cLim >= 0 ? B.cLim : _ncolhwr);
 
-        if( c0 != 0 || cL != _ncolhwr )
+        if( !(w == _ncolhwr || w == _ncolhwr/2) )
             return false;
 
-        nr += B.rLim - B.r0;
+        ne += B.area( _ncolhwr );
     }
 
-    return nr * _ncolhwr == nAP() && edit_Attr_canonical();
+    return ne == nAP() && edit_Attr_canonical();
 }
 
 
@@ -884,19 +910,13 @@ bool IMROTbl::edit_isCanonical( int *nBoxes, tImroROIs vR ) const
 // Within range, scan across for contiguous 1s.
 // That defines ROI boxes.
 //
-// Fill in ROI count(s):
-// - nBoxes[shank] if NP2020.
-// - nBoxes[0] = sum if !NP2020.
-//
-void IMROTbl::edit_tbl2ROI( int *nBoxes, tImroROIs vR ) const
+void IMROTbl::edit_tbl2ROI( tImroROIs vR ) const
 {
-    int nB[4] = {0,0,0,0};
-
     vR.clear();
 
     ShankMap    M;
     toShankMap_hwr( M );
-    qSort( M.e );   // s->r->c
+    std::sort( M.e.begin(), M.e.end() );    // s->r->c
 
     for( int ie = 0, ne = M.e.size(); ie < ne; ) {
 
@@ -970,17 +990,9 @@ void IMROTbl::edit_tbl2ROI( int *nBoxes, tImroROIs vR ) const
             else if( roi.c0 >= 0 ) {
                 ++roi.cLim;
                 vR.push_back( roi );
-                ++nB[B0.s];
                 roi.c0 = -1;
             }
         }
-    }
-
-    if( apiFetchType() == 4 )
-        memcpy( nBoxes, nB, 4*sizeof(int) );
-    else {
-        nBoxes[0] = vR.size();
-        memset( &nBoxes[1], 0, 3*sizeof(int) );
     }
 }
 
@@ -993,8 +1005,8 @@ void IMROTbl::edit_exclude( tImroSites vX, tconstImroROIs vR ) const
 
         const IMRO_ROI  &B = vR[ib];
 
-        int c0 = qMax( 0, B.c0 ),
-            cL = (B.cLim >= 0 ? B.cLim : _ncolhwr);
+        int c0 = B.c_0(),
+            cL = B.c_lim( _ncolhwr );
 
         for( int r = B.r0; r < B.rLim; ++r ) {
 
@@ -1003,7 +1015,7 @@ void IMROTbl::edit_exclude( tImroSites vX, tconstImroROIs vR ) const
         }
     }
 
-    qSort( vX );
+    std::sort( vX.begin(), vX.end() );
 }
 
 
@@ -1150,13 +1162,27 @@ bool IMROTbl::pnToType( int &type, const QString &pn )
                 type = 2013;
                 supp = true;
                 break;
-            case 2020:  // Neuropixels 2.0 multi shank (Ph 2C)
+            case 2020:  // Neuropixels 2.0 quad base (Ph 2C)
                 type = 2020;
                 supp = true;
                 break;
             case 3000:  // Passive NXT probe
                 type = 1200;
                 supp = true;
+                break;
+            case 3010:  // NXT single shank (Ph 1B)
+            case 3011:  // NXT single shank (Ph 1B) with cap
+#ifdef HAVE_NXT
+                type = 3010;
+                supp = true;
+#endif
+                break;
+            case 3020:  // NXT multishank (Ph 1B)
+            case 3021:  // NXT multishank (Ph 1B) with cap
+#ifdef HAVE_NXT
+                type = 3020;
+                supp = true;
+#endif
                 break;
         }
     }
@@ -1234,8 +1260,14 @@ IMROTbl* IMROTbl::alloc( const QString &pn )
             case 2013:  // Neuropixels 2.0 multishank probe
             case 2014:  // Neuropixels 2.0 multishank probe with cap
                 return new IMROTbl_T2013( pn );
-            case 2020:  // Neuropixels 2.0 multi shank (Ph 2C)
+            case 2020:  // Neuropixels 2.0 quad base (Ph 2C)
                 return new IMROTbl_T2020( pn );
+            case 3010:  // NXT single shank (Ph 1B)
+            case 3011:  // NXT single shank (Ph 1B) with cap
+                return new IMROTbl_T3010( pn );
+            case 3020:  // NXT multishank (Ph 1B)
+            case 3021:  // NXT multishank (Ph 1B) with cap
+                return new IMROTbl_T3020( pn );
             default:
                 return 0;
         }
@@ -1252,9 +1284,11 @@ QString IMROTbl::default_imroLE( int type )
     switch( type ) {
         case 21:
         case 2003:
-        case 2020: return "*Default (bank 0, ref ext)";
+        case 2020:
+        case 3010: return "*Default (bank 0, ref ext)";
         case 24:
         case 2013: return "*Default (shnk 0, bank 0, ref ext)";
+        case 3020: return "*Default (shnk 0+1, bank 0, ref ext)";
         case -3: return "*Default (bank 0, ref ext, gain 500/250)";
         default: return "*Default (bank 0, ref ext, gain 500/250, flt on)";
     }

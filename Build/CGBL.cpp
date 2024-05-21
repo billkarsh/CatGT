@@ -1345,7 +1345,7 @@ bool SepShanks::split( const KVParams &kvp, const QFileInfo &fim )
                         .arg( Subset::bits2RngStr( K[j] ) );
 
         Save::parse( STR2CHR( arg ) );
-        qSort( GBL.vS );
+        std::sort( GBL.vS.begin(), GBL.vS.end() );
     }
 
     ip = -1;
@@ -1490,7 +1490,7 @@ bool MaxZ::apply(
                     .arg( sNU ).arg( sSY );
 
     Save::parse( STR2CHR( arg ) );
-    qSort( GBL.vS );
+    std::sort( GBL.vS.begin(), GBL.vS.end() );
 
     return true;
 }
@@ -2714,7 +2714,7 @@ bool CGBL::parseSepShanks()
             return false;
     }
 
-    qSort( vSK );
+    std::sort( vSK.begin(), vSK.end() );
     return true;
 }
 
@@ -2732,7 +2732,7 @@ bool CGBL::parseMaxZ()
             return false;
     }
 
-    qSort( vMZ );
+    std::sort( vMZ.begin(), vMZ.end() );
     return true;
 }
 
@@ -2797,7 +2797,7 @@ bool CGBL::parseElems( const QString &s )
 
 bool CGBL::checkExtractors()
 {
-    qSort( vX.begin(), vX.end(), XTR::pointerCompare() );
+    std::sort( vX.begin(), vX.end(), XTR::pointerCompare() );
 
     bool ok = true;
 
@@ -2868,7 +2868,7 @@ bool CGBL::checkExtractors()
 
 bool CGBL::checkSaves()
 {
-    qSort( vS );
+    std::sort( vS.begin(), vS.end() );
 
     bool ok = true;
 
@@ -3134,7 +3134,7 @@ bool CGBL::addAutoExtractors()
 
 // Re-sort
 
-    qSort( vX.begin(), vX.end(), XTR::pointerCompare() );
+    std::sort( vX.begin(), vX.end(), XTR::pointerCompare() );
 
     return true;
 }

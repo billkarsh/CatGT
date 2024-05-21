@@ -342,10 +342,6 @@ IMRO_GUI IMROTbl_T0base::edit_GUI() const
     G.gains.push_back( 1500 );
     G.gains.push_back( 2000 );
     G.gains.push_back( 3000 );
-
-    if( nBanks() == 1 )
-        G.grid = nRow();    // force one box at lowest bank
-
     G.apEnab = true;
     G.lfEnab = true;
     G.hpEnab = true;
@@ -415,8 +411,8 @@ void IMROTbl_T0base::edit_ROI2tbl( tconstImroROIs vR, const IMRO_Attr &A )
 
         const IMRO_ROI  &B = vR[ib];
 
-        int c0 = qMax( 0, B.c0 ),
-            cL = (B.cLim >= 0 ? B.cLim : _ncolhwr);
+        int c0 = B.c_0(),
+            cL = B.c_lim( _ncolhwr );
 
         for( int r = B.r0; r < B.rLim; ++r ) {
 

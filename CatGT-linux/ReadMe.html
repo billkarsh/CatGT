@@ -63,6 +63,9 @@
 <li>Remove all white space at line ends, especially after a caret (^).</li>
 <li>Read CatGT.log. There is no interesting output in the command window.</li>
 </ul>
+<h3 id="windows-with-powershell">(Windows with PowerShell)</h3>
+<p>PowerShell 3.0 and later will parse your parameter list and may complain; it's especially sensitive about supercat command lines. You can prevent that with the &quot;stop-parsing&quot; symbol --%. Use it like this:</p>
+<p><code>&gt;runit.bat --% -dir=data_dir -run=run_name -g=ga,gb -t=ta,tb &lt;which streams&gt; [ options ]</code></p>
 <h3 id="linux-1">(Linux)</h3>
 <p><code>&gt;runit.sh '-dir=data_dir -run=run_name -g=ga,gb -t=ta,tb &lt;which streams&gt; [ options ]'</code></p>
 <p>Notes:</p>
@@ -793,6 +796,7 @@ Options:
 <p>Version 4.4</p>
 <ul>
 <li>Support NP2020 quad-probes.</li>
+<li>Support NXT probes.</li>
 <li>Allow -maxZ and -save options on same probe.</li>
 <li>Add -sepShanks option.</li>
 </ul>

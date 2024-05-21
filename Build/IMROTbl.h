@@ -26,12 +26,21 @@ struct IMRO_Site {
 // Editing helper - columns in hwr coords
 //
 struct IMRO_ROI {
-// if c0   <= 0  full left  included
-// if cLim == -1 full right included
+// if c0   <= 0 full left  included
+// if cLim <  0 full right included
     int s, r0, rLim, c0, cLim;
     IMRO_ROI() : s(0), r0(0), rLim(0), c0(-1), cLim(-1)     {}
     IMRO_ROI( int s, int r0, int rLim, int c0 = -1, int cLim = -1 )
         :   s(s), r0(r0), rLim(rLim), c0(c0), cLim(cLim)    {}
+    int c_0() const                 {return (c0 >= 0 ? c0 : 0);}
+    int c_lim( int wmax ) const     {return (cLim >= 0 ? cLim : wmax);}
+    int width( int wmax ) const     {return c_lim( wmax ) - c_0();}
+    int height() const              {return rLim - r0;}
+    float midPt() const             {return (r0 + rLim) / 2.0;}
+    int area( int wmax ) const      {return width( wmax ) * height();}
+    bool containsR( int r ) const   {return (r >= r0 && r < rLim);}
+    bool containsC( int c ) const;
+    bool operator==( const IMRO_ROI &rhs ) const;
     bool operator<( const IMRO_ROI &rhs ) const;
 };
 
@@ -40,14 +49,12 @@ struct IMRO_ROI {
 struct IMRO_GUI {
     std::vector<QString>    refs;
     std::vector<int>        gains;
-    int                     grid;
     qint8                   nBase;
     bool                    apEnab,
                             lfEnab,
                             hpEnab;
     IMRO_GUI()
-        :   grid(1), nBase(1),
-            apEnab(false), lfEnab(false), hpEnab(false) {}
+        :   nBase(1), apEnab(false), lfEnab(false), hpEnab(false)   {}
 };
 
 // Editing helper
@@ -97,6 +104,7 @@ public:
     virtual void copyFrom( const IMROTbl *rhs ) = 0;
     virtual void fillDefault() = 0;
     virtual void fillShankAndBank( int shank, int bank ) = 0;
+    virtual int svy_minRow( int shank, int bank ) const;
 
     virtual int nElec() const = 0;
     virtual int nShank() const = 0;
@@ -112,6 +120,7 @@ public:
     virtual int nLF() const = 0;
     virtual int nSY() const             {return 1;}
     virtual int nBanks() const = 0;
+    virtual int nSvyBanks() const       {return nBanks();}
     virtual int nChanPerBank() const    {return nAP();}
     virtual int nRefs() const = 0;
     virtual int maxInt() const = 0;
@@ -189,9 +198,9 @@ public:
         {vX.clear(); Q_UNUSED( s )}
     virtual void edit_ROI2tbl( tconstImroROIs vR, const IMRO_Attr &A )
         {Q_UNUSED( vR ) Q_UNUSED( A )}
-    virtual void edit_defaultROI( int *nBoxes, tImroROIs vR ) const;
-    virtual bool edit_isCanonical( int *nBoxes, tImroROIs vR ) const;
-    void edit_tbl2ROI( int *nBoxes, tImroROIs vR ) const;
+    virtual void edit_defaultROI( tImroROIs vR ) const;
+    virtual bool edit_isCanonical( tImroROIs vR ) const;
+    void edit_tbl2ROI( tImroROIs vR ) const;
     void edit_exclude( tImroSites vX, tconstImroROIs vR ) const;
     bool edit_isAllowed( tconstImroSites vX, const IMRO_ROI &B ) const;
 

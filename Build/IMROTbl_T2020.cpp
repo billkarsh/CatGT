@@ -1,7 +1,6 @@
 
 #include "IMROTbl_T2020.h"
 
-#include <QSet>
 #include <QTextStream>
 
 /* ---------------------------------------------------------------- */
@@ -368,10 +367,10 @@ bool IMROTbl_T2020::edit_Attr_canonical() const
     if( ne != imType2020Chan )
         return false;
 
-    const IMRODesc_T2020    &E = e[0];
+    int refid = e[0].refid;
 
     for( int ie = 1; ie < ne; ++ie ) {
-        if( e[ie].refid != E.refid )
+        if( e[ie].refid != refid )
             return false;
     }
 
@@ -406,8 +405,8 @@ void IMROTbl_T2020::edit_ROI2tbl( tconstImroROIs vR, const IMRO_Attr &A )
 
         const IMRO_ROI  &B = vR[ib];
 
-        int c0 = qMax( 0, B.c0 ),
-            cL = (B.cLim >= 0 ? B.cLim : _ncolhwr);
+        int c0 = B.c_0(),
+            cL = B.c_lim( _ncolhwr );
 
         for( int r = B.r0; r < B.rLim; ++r ) {
 
@@ -427,121 +426,40 @@ void IMROTbl_T2020::edit_ROI2tbl( tconstImroROIs vR, const IMRO_Attr &A )
 }
 
 
-void IMROTbl_T2020::edit_defaultROI( int *nBoxes, tImroROIs vR ) const
+void IMROTbl_T2020::edit_defaultROI( tImroROIs vR ) const
 {
     int rowsPerBank = nChanPerBank() / _ncolhwr;
 
     vR.clear();
 
-    for( int is = 0; is < imType2020Shanks; ++is ) {
+    for( int is = 0; is < imType2020Shanks; ++is )
         vR.push_back( IMRO_ROI( is, 0, rowsPerBank ) );
-        nBoxes[is] = 1;
-    }
 }
 
 
-// - Box count: {1,2,4,...,IMRO_ROI_MAX} each shank.
-// - Boxes span shanks.
+// - Boxes are whole- or half-shank width.
 // - Boxes enclose all channels per shank.
 // - Canonical attributes all channels.
 //
-bool IMROTbl_T2020::edit_isCanonical( int *nBoxes, tImroROIs vR ) const
+bool IMROTbl_T2020::edit_isCanonical( tImroROIs vR ) const
 {
-// Calculate Boxes menu entries (for any shank)
+// Assess boxes per shank
 
-    QSet<int>   boxesMenu = {1};
-    IMRO_GUI    G = edit_GUI();
-    int         rows_per_box = nChanPerBank() / _ncolvis;
+    int ne[4] = {0,0,0,0};
 
-    for( int nb = 2; nb <= IMRO_ROI_MAX; nb *= 2 ) {
+    for( int ib = 0; ib < vR.size(); ++ib ) {
 
-        if( (rows_per_box / nb) % G.grid == 0 )
-            boxesMenu.insert( nb );
-        else
-            break;
-    }
+        const IMRO_ROI  &B = vR[ib];
+        int             w  = B.width( _ncolhwr );
 
-// Scan boxes on each shank
-
-    int nb = vR.size();
-
-    for( int is = 0; is < imType2020Shanks; ++is ) {
-
-        // If canonical, all boxes on shank are same size.
-        // That size must be the min size in the set.
-        // Split large boxes if they are multiples of the min size.
-
-        if( nBoxes[is] ) {
-
-            int minrows = 1000000,
-                nbsplit = 0;
-
-            for( int ib = 0; ib < nb; ++ib ) {
-                const IMRO_ROI  &B = vR[ib];
-                if( B.s == is )
-                    minrows = qMin( minrows, B.rLim - B.r0 );
-            }
-
-            for( int ib = 0; ib < nb; ++ib ) {
-
-                if( nbsplit >= 0 ) {
-
-                    IMRO_ROI  &B = vR[ib];
-
-                    if( B.s != is )
-                        continue;
-
-                    int nrows = B.rLim - B.r0;
-
-                    if( nrows % minrows == 0 ) {
-
-                        nbsplit += nrows / minrows;
-
-                        while( nrows > minrows ) {
-                            IMRO_ROI    Rnew = vR[ib];
-                            Rnew.r0 = Rnew.rLim - minrows;
-                            B.rLim -= minrows;
-                            nrows  -= minrows;
-                            vR.push_back( Rnew );
-                        }
-                    }
-                    else {
-                        nbsplit = -1;
-                        break;
-                    }
-                }
-            }
-
-            if( nbsplit >= 0 )
-                nBoxes[is] = nbsplit;
-        }
-
-        // Check box count this shank
-
-        if( !boxesMenu.contains( nBoxes[is] ) )
+        if( !(w == _ncolhwr || w == _ncolhwr/2) )
             return false;
 
-        // Assess boxes this shank
+        ne[B.s] += B.area( _ncolhwr );
+    }
 
-        int nr = 0;
-
-        for( int ib = 0; ib < nb; ++ib ) {
-
-            const IMRO_ROI  &B = vR[ib];
-
-            if( B.s != is )
-                continue;
-
-            int c0 = qMax( 0, B.c0 ),
-                cL = (B.cLim >= 0 ? B.cLim : _ncolhwr);
-
-            if( c0 != 0 || cL != _ncolhwr )
-                return false;
-
-            nr += B.rLim - B.r0;
-        }
-
-        if( nr * _ncolhwr != imType2020ChPerShk )
+    for( int is = 0; is < imType2020Shanks; ++is ) {
+        if( ne[is] != imType2020ChPerShk )
             return false;
     }
 
