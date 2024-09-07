@@ -9,6 +9,7 @@
 #include "IMROTbl_T1122.h"
 #include "IMROTbl_T1123.h"
 #include "IMROTbl_T1200.h"
+#include "IMROTbl_T1221.h"
 #include "IMROTbl_T1300.h"
 #include "IMROTbl_T21.h"
 #include "IMROTbl_T24.h"
@@ -279,10 +280,10 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
                 col2vis_ev  = {0,1,2,3,4,5,6,7};
                 col2vis_od  = {0,1,2,3,4,5,6,7};
                 _shankpitch = 0;
-                _shankwid   = 70;
+                _shankwid   = 73;
                 _tiplength  = 203.5;
-                _x0_ev      = 14;
-                _x0_od      = 14;
+                _x0_ev      = 15.5f;
+                _x0_od      = 15.5f;
                 _xpitch     = 6;
                 _zpitch     = 6;
                 break;
@@ -340,7 +341,7 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
                 break;
             case 1200:  // NHP 128 channel analog 25mm
             case 1210:  // NHP 128 channel analog 45mm
-//@OBX Need true NP1200 xoffsets.
+            case 1221:  // Custom layout defaults
                 _ncolhwr    = 2;
                 _ncolvis    = 4;
                 col2vis_ev  = {1,3};
@@ -348,10 +349,10 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
                 _shankpitch = 0;
                 _shankwid   = 125;
                 _tiplength  = 372;
-                _x0_ev      = 54.5;
-                _x0_od      = 38.5;
+                _x0_ev      = 56.5f;
+                _x0_od      = 36.5f;
                 _xpitch     = 32;
-                _zpitch     = 20;
+                _zpitch     = 31;
                 break;
             case 1300:  // Opto
                 _ncolhwr    = 2;
@@ -416,10 +417,9 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
                 col2vis_od  = {3};
                 _shankpitch = 0;
                 _shankwid   = 70;
-//@OBX Need true NP3000 tiplength.
                 _tiplength  = 206;
-                _x0_ev      = 53;
-                _x0_od      = 53;
+                _x0_ev      = 59;
+                _x0_od      = 59;
                 _xpitch     = 15;
                 _zpitch     = 15;
                 break;
@@ -431,7 +431,7 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
                 col2vis_od  = {0,1};
                 _shankpitch = 0;
                 _shankwid   = 70;
-                _tiplength  = 206;
+                _tiplength  = 203;
                 _x0_ev      = 27;
                 _x0_od      = 27;
                 _xpitch     = 32;
@@ -445,7 +445,7 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
                 col2vis_od  = {0,1};
                 _shankpitch = 250;
                 _shankwid   = 70;
-                _tiplength  = 206;
+                _tiplength  = 204;
                 _x0_ev      = 27;
                 _x0_od      = 27;
                 _xpitch     = 32;
@@ -780,6 +780,24 @@ int IMROTbl::selectSites( int slot, int port, int dock, bool write ) const
 int IMROTbl::selectRefs( int slot, int port, int dock ) const
 {
 #ifdef HAVE_IMEC
+// -------------------------------
+// Disconnect the 4 shank switches
+// -------------------------------
+
+#ifndef HAVE_NXT
+    if( nShank() == 4 ) {
+
+        for( int ic = 0; ic < 4; ++ic ) {
+
+            NP_ErrorCode    err =
+            np_setReference( slot, port, dock, ic, ic, NONE_REF, 0 );
+
+            if( err != SUCCESS )
+                return err;
+        }
+    }
+#endif
+
 // ---------------------------------------
 // Connect all according to table ref data
 // ---------------------------------------
@@ -894,7 +912,6 @@ bool IMROTbl::edit_isCanonical( tImroROIs vR ) const
 
         const IMRO_ROI  &B = vR[ib];
         int             w  = B.width( _ncolhwr );
-
 
         if( !(w == _ncolhwr || w == _ncolhwr/2) )
             return false;
@@ -1019,24 +1036,24 @@ void IMROTbl::edit_exclude( tImroSites vX, tconstImroROIs vR ) const
 }
 
 
-// vS sorted s -> r -> c.
-//
-bool IMROTbl::edit_isAllowed( tconstImroSites vX, const IMRO_ROI &B ) const
+void IMROTbl::edit_ROI2Bits( QBitArray &b, tconstImroROIs vR ) const
 {
-    for( int ix = 0, nx = vX.size(); ix < nx; ++ix ) {
+    b.clear();
+    b.resize( nAP() );
 
-        const IMRO_Site &X = vX[ix];
+    for( int ib = 0, nb = vR.size(); ib < nb; ++ib ) {
 
-        if( X.s == B.s ) {
+        const IMRO_ROI  &B = vR[ib];
 
-            if( X.r >= B.r0 )
-                return X.r >= B.rLim;
+        int c0 = B.c_0(),
+            cL = B.c_lim( _ncolhwr );
+
+        for( int r = B.r0; r < B.rLim; ++r ) {
+
+            for( int c = c0; c < cL; ++c )
+                b.setBit( edit_site2Chan( IMRO_Site( B.s, c, r ) ) );
         }
-        else if( X.s > B.s )
-            break;
     }
-
-    return true;
 }
 
 /* ---------------------------------------------------------------- */
@@ -1137,6 +1154,7 @@ bool IMROTbl::pnToType( int &type, const QString &pn )
                 break;
             case 1200:  // NHP 128 channel analog 25mm
             case 1210:  // NHP 128 channel analog 45mm
+            case 1221:  // Custom layout
                 type = 1200;
                 supp = true;
                 break;
@@ -1248,6 +1266,8 @@ IMROTbl* IMROTbl::alloc( const QString &pn )
             case 1210:  // NHP 128 channel analog 45mm
             case 3000:  // Passive NXT probe
                 return new IMROTbl_T1200( pn );
+            case 1221:  // Custom layout
+                return new IMROTbl_T1221( pn );
             case 1300:  // Opto
                 return new IMROTbl_T1300( pn );
             case 2000:  // NP 2.0 SS scrambled el 1280

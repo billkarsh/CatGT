@@ -391,6 +391,9 @@ bool IMROTbl_T21base::edit_Attr_canonical() const
 
     int refid = e[0].refid;
 
+    if( refid > tip0refID() )
+        return false;
+
     for( int ie = 1; ie < ne; ++ie ) {
         if( e[ie].refid != refid )
             return false;
@@ -415,6 +418,12 @@ void IMROTbl_T21base::edit_exclude_1( tImroSites vX, const IMRO_Site &s ) const
         if( ik.m != K.m )
             vX.push_back( k2s[ik] );
     }
+}
+
+
+int IMROTbl_T21base::edit_site2Chan( const IMRO_Site &s ) const
+{
+    return s2k[s].c;
 }
 
 

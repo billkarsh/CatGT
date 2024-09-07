@@ -371,6 +371,9 @@ bool IMROTbl_T0base::edit_Attr_canonical() const
 
     const IMRODesc_T0base   &E = e[0];
 
+    if( E.refid > 1 )
+        return false;
+
     for( int ie = 1; ie < ne; ++ie ) {
         const IMRODesc_T0base   &T = e[ie];
         if( T.apgn  != E.apgn  || T.lfgn  != E.lfgn ||
@@ -399,6 +402,12 @@ void IMROTbl_T0base::edit_exclude_1( tImroSites vX, const IMRO_Site &s ) const
         if( ik.b != K.b )
             vX.push_back( k2s[ik] );
     }
+}
+
+
+int IMROTbl_T0base::edit_site2Chan( const IMRO_Site &s ) const
+{
+    return s2k[s].c;
 }
 
 

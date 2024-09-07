@@ -77,7 +77,7 @@ struct IMROTbl_T3010base : public IMROTbl
     virtual int nBanks() const          {return imType3010baseBanks;}
     virtual int nRefs() const           {return imType3010baseRefids;}
     virtual int maxInt() const          {return 2048;}
-    virtual double maxVolts() const     {return 0.62;}
+    virtual double maxVolts() const     {return 0.67;}
     virtual bool needADCCal() const     {return false;}
 
     // {0=NP1000, 2=NP2000, 4=NP2020}-like
@@ -108,7 +108,7 @@ struct IMROTbl_T3010base : public IMROTbl
     virtual bool chIsRef( int /* ch */ ) const      {return false;}
     virtual int idxToGain( int /* idx */ ) const    {return imType3010baseGain;}
     virtual int gainToIdx( int /* gain */ ) const   {return 0;}
-    virtual double unityToVolts( double u ) const   {return 1.24*u - 0.62;}
+    virtual double unityToVolts( double u ) const   {return 1.34*u - 0.67;}
     virtual void locFltRadii( int &rin, int &rout, int iflt ) const;    // iflt = {1,2}
 
     virtual void muxTable( int &nADC, int &nGrp, std::vector<int> &T ) const;
@@ -120,13 +120,13 @@ struct IMROTbl_T3010base : public IMROTbl
 
 // Edit
 
-    virtual bool edit_able() const  {return true;}
     virtual void edit_init() const;
     virtual IMRO_GUI edit_GUI() const;
     virtual IMRO_Attr edit_Attr_def() const;
     virtual IMRO_Attr edit_Attr_cur() const;
     virtual bool edit_Attr_canonical() const;
     virtual void edit_exclude_1( tImroSites vX, const IMRO_Site &s ) const;
+    virtual int edit_site2Chan( const IMRO_Site &s ) const;
     virtual void edit_ROI2tbl( tconstImroROIs vR, const IMRO_Attr &A );
 };
 

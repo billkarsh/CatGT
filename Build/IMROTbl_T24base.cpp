@@ -372,6 +372,9 @@ bool IMROTbl_T24base::edit_Attr_canonical() const
 
     int refid = e[0].refid;
 
+    if( tip0refID() == 1 && refid > 4 )
+        return false;
+
     for( int ie = 4; ie < ne; ++ie ) {
         if( e[ie].refid != refid )
             return false;
@@ -396,6 +399,12 @@ void IMROTbl_T24base::edit_exclude_1( tImroSites vX, const IMRO_Site &s ) const
         if( ik.s != K.s || ik.b != K.b )
             vX.push_back( k2s[ik] );
     }
+}
+
+
+int IMROTbl_T24base::edit_site2Chan( const IMRO_Site &s ) const
+{
+    return s2k[s].c;
 }
 
 

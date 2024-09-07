@@ -355,7 +355,7 @@ int IMROTbl_T3020base::refTypeAndFields( int &shank, int &bank, int ch ) const
     bank = 0;
 
     if( rid == 0 ) {
-        shank = 0;
+        shank = (ch < 4 ? ch : 0);
         return 0;
     }
     else if( rid == 1 ) {
@@ -504,6 +504,12 @@ void IMROTbl_T3020base::edit_exclude_1( tImroSites vX, const IMRO_Site &s ) cons
         if( ik.s != K.s || ik.b != K.b )
             vX.push_back( k2s[ik] );
     }
+}
+
+
+int IMROTbl_T3020base::edit_site2Chan( const IMRO_Site &s ) const
+{
+    return s2k[s].c;
 }
 
 

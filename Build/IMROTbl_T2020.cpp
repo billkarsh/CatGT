@@ -396,6 +396,12 @@ void IMROTbl_T2020::edit_exclude_1( tImroSites vX, const IMRO_Site &s ) const
 }
 
 
+int IMROTbl_T2020::edit_site2Chan( const IMRO_Site &s ) const
+{
+    return s2k[s].c;
+}
+
+
 void IMROTbl_T2020::edit_ROI2tbl( tconstImroROIs vR, const IMRO_Attr &A )
 {
     e.clear();

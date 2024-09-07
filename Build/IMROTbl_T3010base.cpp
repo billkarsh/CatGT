@@ -364,6 +364,12 @@ void IMROTbl_T3010base::edit_exclude_1( tImroSites vX, const IMRO_Site &s ) cons
 }
 
 
+int IMROTbl_T3010base::edit_site2Chan( const IMRO_Site &s ) const
+{
+    return s2k[s].c;
+}
+
+
 void IMROTbl_T3010base::edit_ROI2tbl( tconstImroROIs vR, const IMRO_Attr &A )
 {
     e.clear();

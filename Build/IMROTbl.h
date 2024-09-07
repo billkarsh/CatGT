@@ -8,6 +8,8 @@
 struct GeomMap;
 struct ShankMap;
 
+class QBitArray;
+
 /* ---------------------------------------------------------------- */
 /* Types ---------------------------------------------------------- */
 /* ---------------------------------------------------------------- */
@@ -85,7 +87,7 @@ struct IMROTbl
 protected:
     std::vector<int>    col2vis_ev,
                         col2vis_od;
-    float               _shankpitch,
+    float               _shankpitch,    // microns for phys dims
                         _shankwid,
                         _tiplength,
                         _x0_ev,
@@ -111,7 +113,10 @@ public:
     virtual int nSvyShank() const       {return nShank();}
             int nElecPerShank() const   {return nElec()/nShank();}
             float tipLength() const     {return _tiplength;}
+            float xPitch() const        {return _xpitch;}
             float zPitch() const        {return _zpitch;}
+            float x0EvenRow() const     {return _x0_ev;}
+            float x0OddRow() const      {return _x0_od;}
             int nCol_hwr() const        {return _ncolhwr;}
             int nCol_vis() const        {return _ncolvis;}
             int nRow() const            {return nElecPerShank()/_ncolhwr;}
@@ -188,7 +193,7 @@ public:
 
 // Edit
 
-    virtual bool edit_able() const              {return false;}
+    virtual bool edit_able() const              {return true;}
     virtual void edit_init() const              {}
     virtual IMRO_GUI edit_GUI() const           {return IMRO_GUI();}
     virtual IMRO_Attr edit_Attr_def() const     {return IMRO_Attr();}
@@ -196,13 +201,15 @@ public:
     virtual bool edit_Attr_canonical() const    {return false;}
     virtual void edit_exclude_1( tImroSites vX, const IMRO_Site &s ) const
         {vX.clear(); Q_UNUSED( s )}
+    virtual int edit_site2Chan( const IMRO_Site &s ) const
+        {Q_UNUSED( s ) return 0;}
     virtual void edit_ROI2tbl( tconstImroROIs vR, const IMRO_Attr &A )
         {Q_UNUSED( vR ) Q_UNUSED( A )}
     virtual void edit_defaultROI( tImroROIs vR ) const;
     virtual bool edit_isCanonical( tImroROIs vR ) const;
     void edit_tbl2ROI( tImroROIs vR ) const;
     void edit_exclude( tImroSites vX, tconstImroROIs vR ) const;
-    bool edit_isAllowed( tconstImroSites vX, const IMRO_ROI &B ) const;
+    void edit_ROI2Bits( QBitArray &b, tconstImroROIs vR ) const;
 
 // Allocate
 
