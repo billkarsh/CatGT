@@ -97,7 +97,7 @@ void Pass1AP::neural( qint16 *data, int ntpts )
 
     if( GBL.gfixdo ) {
         gFixDetect(
-            TLR, data, &gfixbuf[0], meta.smpOutSpan(),
+            TLR, data, &gfixbuf[0], meta.smpWritten,
             Tmul, ntpts, meta.nC, meta.nN, maxInt, -1 );
     }
 
@@ -323,7 +323,7 @@ void Pass1AP::gfixEdits()
     }
 
     QMap<qint64,LR>::iterator   it_fix  = TLR.begin(), end = TLR.end();
-    qint64                      smpFLen = meta.smpOutSpan(),
+    qint64                      smpFLen = meta.smpWritten,
                                 nedit   = 0;
     int                         bufWid  = o_buf.size()/meta.nC - 1;
 

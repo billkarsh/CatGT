@@ -135,7 +135,7 @@ bool Pass1AP2LF::zero( qint64 gapBytes, qint64 zfBytes )
     Log() <<
     QString("Gap before file '%1' out_start_smp=%2 inp_gap_smp=%3 out_zeros_smp=%4")
     .arg( i_fi.fileName() )
-    .arg( meta.smpOutSpan() / 12 )
+    .arg( meta.smpWritten / 12 )
     .arg( gapBytes / meta.smpBytes )
     .arg( zfBytes / meta.smpBytes );
 
@@ -153,8 +153,8 @@ bool Pass1AP2LF::zero( qint64 gapBytes, qint64 zfBytes )
         if( !Pass1::_write( cpyBytes ) )
             return false;
 
-        zfBytes        -= cpyBytes;
-        meta.smpOutEOF += 12 * cpyBytes / meta.smpBytes;
+        zfBytes         -= cpyBytes;
+        meta.smpWritten += 12 * cpyBytes / meta.smpBytes;
 
     } while( zfBytes > 0 );
 
@@ -183,7 +183,7 @@ bool Pass1AP2LF::filtersAndScaling()
 // To turn AP file into LF-like file:
 // - filename .ap. -> .lf. (handled by meta.set())
 // - firstSample n -> n/12.
-// - fool smpOutEOF, hence, smpOutSpan() for call to meta.set()
+// - smpWritten measured.
 // - imSampleRate n -> n/12.
 // - snsChanMap rename AP -> LF.
 //
@@ -196,10 +196,10 @@ void Pass1AP2LF::adjustMeta()
     if( svLim > sv0 ) {
         // EOF as samples same for all xS[]
         const Save &S = GBL.vS[sv0];
-        meta.smpOutEOF = meta.smp1st + S.o_f->size() / S.smpBytes;
+        meta.smpWritten = S.o_f->size() / S.smpBytes;
     }
     else
-        meta.smpOutEOF = meta.smp1st + o_f.size() / meta.smpBytes;
+        meta.smpWritten = o_f.size() / meta.smpBytes;
 
 // imSampleRate
 

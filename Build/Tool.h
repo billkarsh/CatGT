@@ -45,8 +45,8 @@ private:
 struct Meta {
     double      srate;
     qint64      smp1st,
-                smpInpEOF,
-                smpOutEOF,
+                smpToBeWritten,
+                smpWritten,
                 maxOutEOF;
     KVParams    kvp;
     int         nC,
@@ -58,8 +58,6 @@ struct Meta {
     void read( t_js js );
     void write( const QString &outBin, int g0, int t0, t_js js, int ip );
     void writeSave( int sv0, int svLim, int g0, int t0, t_js js_out );
-    qint64 smpInpSpan()     {return smpInpEOF - smp1st;}
-    qint64 smpOutSpan()     {return smpOutEOF - smp1st;}
     qint64 pass1_sizeRead( int &ntpts, qint64 xferBytes, qint64 bufBytes );
     bool pass1_zeroFill( Pass1 &H, qint64 gapBytes );
     void pass1_fileDone( int g, int t, t_js js, int ip );
@@ -101,18 +99,14 @@ struct P1EOF {
     struct EOFDAT {
         double  srate,
                 span;
-        qint64  bytes;
+        qint64  bytes,
+                smp1st;
         int     smpBytes;
     };
 // ---
     QMap<GTJSIP,EOFDAT> id2dat;
     bool init();
-    qint64 fileBytes(
-        const KVParams  &kvp,
-        int             g,
-        int             t,
-        t_js            js,
-        int             ip ) const;
+    EOFDAT getEOFDAT( int g, int t, t_js js, int ip ) const;
 private:
     bool getMeta( int g, int t, t_js js, int ip, bool t_miss_ok );
 };

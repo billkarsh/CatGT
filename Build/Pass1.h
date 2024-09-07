@@ -39,12 +39,14 @@ protected:
                 i_lim,  // input count (samples)
                 gfix0,  // cur o_buf start in i_buf
                 maxInt;
-    bool        doWrite;
+    bool        doWrite,
+                flip_NXT;
 
 protected:
     Pass1( t_js js_in, t_js js_out, int ip )
     :   hipass(0), lopass(0), js_in(js_in), js_out(js_out), ip(ip),
-        sv0(-1), svLim(-1), i_nxt(0), i_lim(0), doWrite(false)      {}
+        sv0(-1), svLim(-1), i_nxt(0), i_lim(0), doWrite(false),
+        flip_NXT(false) {}
     virtual ~Pass1();
 
     bool splitShanks();
@@ -62,7 +64,12 @@ protected:
     virtual bool zero( qint64 gapBytes, qint64 zfBytes );
 
 private:
-    int inputSizeAndOverlap( qint64 &xferBytes, int g, int t );
+    int inputSizeAndOverlap(
+        qint64              &xferBytes,
+        const P1EOF::EOFDAT &Dprev,
+        const P1EOF::EOFDAT &Dthis,
+        int                 g,
+        int                 t );
     bool load( qint64 &xferBytes );
     bool push();
     int rem();

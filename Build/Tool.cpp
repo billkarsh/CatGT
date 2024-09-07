@@ -347,24 +347,22 @@ void Meta::read( t_js js )
             break;
     }
 
-    smp1st      = kvp["firstSample"].toLongLong()
-                    + qint64(GBL.startsecs * srate);
-    smpInpEOF   = smp1st;
-    smpOutEOF   = smp1st;
-    maxOutEOF   = (GBL.maxsecs > 0 ?
-                    qint64(smp1st + GBL.maxsecs * srate) :
-                    UNSET64);
-    nC          = kvp["nSavedChans"].toInt();
-    smpBytes    = nC*sizeof(qint16);
-    gLast       = GBL.gt_get_first( &tLast );
-    nFiles      = 0;
+    smp1st          = kvp["firstSample"].toLongLong()
+                        + qint64(GBL.startsecs * srate);
+    smpToBeWritten  = 0;
+    smpWritten      = 0;
+    maxOutEOF       = (GBL.maxsecs > 0 ? qint64(GBL.maxsecs * srate) : UNSET64);
+    nC              = kvp["nSavedChans"].toInt();
+    smpBytes        = nC*sizeof(qint16);
+    gLast           = GBL.gt_get_first( &tLast );
+    nFiles          = 0;
 }
 
 
 void Meta::write( const QString &outBin, int g0, int t0, t_js js, int ip )
 {
     QDateTime   tCreate( QDateTime::currentDateTime() );
-    qint64      smpFLen = smpOutSpan();
+    qint64      smpFLen = smpWritten;
     int         ne      = GBL.velem.size();
 
     if( !ne && !smpFLen ) {
@@ -373,7 +371,7 @@ void Meta::write( const QString &outBin, int g0, int t0, t_js js, int ip )
         // Note doWrite (hence EOF tracking) always true if trials...
         // so only need to calculate EOF for single file case.
         smpFLen = kvp["fileSizeBytes"].toLongLong() / (sizeof(qint16) * nC);
-        smpFLen = qMin( smpFLen, maxOutEOF - smp1st );
+        smpFLen = qMin( smpFLen, maxOutEOF );
     }
 
     kvp["fileName"]                 = outBin;
@@ -489,9 +487,9 @@ qint64 Meta::pass1_sizeRead( int &ntpts, qint64 xferBytes, qint64 bufBytes )
 
     ntpts = bytes / smpBytes;
 
-    if( smpInpEOF + ntpts >= maxOutEOF ) {
+    if( smpToBeWritten + ntpts >= maxOutEOF ) {
 
-        ntpts = maxOutEOF - smpInpEOF;
+        ntpts = maxOutEOF - smpToBeWritten;
         bytes = ntpts * smpBytes;
     }
 
@@ -523,26 +521,26 @@ bool Meta::pass1_zeroFill( Pass1 &H, qint64 gapBytes )
 
     int ntpts = zfBytes / smpBytes;
 
-    if( smpInpEOF + ntpts > maxOutEOF ) {
+    if( smpToBeWritten + ntpts > maxOutEOF ) {
 
-        ntpts   = maxOutEOF - smpInpEOF;
+        ntpts   = maxOutEOF - smpToBeWritten;
         zfBytes = ntpts * smpBytes;
     }
 
-// update smpInpEOF
+// update smpToBeWritten
 
-    smpInpEOF += zfBytes / smpBytes;
+    smpToBeWritten += zfBytes / smpBytes;
 
-// write and update smpOutEOF
+// write and update smpWritten
 
     bool    ok = true;
 
     if( H.doWrite )
         ok = H.zero( gapBytes, zfBytes );
     else
-        smpOutEOF += zfBytes / smpBytes;
+        smpWritten += zfBytes / smpBytes;
 
-    return ok && smpOutEOF < maxOutEOF;
+    return ok && smpWritten < maxOutEOF;
 }
 
 
@@ -784,11 +782,6 @@ bool P1EOF::GTJSIP::operator<( const GTJSIP &rhs ) const
 
 bool P1EOF::init()
 {
-// More than one stream?
-
-    if( GBL.ni + GBL.vobx.size() + GBL.vprb.size() <= 1 )
-        return true;
-
 // Get all EOF metadata
 
     GT_iterator I;
@@ -868,17 +861,9 @@ bool P1EOF::init()
 }
 
 
-qint64 P1EOF::fileBytes(
-    const KVParams  &kvp,
-    int             g,
-    int             t,
-    t_js            js,
-    int             ip ) const
+P1EOF::EOFDAT P1EOF::getEOFDAT( int g, int t, t_js js, int ip ) const
 {
-    if( id2dat.size() )
-        return id2dat[GTJSIP( g, t, js, ip )].bytes;
-    else
-        return kvp["fileSizeBytes"].toLongLong();
+    return id2dat[GTJSIP( g, t, js, ip )];
 }
 
 
@@ -910,6 +895,7 @@ bool P1EOF::getMeta( int g, int t, t_js js, int ip, bool t_miss_ok )
     }
 
     D.bytes     = kvp["fileSizeBytes"].toLongLong();
+    D.smp1st    = kvp["firstSample"].toLongLong();
     D.smpBytes  = sizeof(qint16) * kvp["nSavedChans"].toInt();
     D.span      = D.bytes / D.smpBytes / D.srate;
 

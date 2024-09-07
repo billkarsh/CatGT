@@ -50,6 +50,8 @@ Pass1::~Pass1()
 
 bool Pass1::splitShanks()
 {
+    flip_NXT = meta.kvp["imDatPrb_type"].toInt() > 3000;
+
     if( !doWrite )
         return true;
 
@@ -188,8 +190,9 @@ void Pass1::alloc()
 //
 void Pass1::fileLoop()
 {
-    GT_iterator I;
-    int         g, t;
+    P1EOF::EOFDAT   Dprev;
+    GT_iterator     I;
+    int             g, t;
 
     while( I.next( g, t ) ) {
 
@@ -207,9 +210,14 @@ void Pass1::fileLoop()
         // File size, overlap
         // ------------------
 
-        qint64  xferBytes;
+        P1EOF::EOFDAT   Dthis = gP1EOF.getEOFDAT( g, t, js_in, ip );
+        qint64          xferBytes;
+        int             ret;
 
-        switch( inputSizeAndOverlap( xferBytes, g, t ) ) {
+        ret     = inputSizeAndOverlap( xferBytes, Dprev, Dthis, g, t );
+        Dprev   = Dthis;
+
+        switch( ret ) {
 
             case 0: break;
             case 1: continue;
@@ -220,7 +228,7 @@ void Pass1::fileLoop()
         // Process and copy binary data
         // ----------------------------
 
-        while( meta.smpInpEOF < meta.maxOutEOF && xferBytes ) {
+        while( meta.smpToBeWritten < meta.maxOutEOF && xferBytes ) {
 
             if( !load( xferBytes ) || !push() ) {
                 i_f.close();
@@ -231,10 +239,8 @@ void Pass1::fileLoop()
         i_f.close();
         meta.pass1_fileDone( g, t, js_out, ip );
 
-        if( meta.smpInpEOF >= meta.maxOutEOF ) {
-            flush();
-            return;
-        }
+        if( meta.smpToBeWritten >= meta.maxOutEOF )
+            break;
     }
 
     flush();
@@ -248,7 +254,7 @@ void Pass1::digital( const qint16 *data, int ntpts )
         XTR *X = GBL.vX[i];
 
         if( X->word < meta.nC )
-            X->scan( data, meta.smpInpSpan(), ntpts, meta.nC );
+            X->scan( data, meta.smpToBeWritten, ntpts, meta.nC );
     }
 }
 
@@ -293,7 +299,7 @@ bool Pass1::zero( qint64 gapBytes, qint64 zfBytes )
     Log() <<
     QString("Gap before file '%1' out_start_smp=%2 inp_gap_smp=%3 out_zeros_smp=%4.")
     .arg( i_fi.fileName() )
-    .arg( meta.smpOutSpan() )
+    .arg( meta.smpWritten )
     .arg( gapBytes / meta.smpBytes )
     .arg( zfBytes / meta.smpBytes );
 
@@ -311,8 +317,8 @@ bool Pass1::zero( qint64 gapBytes, qint64 zfBytes )
         if( !_write( cpyBytes ) )
             return false;
 
-        zfBytes        -= cpyBytes;
-        meta.smpOutEOF += cpyBytes / meta.smpBytes;
+        zfBytes         -= cpyBytes;
+        meta.smpWritten += cpyBytes / meta.smpBytes;
 
     } while( zfBytes > 0 );
 
@@ -339,40 +345,43 @@ bool Pass1::zero( qint64 gapBytes, qint64 zfBytes )
 // we optionally zero fill the output and update EOF trackers.
 // Note EOF tracking is updated even if (doWrite) is false.
 //
+// Overlap is tested based only upon the start and length of
+// the two consecutive files in question. This is insensitive
+// to any zero filling that may have been applied previously.
+// Zero filling between these two is only performed AFTER
+// overlap assessment.
+//
 // Note on EOF tracking:
-// In general we should (process and) write out everything we
-// read in. smpInpEOF should be updated as we read. smpOutEOF
-// should be updated when we write. Generally we will read in
-// multiple chunks and some margin, then pass that to output
-// one chunk at a time. Therefore, smpOutEOF will usually lag
-// smpInpEOF. It is smpInpEOF that is bounded by maxOutEOF.
-// Likewise, zero-filling (virtual input) should be bounded
-// by maxOutEOF.
+// In general we (process and) write out everything we read in.
+// smpToBeWritten is updated as we read. smpWritten is updated
+// when we write. Generally we will read in multiple chunks and
+// some margin, then pass that to output one chunk at a time.
+// Therefore, smpWritten lags smpToBeWritten. smpToBeWritten and
+// zero-filling (virtual input) are directly bounded by maxOutEOF.
 //
 // Return:
 // 0 - ok.
 // 1 - skip.
 // 2 - fail or done.
 //
-int Pass1::inputSizeAndOverlap( qint64 &xferBytes, int g, int t )
+int Pass1::inputSizeAndOverlap(
+    qint64              &xferBytes,
+    const P1EOF::EOFDAT &Dprev,
+    const P1EOF::EOFDAT &Dthis,
+    int                 g,
+    int                 t )
 {
     int t0, g0 = GBL.gt_get_first( &t0 );
 
+    xferBytes = Dthis.bytes;
+
     if( g > g0 || t > t0 ) {
 
-        // Not the first file, so get its meta data...
+        // Not the first file, check overlap
 
-        QFileInfo   fim;
-        KVParams    kvp;
-        int         ret = GBL.openInputMeta( fim, kvp, g, t, js_in, ip, GBL.t_miss_ok );
-
-        if( ret )
-            return ret;
-
-        xferBytes = gP1EOF.fileBytes( kvp, g, t, js_in, ip );
-
-        qint64  olapSmp     = meta.smpInpEOF
-                                - kvp["firstSample"].toLongLong(),
+        qint64  olapSmp     = Dprev.smp1st
+                                + Dprev.bytes / Dprev.smpBytes
+                                - Dthis.smp1st,
                 olapBytes   = IBYT(olapSmp),
                 fOffset;
 
@@ -400,14 +409,14 @@ int Pass1::inputSizeAndOverlap( qint64 &xferBytes, int g, int t )
                 return 2;
             }
 
-            fOffset = meta.smpOutEOF + rem() - olapSmp;
+            fOffset = meta.smpWritten + rem() - olapSmp;
         }
         else if( olapSmp < 0 ) {
 
             // Push any remainder data out.
             //
             // Note that this does not change the gap size used
-            // for zeroFill because that is based on smpInpEOF.
+            // for zeroFill because that is based on smpToBeWritten.
 
             if( !flush() )
                 return 2;
@@ -415,42 +424,37 @@ int Pass1::inputSizeAndOverlap( qint64 &xferBytes, int g, int t )
             if( !meta.pass1_zeroFill( *this, -olapBytes ) )
                 return 2;
 
-            fOffset = meta.smpOutEOF;
+            fOffset = meta.smpWritten;
         }
         else
-            fOffset = meta.smpOutEOF + rem();
+            fOffset = meta.smpWritten + rem();
 
-        gFOff.addOffset( fOffset - meta.smp1st, js_out, ip );
+        gFOff.addOffset( fOffset, js_out, ip );
     }
-    else {  // Already have meta data for first file
+    else if( GBL.startsecs > 0 ) {
 
-        xferBytes = gP1EOF.fileBytes( meta.kvp, g, t, js_in, ip );
+        // Offset startsecs into first file
 
-        if( GBL.startsecs > 0 ) {
+        qint64  S = meta.smpBytes * qint64(GBL.startsecs * meta.srate);
 
-            // Offset startsecs into file
-
-            qint64  S = meta.smpBytes * qint64(GBL.startsecs * meta.srate);
-
-            if( S >= xferBytes ) {
-                Log() << QString("Startsecs(s) %1 >= span(s) %2 of file '%3'.")
-                            .arg( GBL.startsecs )
-                            .arg( xferBytes/meta.smpBytes/meta.srate )
-                            .arg( i_fi.fileName() );
-                i_f.close();
-                return 2;
-            }
-
-            if( !i_f.seek( S ) ) {
-                Log() << QString("Startsecs seek failed (offset: %1) for file '%2'.")
-                            .arg( S )
-                            .arg( i_fi.fileName() );
-                i_f.close();
-                return 2;
-            }
-
-            xferBytes -= S;
+        if( S >= xferBytes ) {
+            Log() << QString("Startsecs(s) %1 >= span(s) %2 of file '%3'.")
+                        .arg( GBL.startsecs )
+                        .arg( xferBytes/meta.smpBytes/meta.srate )
+                        .arg( i_fi.fileName() );
+            i_f.close();
+            return 2;
         }
+
+        if( !i_f.seek( S ) ) {
+            Log() << QString("Startsecs seek failed (offset: %1) for file '%2'.")
+                        .arg( S )
+                        .arg( i_fi.fileName() );
+            i_f.close();
+            return 2;
+        }
+
+        xferBytes -= S;
     }
 
     return 0;
@@ -492,6 +496,17 @@ bool Pass1::load( qint64 &xferBytes )
         return false;
     }
 
+// Flip if NXT stream
+
+    if( flip_NXT ) {
+        qint16 *data = IBUF(i_lim);
+        for( int it = 0; it < ntpts; ++it, data += meta.nC ) {
+            // flip neurals
+            for( int i = 0; i < meta.nN; ++i )
+                data[i] = -data[i];
+        }
+    }
+
 // Biquad
 
     if( hipass )
@@ -509,8 +524,8 @@ bool Pass1::load( qint64 &xferBytes )
     i_nxt  = SZMRG;
     i_lim += ntpts;
 
-    xferBytes       -= bytes;
-    meta.smpInpEOF  += ntpts;
+    xferBytes           -= bytes;
+    meta.smpToBeWritten += ntpts;
 
     return true;
 }
@@ -579,7 +594,7 @@ bool Pass1::write( qint64 bytes )
     if( doWrite && !_write( bytes ) )
         return false;
 
-    meta.smpOutEOF += bytes / meta.smpBytes;
+    meta.smpWritten += bytes / meta.smpBytes;
 
     return true;
 }

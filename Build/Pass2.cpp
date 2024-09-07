@@ -89,7 +89,7 @@ void Pass2::close()
     if( closedIP != ip ) {
         int g0 = GBL.gt_get_first( 0 );
         fout.close();
-        meta.smpOutEOF = meta.smp1st + samps;
+        meta.smpWritten = samps;
         meta.write( outBin, g0, -1, js, ip );
         closedIP = ip;
     }
@@ -245,8 +245,8 @@ static bool copyBinary(
             return false;
         }
 
-        finBytes       -= cpyBytes;
-        meta.smpOutEOF += cpySamps;
+        finBytes        -= cpyBytes;
+        meta.smpWritten += cpySamps;
     }
 
     return true;
@@ -288,8 +288,8 @@ static bool copyBinary(
             return false;
         }
 
-        finBytes       -= cpyBytes;
-        meta.smpOutEOF += cpySamps;
+        finBytes        -= cpyBytes;
+        meta.smpWritten += cpySamps;
     }
 
     return true;

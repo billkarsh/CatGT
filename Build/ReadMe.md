@@ -144,7 +144,7 @@ applies filter operations in this order:
 - Apply any specified Butterworth filtering
 - Transform back to time domain
 - Detect gfix transients for later file editing
-- Loccar, gblcar (AP-band only)
+- Loccar, gblcar, gbldmx (AP-band only)
 - Write file
 - Apply gfix transient edits to file
 
@@ -415,7 +415,7 @@ and the length of the zero-filled span in the output file.
 - New .bin/.meta files are output only in these cases:
     1. A range of files is to be concatenated, that is, (gb > ga) or
     (tb > ta).
-    2. If filters are applied, so the binary data are altered.
+    2. If filters, tshift or startsecs are applied, so the binary data are altered.
 
 - If you do not specify the `-dest` option, output files are stored in the
 same folder as their input files.
@@ -576,7 +576,7 @@ block.*
 
 ### gbldmx option
 
-- Do demuxed CAR common average referencing.
+- Do demuxed CAR common average referencing, yes, average.
 - This works on groups of channels that are digitized at the same time.
 - All shanks are included in the groups.
 - Unused channels are excluded, see [chnexcl option](#chnexcl-option).
@@ -1089,6 +1089,10 @@ did that CatGT run:
 enclose the whole parameter list in quotes:<br>
 > **> runit.sh 'my_params'**
 
+>Each pass1 run generates an output file: `output_path/run_ga_fyi.txt`,
+containing an entry: `supercat_element`. These entries make it much easier
+to construct your supercat command line.
+
 ### supercat_trim_edges option
 
 When SpikeGLX writes files, the first samples written are aligned as closely
@@ -1250,12 +1254,16 @@ As runs are joined, supercat will automatically offset the times within
 extracted edge files. The offset for the k-th listed run is the sum of
 the file lengths for runs 0 through k-1.
 
-Supercat creates an output file:
+Supercat creates output file:
 `dest/supercat_run_ga/run_ga_sc_offsets.txt`.
 This tablulates, for each stream, where the first sample of each input
 "tcat" file is relative to the start of the concatenated output file. It
 records these offsets in units of samples, and again in units of seconds
 on that stream's clock.
+
+Supercat creates output file: `dest/supercat_run_ga/run_ga_fyi.txt`.
+This lists key output paths and filenames you can use to build downstream
+command lines for TPrime.
 
 ------
 
@@ -1263,8 +1271,10 @@ on that stream's clock.
 
 Version 4.4
 
+- Support NP1221 probes.
 - Support NP2020 quad-probes.
 - Support NXT probes.
+- Fix overlap handling when zfillmax applied.
 - Allow -maxZ and -save options on same probe.
 - Add -sepShanks option.
 
