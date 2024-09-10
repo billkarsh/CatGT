@@ -287,7 +287,7 @@ ls -s &lt;path/myoriginalname.meta&gt; &lt;...ZZZ/goodname_g0_t0.imec0.ap.meta&g
 <li><p>The meta item e.g., <code>catNFiles</code>, indicates count of concatenated files.</p></li>
 <li><p>The meta item e.g., <code>catGVals=0,1</code>, indicates range of g-indices used.</p></li>
 <li><p>The meta item e.g., <code>catTVals=0,20</code>, indicates range of t-indices used.</p></li>
-<li><p>CatGT creates a pass-1 output file: <code>output_path/run_ga_ct_offsets.txt</code>. This tablulates, for each stream, where the first sample of each input file is relative to the start of the concatenated output file. It records these offsets in units of samples, and again in units of seconds on that stream's clock.</p></li>
+<li><p>CatGT creates a pass-1 output file: <code>output_path/run_ga_ct_offsets.txt</code>. This tabulates, for each stream, where the first sample of each input file is relative to the start of the concatenated output file. It records these offsets in units of samples, and again in units of seconds on that stream's clock.</p></li>
 <li><p>CatGT always creates output file: <code>output_path/run_ga_fyi.txt</code>. This lists key output paths and filenames you can use to build downstream command lines for supercat or TPrime.</p></li>
 </ul>
 <h3 id="gtlist-option">gtlist option</h3>
@@ -474,7 +474,7 @@ ls -s &lt;path/myoriginalname.meta&gt; &lt;...ZZZ/goodname_g0_t0.imec0.ap.meta&g
 <p>The inverted pulse extractors <strong>{xia, xid}</strong> make text files that report the times (seconds) of the leading edges of matched pulses.</p>
 <p>The inverted pulse versions work exactly the same way as their positive counterparts. Just keep in mind that inverted pulses have a high baseline level and deflect toward lower values.</p>
 <h4 id="extractors-bf-bit-field">Extractors bf (bit-field)</h4>
-<p>The -xd and -xid options treat each bit of a digital word as an individual line. In contrast, the -bf option interprets a contiguous group of bits as a non-negative n-bit binary number. The -bf extactor reports value transitions: the newest value and the time it changed, in two separate files. Following <strong>-xa=js,ip,word</strong>, the parameters are:</p>
+<p>The -xd and -xid options treat each bit of a digital word as an individual line. In contrast, the -bf option interprets a contiguous group of bits as a non-negative n-bit binary number. The -bf extractor reports value transitions: the newest value and the time it changed, in two separate files. Following <strong>-xa=js,ip,word</strong>, the parameters are:</p>
 <ul>
 <li><strong>startbit</strong>: lowest order bit included in group (range [0..15]),</li>
 <li><strong>nbits</strong>: how many bits belong to group (range [1..&lt;16-startbit&gt;]).</li>
@@ -793,7 +793,7 @@ Options:
 <li><code>catNRuns</code></li>
 </ul>
 <p>As runs are joined, supercat will automatically offset the times within extracted edge files. The offset for the k-th listed run is the sum of the file lengths for runs 0 through k-1.</p>
-<p>Supercat creates output file: <code>dest/supercat_run_ga/run_ga_sc_offsets.txt</code>. This tablulates, for each stream, where the first sample of each input &quot;tcat&quot; file is relative to the start of the concatenated output file. It records these offsets in units of samples, and again in units of seconds on that stream's clock.</p>
+<p>Supercat creates output file: <code>dest/supercat_run_ga/run_ga_sc_offsets.txt</code>. This tabulates, for each stream, where the first sample of each input &quot;tcat&quot; file is relative to the start of the concatenated output file. It records these offsets in units of samples, and again in units of seconds on that stream's clock.</p>
 <p>Supercat creates output file: <code>dest/supercat_run_ga/run_ga_fyi.txt</code>. This lists key output paths and filenames you can use to build downstream command lines for TPrime.</p>
 <hr />
 <h2 id="change-log">Change Log</h2>
@@ -802,7 +802,7 @@ Options:
 <li>Support NP1221 probes.</li>
 <li>Support NP2020 quad-probes.</li>
 <li>Support NXT probes.</li>
-<li>Fix overlap handling when zfillmax applied.</li>
+<li>Fix overlap handling when zerofillmax applied.</li>
 <li>Allow -maxZ and -save options on same probe.</li>
 <li>Add -sepShanks option.</li>
 </ul>

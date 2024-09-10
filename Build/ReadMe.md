@@ -447,7 +447,7 @@ further create an output subfolder for the run having a `catgt_` tag:
 
 - CatGT creates a pass-1 output file:
 `output_path/run_ga_ct_offsets.txt`.
-This tablulates, for each stream, where the first sample of each input
+This tabulates, for each stream, where the first sample of each input
 file is relative to the start of the concatenated output file. It records
 these offsets in units of samples, and again in units of seconds on that
 stream's clock.
@@ -796,7 +796,7 @@ level and deflect toward lower values.
 
 The -xd and -xid options treat each bit of a digital word as an individual
 line. In contrast, the -bf option interprets a contiguous group of bits
-as a non-negative n-bit binary number. The -bf extactor reports value
+as a non-negative n-bit binary number. The -bf extractor reports value
 transitions: the newest value and the time it changed, in two separate files.
 Following **-xa=js,ip,word**, the parameters are:
 
@@ -1256,7 +1256,7 @@ the file lengths for runs 0 through k-1.
 
 Supercat creates output file:
 `dest/supercat_run_ga/run_ga_sc_offsets.txt`.
-This tablulates, for each stream, where the first sample of each input
+This tabulates, for each stream, where the first sample of each input
 "tcat" file is relative to the start of the concatenated output file. It
 records these offsets in units of samples, and again in units of seconds
 on that stream's clock.
@@ -1274,7 +1274,7 @@ Version 4.4
 - Support NP1221 probes.
 - Support NP2020 quad-probes.
 - Support NXT probes.
-- Fix overlap handling when zfillmax applied.
+- Fix overlap handling when zerofillmax applied.
 - Allow -maxZ and -save options on same probe.
 - Add -sepShanks option.
 
