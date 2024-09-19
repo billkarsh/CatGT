@@ -359,8 +359,11 @@ void Pass1AP::gfixEdits()
         L = qMin( L, T0 - 2 );
         R = qMax( R, T0 + 6 );
 
-        L = qMax( L, qint64(0) );
-        R = qMin( R, smpFLen - 1 ); // EOF limit
+// Thus far, [L,R) are the span that get zeroed.
+// We now expand outward 1 sample to get {Ya, Yb} for linefil.
+
+        L = qMax( L - 1, qint64(0) );
+        R = qMin( R + 1, smpFLen - 1 ); // EOF limit
 
         N = qMin( R - L + 1, qint64(bufWid) );
 
@@ -379,30 +382,48 @@ void Pass1AP::gfixZeros( qint64 L, int N )
     if( svLim > sv0 ) {
 
         for( int is = sv0; is < svLim; ++is ) {
-
             const Save  &S = GBL.vS[is];
-
-            S.o_f->seek( S.smpBytes * L );
-            S.o_f->read( o_buf8(), S.smpBytes * N );
-
-            qint16  *d = &o_buf[0];
-            for( int it = 0; it < N; ++it, d += S.nC )
-                memset( d, 0, S.nN*sizeof(qint16) );
-
-            S.o_f->seek( S.smpBytes * L );
-            S.o_f->write( o_buf8(), S.smpBytes * N );
+            gfixZero1( S.o_f, L, N, S.smpBytes, S.nC, S.nN );
         }
     }
+    else
+        gfixZero1( &o_f, L, N, meta.smpBytes, meta.nC, meta.nN );
+}
+
+
+void Pass1AP::gfixZero1(
+    QFile   *o_f,
+    qint64  L,
+    int     N,
+    int     smpBytes,
+    int     nC,
+    int     nAP )
+{
+    if( GBL.linefil ) {
+
+        o_f->seek( smpBytes * L );
+        o_f->read( o_buf8(), smpBytes * N );
+
+        qint16  *Ya = (qint16*)o_buf8(),
+                *Yb = Ya + nC * (N - 1);
+        line_fill_o_buf( Ya, Yb, N, 0, N - 1, nC, nAP, false );
+
+        o_f->seek( smpBytes * (L + 1) );
+        o_f->write( o_buf8() + smpBytes, smpBytes * (N - 2) );
+    }
     else {
-        o_f.seek( meta.smpBytes * L );
-        o_f.read( o_buf8(), meta.smpBytes * N );
+        L += 1;
+        N -= 2;
+
+        o_f->seek( smpBytes * L );
+        o_f->read( o_buf8(), smpBytes * N );
 
         qint16  *d = &o_buf[0];
-        for( int it = 0; it < N; ++it, d += meta.nC )
-            memset( d, 0, meta.nN*sizeof(qint16) );
+        for( int it = 0; it < N; ++it, d += nC )
+            memset( d, 0, nAP*sizeof(qint16) );
 
-        o_f.seek( meta.smpBytes * L );
-        o_f.write( o_buf8(), meta.smpBytes * N );
+        o_f->seek( smpBytes * L );
+        o_f->write( o_buf8(), smpBytes * N );
     }
 }
 

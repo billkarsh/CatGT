@@ -39,6 +39,7 @@ struct FFT {
         int             nC,
         int             nN );
 private:
+    void extendRHS( int nsrc );
     void timeShiftChannel( int igrp );
 };
 

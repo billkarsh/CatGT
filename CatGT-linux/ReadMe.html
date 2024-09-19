@@ -95,6 +95,7 @@ Options:
 -exported                ;apply FileViewer 'exported' tag to in/output filenames
 -t_miss_ok               ;instead of stopping, zero-fill if trial missing
 -zerofillmax=500         ;set a maximum zero-fill span (millisec)
+-no_linefill             ;disable overwriting zero fills with line fills
 -startsecs=120.0         ;skip this initial span of each input stream (float seconds)
 -maxsecs=7.5             ;set a maximum output file length (float seconds)
 -apfilter=Typ,N,Fhi,Flo  ;apply ap band-pass filter of given {type, order, corners(float Hz)}
@@ -225,6 +226,9 @@ Options:
 <blockquote>
 <p>You can also concatenate different runs together. To do that, read the sections under <a href="#supercat-multiple-runs"><strong>Supercat Multiple Runs</strong></a>.</p>
 </blockquote>
+<blockquote>
+<p>As of version 4.4, all zero-filled regions are replaced with line fills. (See discussion under no_linefill option).</p>
+</blockquote>
 <h4 id="using-catgt-output-files-as-input-for-an-extraction-pass">Using CatGT output files as input for an extraction pass</h4>
 <p>Operate on CatGT output files (in order to do event extraction) by setting the -t parameter to: <code>-t=cat</code>. Note that you must specify the single <code>ga</code> that labels that tcat file. (More on this in the Extractor notes below).</p>
 <h4 id="running-catgt-on-nonstandard-file-names">Running CatGT on nonstandard file names</h4>
@@ -271,6 +275,9 @@ ls -s &lt;path/myoriginalname.meta&gt; &lt;...ZZZ/goodname_g0_t0.imec0.ap.meta&g
 <blockquote>
 <p>All detected gaps are noted in the CatGT log file. The log entries indicate the time (samples from file start) in the output file that the gap starts, the true length of the gap in the original file set, and the length of the zero-filled span in the output file.</p>
 </blockquote>
+<blockquote>
+<p>As of version 4.4, all zero-filled regions are replaced with line fills. (See discussion under no_linefill option).</p>
+</blockquote>
 <h3 id="output-files">Output files</h3>
 <ul>
 <li>New .bin/.meta files are output only in these cases:
@@ -296,6 +303,9 @@ ls -s &lt;path/myoriginalname.meta&gt; &lt;...ZZZ/goodname_g0_t0.imec0.ap.meta&g
 <blockquote>
 <p>With this option the g- and t- values in each list element have to be integers &gt;= 0. You can't use <code>t=cat</code> here.</p>
 </blockquote>
+<h3 id="no_linefill-option">no_linefill option</h3>
+<p>As of version 4.4, CatGT replaces all zero-filled regions with line fills. This replacement is applied both to gaps between files and to gfix edits. Each zero-fill segment has real voltage value bounding it to the left (A) and a real voltage bound to the right (B). A line fill overwrites the zero voltage segment between A and B with a smoothly varying line segment that connects A to B. This smooths the voltage change through time and removes step-changes at A and B. Line-filling thereby suppresses the generation of artifacts that might occur if CatGT output is passed though additional downstream filters.</p>
+<p>Disable line-filling with the -no_linefill option, which instead, uses the zero-filling of previous versions.</p>
 <h3 id="startsecs-option">startsecs option</h3>
 <p>Use this to start reading each input stream after a specified offset from the stream's beginning (float seconds). Note that an error will be flagged if this value exceeds the length of the first file in a concatenation series.</p>
 <h3 id="apfilter-and-lffilter-options">apfilter and lffilter options</h3>
@@ -372,6 +382,9 @@ ls -s &lt;path/myoriginalname.meta&gt; &lt;...ZZZ/goodname_g0_t0.imec0.ap.meta&g
 </ul>
 <blockquote>
 <p><em>You are strongly advised to apply high-pass filtering when using -gfix because the result of -gfix is to zero the output. This makes step transitions which will be smaller if the DC-component is removed.</em></p>
+</blockquote>
+<blockquote>
+<p>As of version 4.4, all zero-filled regions are replaced with line fills. (See discussion under no_linefill option).</p>
 </blockquote>
 <h4 id="tuning-gfix-parameters">Tuning gfix parameters</h4>
 <p>Use the SpikeGLX FileViewer to select appropriate amplitude and slope values for a given run. Be sure to turn high-pass filtering ON and spatial <code>&lt;S&gt;</code> filters OFF to match the conditions the CatGT artifact detector will use. Zoom the time scale (ctrl + click&amp;drag) to see the individual sample points and their connecting segments. Set the slope this way: Zoom in on the artifact initial peak, the points with greatest amplitude. Suppose consecutive points {A,B,C,D} make up the peak and {B,C,D} exceed the amplitude threshold. Then there are three slopes {B-A,C-B,D-C} connecting these points. Select the largest value. That is, set the slope to the fastest voltage change near the peak. An artifact will usually be several times faster than a neuronal spike.</p>
@@ -739,6 +752,7 @@ Options:
 -exported                ;apply FileViewer 'exported' tag to in/output filenames
 -t_miss_ok               ;ignored
 -zerofillmax=500         ;ignored
+-no_linefill             ;ignored
 -startsecs=120.0         ;ignored
 -maxsecs=7.5             ;ignored
 -apfilter=Typ,N,Fhi,Flo  ;ignored
@@ -802,7 +816,10 @@ Options:
 <li>Support NP1221 probes.</li>
 <li>Support NP2020 quad-probes.</li>
 <li>Support NXT probes.</li>
+<li>This version inverts NXT voltages.</li>
 <li>Fix overlap handling when zerofillmax applied.</li>
+<li>Smoother transitions at FFT boundaries.</li>
+<li>linefill is automatic; disable with -no_linefill.</li>
 <li>Allow -maxZ and -save options on same probe.</li>
 <li>Add -sepShanks option.</li>
 </ul>
@@ -892,7 +909,7 @@ Options:
 <li>Retire option -tshift (tshift on by default).</li>
 <li>Retire option -gbldmx, preferring tshifted -gblcar.</li>
 <li>Retire options {-aphipass, -aplopass, -lfhipass, -lflopass}.</li>
-<li>Add option -no_tshift (tshift on by default).</li>
+<li>tshift is automatic; disable with -no_tshift.</li>
 <li>Add option -apfilter=Typ,N,Fhi,Flo.</li>
 <li>Add option -lffilter=Typ,N,Fhi,Flo.</li>
 </ul>

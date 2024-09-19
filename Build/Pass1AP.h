@@ -4,8 +4,6 @@
 #include "Pass1.h"
 #include "CAR.h"
 
-struct LR;
-
 /* ---------------------------------------------------------------- */
 /* Types ---------------------------------------------------------- */
 /* ---------------------------------------------------------------- */
@@ -36,6 +34,13 @@ private:
     bool filtersAndScaling();
     void gfixEdits();
     void gfixZeros( qint64 L, int N );
+    void gfixZero1(
+        QFile   *o_f,
+        qint64  L,
+        int     N,
+        int     smpBytes,
+        int     nC,
+        int     nAP );
     void gFixDetect(
         QMap<qint64,LR> &TLR,
         const qint16    *d,

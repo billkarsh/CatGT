@@ -244,6 +244,48 @@ void Pass1::fileLoop()
     }
 
     flush();
+
+    if( doWrite && vSeg.size() )
+        lineFill();
+}
+
+
+// Rather than filling neural traces with zeros, we left-justify in o_buf,
+// a parametrized line for each channel (c). The full line endpoints are
+// Ya, Yb, separated by Xab points. For times i = [i0, iLim) we generate:
+// Ya[c] + i * (Yb[c]-Ya[c])/Xab.
+//
+// The caller must ensure iLim-i0 < samples(o_buf).
+//
+// If zeroSY true, write a zero in SY for each i, else preserve SY.
+//
+void Pass1::line_fill_o_buf(
+    const qint16    *Ya,
+    const qint16    *Yb,
+    qint64          Xab,
+    int             i0,
+    int             iLim,
+    int             nC,
+    int             nN,
+    bool            zeroSY )
+{
+    qint16  *d  = &o_buf[0];
+    int     nSY = nC - nN;
+
+    for( int i = i0; i < iLim; ++i ) {
+
+        double  dx = double(i) / Xab;
+
+        for( int c = 0; c < nN; ++c )
+            *d++ = Ya[c] + dx * (Yb[c] - Ya[c]);
+
+        if( zeroSY ) {
+            for( int sy = 0; sy < nSY; ++sy )
+                *d++ = 0;
+        }
+        else
+            d += nSY;
+    }
 }
 
 
@@ -259,6 +301,10 @@ void Pass1::digital( const qint16 *data, int ntpts )
 }
 
 
+// Universal output to file for data and zeros.
+// Callers send whole samples.
+// This function doles out save subsets.
+//
 bool Pass1::_write( qint64 bytes )
 {
     if( svLim > sv0 ) {
@@ -275,18 +321,16 @@ bool Pass1::_write( qint64 bytes )
 
             if( bytes != S.o_f->write( (char*)&sub[0], bytes ) )  {
 
-                Log() << QString("Write failed (error %1); input file '%2'.")
-                            .arg( S.o_f->error() )
-                            .arg( i_fi.fileName() );
+                Log() << QString("Write failed (error %1); file '%2'.")
+                            .arg( S.o_f->error() ).arg( S.o_name );
                 return false;
             }
         }
     }
     else if( bytes != o_f.write( o_buf8(), bytes ) )  {
 
-        Log() << QString("Write failed (error %1); input file '%2'.")
-                    .arg( o_f.error() )
-                    .arg( i_fi.fileName() );
+        Log() << QString("Write failed (error %1); file '%2'.")
+                    .arg( o_f.error() ).arg( o_name );
         return false;
     }
 
@@ -305,6 +349,11 @@ bool Pass1::zero( qint64 gapBytes, qint64 zfBytes )
 
     if( zfBytes <= 0 )
         return true;
+
+    if( js_in >= AP && GBL.linefil ) {
+        vSeg.push_back(
+        LineSeg( meta.smpWritten, zfBytes / meta.smpBytes ) );
+    }
 
     qint64  o_bufBytes = o_buf.size() * sizeof(qint16);
 
@@ -415,8 +464,8 @@ int Pass1::inputSizeAndOverlap(
 
             // Push any remainder data out.
             //
-            // Note that this does not change the gap size used
-            // for zeroFill because that is based on smpToBeWritten.
+            // Note that this does not change the gap size used for
+            // zeroFilling because that is based on smpToBeWritten.
 
             if( !flush() )
                 return 2;
@@ -461,7 +510,7 @@ int Pass1::inputSizeAndOverlap(
 }
 
 
-// - Zero-pad LHS as needed.
+// - Pad LHS as needed.
 // - Slide remainder forward.
 // - Load from file.
 // - Biquad loaded data in place.
@@ -469,11 +518,13 @@ int Pass1::inputSizeAndOverlap(
 //
 bool Pass1::load( qint64 &xferBytes )
 {
-// Zero-pad and slide
+// Pad and slide
 
     if( !i_nxt || i_nxt >= i_lim ) {
-        // start fresh
-        memset( &i_buf[0], 0, IBYT(SZMRG) );
+        // start fresh, now using value
+        // extension instead of zeroing
+        //
+        // memset( &i_buf[0], 0, IBYT(SZMRG) );
         i_lim = SZMRG;
     }
     else {
@@ -507,6 +558,11 @@ bool Pass1::load( qint64 &xferBytes )
         }
     }
 
+// ExtendLHS
+
+    if( !i_nxt )
+        extendLHS();
+
 // Biquad
 
     if( hipass )
@@ -528,6 +584,23 @@ bool Pass1::load( qint64 &xferBytes )
     meta.smpToBeWritten += ntpts;
 
     return true;
+}
+
+
+// Copy first loaded sample to
+// each position in left margin.
+//
+void Pass1::extendLHS()
+{
+    qint16  *src = IBUF(SZMRG),
+            *dst = &i_buf[0];
+    int     nC   = meta.nC;
+
+    for( int it = 0; it < SZMRG; ++it ) {
+
+        for( int ic = 0; ic < nC; ++ic )
+            *dst++ = src[ic];
+    }
 }
 
 
@@ -597,6 +670,63 @@ bool Pass1::write( qint64 bytes )
     meta.smpWritten += bytes / meta.smpBytes;
 
     return true;
+}
+
+
+void Pass1::lineFill()
+{
+    vec_i16 Ya, Yb;
+
+    if( svLim > sv0 ) {
+
+        for( int is = sv0; is < svLim; ++is ) {
+            const Save  &S = GBL.vS[is];
+            lineFill1( S.o_f, Ya, Yb, S.smpBytes, S.nC, S.nN );
+        }
+    }
+    else
+        lineFill1( &o_f, Ya, Yb, meta.smpBytes, meta.nC, meta.nN );
+}
+
+
+void Pass1::lineFill1(
+    QFile   *o_f,
+    vec_i16 &Ya,
+    vec_i16 &Yb,
+    qint64  smpBytes,
+    int     nC,
+    int     nN )
+{
+    Ya.resize( nC );
+    Yb.resize( nC );
+
+    for( int is = 0, ns = vSeg.size(); is < ns; ++is ) {
+
+        const LineSeg   &AB = vSeg[is];
+
+        o_f->seek( smpBytes * (AB.t0 - 1) );
+        o_f->read( (char*)&Ya[0], smpBytes );
+
+        o_f->seek( smpBytes * (AB.t0 + AB.len) );
+        o_f->read( (char*)&Yb[0], smpBytes );
+
+        qint64  smpRem  = AB.len;
+        int     i0      = 0;
+
+        do {
+            int smpThis = qMin( smpRem, qint64(SZOBUF) );
+
+            line_fill_o_buf( &Ya[0], &Yb[0], AB.len,
+                i0, i0 + smpThis, nC, nN, true );
+
+            o_f->seek( smpBytes * (AB.t0 + i0) );
+            o_f->write( o_buf8(), smpBytes * smpThis );
+
+            i0      += smpThis;
+            smpRem  -= smpThis;
+
+        } while( smpRem > 0 );
+    }
 }
 
 

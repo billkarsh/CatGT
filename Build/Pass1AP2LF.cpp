@@ -142,6 +142,11 @@ bool Pass1AP2LF::zero( qint64 gapBytes, qint64 zfBytes )
     if( zfBytes <= 0 )
         return true;
 
+    if( js_in >= AP && GBL.linefil ) {
+        vSeg.push_back(
+        LineSeg( meta.smpWritten / 12, zfBytes / meta.smpBytes ) );
+    }
+
     qint64  o_bufBytes = o_buf.size() * sizeof(qint16);
 
     memset( o_buf8(), 0, o_bufBytes );
@@ -194,7 +199,7 @@ void Pass1AP2LF::adjustMeta()
     meta.kvp["firstSample"] = meta.smp1st /= 12;
 
     if( svLim > sv0 ) {
-        // EOF as samples same for all xS[]
+        // EOF as samples same for all vS[]
         const Save &S = GBL.vS[sv0];
         meta.smpWritten = S.o_f->size() / S.smpBytes;
     }

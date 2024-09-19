@@ -101,6 +101,7 @@ Options:
 -exported                ;apply FileViewer 'exported' tag to in/output filenames
 -t_miss_ok               ;instead of stopping, zero-fill if trial missing
 -zerofillmax=500         ;set a maximum zero-fill span (millisec)
+-no_linefill             ;disable overwriting zero fills with line fills
 -startsecs=120.0         ;skip this initial span of each input stream (float seconds)
 -maxsecs=7.5             ;set a maximum output file length (float seconds)
 -apfilter=Typ,N,Fhi,Flo  ;apply ap band-pass filter of given {type, order, corners(float Hz)}
@@ -317,7 +318,10 @@ proceeds like two nested loops:
 ```
 
 >You can also concatenate different runs together. To do that, read the
->sections under [**Supercat Multiple Runs**](#supercat-multiple-runs).
+sections under [**Supercat Multiple Runs**](#supercat-multiple-runs).
+
+>As of version 4.4, all zero-filled regions are replaced with line fills.
+(See discussion under no_linefill option).
 
 #### Using CatGT output files as input for an extraction pass
 
@@ -410,6 +414,9 @@ indicate the time (samples from file start) in the output file that
 the gap starts, the true length of the gap in the original file set,
 and the length of the zero-filled span in the output file.
 
+>As of version 4.4, all zero-filled regions are replaced with line fills.
+(See discussion under no_linefill option).
+
 ### Output files
 
 - New .bin/.meta files are output only in these cases:
@@ -465,6 +472,21 @@ a separate t-range for each g-index. Specify the list like this:
 
 >With this option the g- and t- values in each list element have to be
 integers >= 0. You can't use `t=cat` here.
+
+### no_linefill option
+
+As of version 4.4, CatGT replaces all zero-filled regions with line fills.
+This replacement is applied both to gaps between files and to gfix edits.
+Each zero-fill segment has real voltage value bounding it to the left (A)
+and a real voltage bound to the right (B). A line fill overwrites the zero
+voltage segment between A and B with a smoothly varying line segment that
+connects A to B. This smooths the voltage change through time and removes
+step-changes at A and B. Line-filling thereby suppresses the generation of
+artifacts that might occur if CatGT output is passed though additional
+downstream filters.
+
+Disable line-filling with the -no_linefill option, which instead, uses the
+zero-filling of previous versions.
 
 ### startsecs option
 
@@ -607,6 +629,9 @@ replacing with zeros. You specify three things.
 >*You are strongly advised to apply high-pass filtering when using -gfix
 because the result of -gfix is to zero the output. This makes step
 transitions which will be smaller if the DC-component is removed.*
+
+>As of version 4.4, all zero-filled regions are replaced with line fills.
+(See discussion under no_linefill option).
 
 #### Tuning gfix parameters
 
@@ -1181,6 +1206,7 @@ Options:
 -exported                ;apply FileViewer 'exported' tag to in/output filenames
 -t_miss_ok               ;ignored
 -zerofillmax=500         ;ignored
+-no_linefill             ;ignored
 -startsecs=120.0         ;ignored
 -maxsecs=7.5             ;ignored
 -apfilter=Typ,N,Fhi,Flo  ;ignored
@@ -1274,7 +1300,10 @@ Version 4.4
 - Support NP1221 probes.
 - Support NP2020 quad-probes.
 - Support NXT probes.
+- This version inverts NXT voltages.
 - Fix overlap handling when zerofillmax applied.
+- Smoother transitions at FFT boundaries.
+- linefill is automatic; disable with -no_linefill.
 - Allow -maxZ and -save options on same probe.
 - Add -sepShanks option.
 
@@ -1364,7 +1393,7 @@ Version 2.2
 - Retire option -tshift (tshift on by default).
 - Retire option -gbldmx, preferring tshifted -gblcar.
 - Retire options {-aphipass, -aplopass, -lfhipass, -lflopass}.
-- Add option -no_tshift (tshift on by default).
+- tshift is automatic; disable with -no_tshift.
 - Add option -apfilter=Typ,N,Fhi,Flo.
 - Add option -lffilter=Typ,N,Fhi,Flo.
 

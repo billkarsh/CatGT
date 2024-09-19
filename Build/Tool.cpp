@@ -204,7 +204,7 @@ void FFT::init(
 
 
 // - On entry, caller will have prepared src with a LHS margin
-// of size SZMRG, composed of previous data (and leading zeros
+// of size SZMRG, composed of previous data (and leading padding
 // as needed).
 //
 // - ndst is the true sample count to be copied out to dst and
@@ -212,7 +212,7 @@ void FFT::init(
 //
 // - nsrc = SZMRG + ndst + (as many additional true samples as
 // are available to fill RHS margin <= SZMRG). This function will
-// zero-pad on the right out to SZFFT.
+// pad on the right out to SZFFT.
 //
 // Apply dst = FFT(src), or, dst = src if FFT not initialized.
 //
@@ -257,8 +257,10 @@ void FFT::apply(
 
         // RHS pad
 
-        if( nsrc < SZFFT )
-            memset( &real[nsrc], 0, (SZFFT - nsrc) * sizeof(double) );
+        if( nsrc < SZFFT ) {
+            // memset( &real[nsrc], 0, (SZFFT - nsrc) * sizeof(double) );
+            extendRHS( nsrc );
+        }
 
         // process
 
@@ -285,6 +287,19 @@ void FFT::apply(
         for( int i = 0; i < ndst; ++i, d += nC, ++r )
             *d = norm * *r;
     }
+}
+
+
+// Copy last loaded sample to each
+// remaining position in FFT space.
+//
+void FFT::extendRHS( int nsrc )
+{
+    double  src = (nsrc > 0 ? real[nsrc-1] : 0.0);
+    double* dst = &real[nsrc];
+
+    for( int i = 0, n = SZFFT - nsrc; i < n; ++i )
+        *dst++ = src;
 }
 
 
