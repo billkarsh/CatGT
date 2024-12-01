@@ -1295,6 +1295,11 @@ command lines for TPrime.
 
 ## Change Log
 
+Version 4.5
+
+- Support NP2021 quad-probes.
+- Support NP1014, NP1033, NP2005, NP2006.
+
 Version 4.4
 
 - Support NP1221 probes.

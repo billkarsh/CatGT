@@ -716,7 +716,7 @@ void Pass1::lineFill1(
         do {
             int smpThis = qMin( smpRem, qint64(SZOBUF) );
 
-            line_fill_o_buf( &Ya[0], &Yb[0], AB.len,
+            line_fill_o_buf( &Ya[0], &Yb[0], 1 + AB.len,
                 i0, i0 + smpThis, nC, nN, true );
 
             o_f->seek( smpBytes * (AB.t0 + i0) );
