@@ -85,6 +85,17 @@ struct FOffsets {
 
 extern FOffsets gFOff;
 
+struct P1LFCase {
+// For each lf-ip, classify {0=true LF, 1=AP->LF, 2=skip}
+    QMap<int,int>   ip2case;
+    void init();
+    int getCase( int ip ) const {return ip2case[ip];}
+private:
+    int lfCaseCalc( int g0, int t0, int ip );
+};
+
+extern P1LFCase gP1LFCase;
+
 struct P1EOF {
 // For each {g,t} file set, its common (shortest) length
     struct GTJSIP {

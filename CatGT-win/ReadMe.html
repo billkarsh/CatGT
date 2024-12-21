@@ -71,7 +71,7 @@
 <p>Notes:</p>
 <ul>
 <li>Enclosing whole linux parameter list in quotes is recommended in general.</li>
-<li>Enclosing whole linux parameter list in quotes is required for -chnexcl or -supercat.</li>
+<li>Enclosing whole linux parameter list in quotes is required for curly brace options.</li>
 <li>Options must not have spaces, generally.</li>
 <li>File paths and names must not have spaces (a standard script file limitation).</li>
 <li>Read CatGT.log. There is no interesting output in the command window.</li>
@@ -415,7 +415,7 @@ ls -s &lt;path/myoriginalname.meta&gt; &lt;...ZZZ/goodname_g0_t0.imec0.ap.meta&g
 <li><strong>AP</strong>: js = 2 (only {xd, xid} are legal).</li>
 </ul>
 <blockquote>
-<p><em>Extractors do not work on LF files.</em></p>
+<p><em>Extractors do not work on LF files. Use the AP-band for sync and event extraction: the higher sample rate improves accuracy.</em></p>
 </blockquote>
 <h4 id="extractors-ip-stream-index">Extractors ip (stream-index)</h4>
 <ul>
@@ -621,18 +621,14 @@ times_imec5_0=path/extraction_output_file_3</code></pre>
 </thead>
 <tbody>
 <tr class="odd">
-<td align="left">---------------</td>
-<td align="left">---------------</td>
-</tr>
-<tr class="even">
 <td align="left">0</td>
 <td align="left">zero-based row index</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td align="left">1</td>
 <td align="left">microns in geomMap (z=0 at center of bottom row)</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td align="left">2</td>
 <td align="left">microns from tip (z=0 at probe tip)</td>
 </tr>
@@ -811,6 +807,10 @@ Options:
 <p>Supercat creates output file: <code>dest/supercat_run_ga/run_ga_fyi.txt</code>. This lists key output paths and filenames you can use to build downstream command lines for TPrime.</p>
 <hr />
 <h2 id="change-log">Change Log</h2>
+<p>Version 4.6</p>
+<ul>
+<li>For AP-&gt;LF: -ap flag not needed.</li>
+</ul>
 <p>Version 4.5</p>
 <ul>
 <li>Support NP2021 quad-probes.</li>

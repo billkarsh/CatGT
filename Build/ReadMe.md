@@ -75,7 +75,7 @@ PowerShell 3.0 and later will parse your parameter list and may complain; it's e
 Notes:
 
 + Enclosing whole linux parameter list in quotes is recommended in general.
-+ Enclosing whole linux parameter list in quotes is required for -chnexcl or -supercat.
++ Enclosing whole linux parameter list in quotes is required for curly brace options.
 + Options must not have spaces, generally.
 + File paths and names must not have spaces (a standard script file limitation).
 + Read CatGT.log. There is no interesting output in the command window.
@@ -706,7 +706,8 @@ stream-index and channel (16-bit word) to operate on, E.g.:
 - **OB**: js = 1 (any extractor).
 - **AP**: js = 2 (only {xd, xid} are legal).
 
->*Extractors do not work on LF files.*
+>*Extractors do not work on LF files. Use the AP-band for sync and event
+extraction: the higher sample rate improves accuracy.*
 
 #### Extractors ip (stream-index)
 
@@ -1049,12 +1050,11 @@ The parameters are -maxZ=ip,depth-type,depth-value.
 
 There are three convenient ways to specify the insertion depth:
 
-|Depth-type     | Depth-value|
-|---------------| ---------------|
-|---------------| ---------------|
-|0              | zero-based row index|
-|1              | microns in geomMap (z=0 at center of bottom row)|
-|2              | microns from tip (z=0 at probe tip)|
+|Depth-type     | Depth-value |
+|---------------| --------------- |
+|0              | zero-based row index |
+|1              | microns in geomMap (z=0 at center of bottom row) |
+|2              | microns from tip (z=0 at probe tip) |
 
 > Note that you can specify your own -chnexcl entry and -maxZ for the same
 probe (ip); the result is the union: excluding everything you specified
@@ -1294,6 +1294,10 @@ command lines for TPrime.
 ------
 
 ## Change Log
+
+Version 4.6
+
+- For AP->LF: -ap flag not needed.
 
 Version 4.5
 

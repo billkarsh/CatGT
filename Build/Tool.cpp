@@ -765,6 +765,97 @@ void FOffsets::writeEntries( QString file )
 
 
 /* ---------------------------------------------------------------- */
+/* P1LFCase ------------------------------------------------------- */
+/* ---------------------------------------------------------------- */
+
+P1LFCase    gP1LFCase; // global lf case types
+
+
+void P1LFCase::init()
+{
+    if( !GBL.lf )
+        return;
+
+    int t0, g0 = GBL.gt_get_first( &t0 );
+
+    foreach( uint ip, GBL.vprb )
+        ip2case[ip] = lfCaseCalc( g0, t0, ip );
+}
+
+
+// Return:
+// 0 - treat as 1.0 lf stream.
+// 1 - convert: full-band + lflopass filter.
+// 2 - skip: problem.
+//
+int P1LFCase::lfCaseCalc( int g0, int t0, int ip )
+{
+// seek 1.0 lf meta
+
+    QString     inMeta = GBL.inFile( g0, t0, LF, ip, eMETA );
+    QFileInfo   fim( inMeta );
+
+    if( fim.exists() )
+        return 0;
+
+// seek ap meta
+
+    inMeta = GBL.inFile( g0, t0, AP, ip, eMETA );
+    fim.setFile( inMeta );
+
+    if( !fim.exists() )
+        return 0;
+
+// Check full-band criteria:
+// - Either no LF channels, or,
+// - At least one AP filter OFF.
+
+    KVParams    kvp;
+
+    if( !kvp.fromMetaFile( inMeta ) )
+        return 0;
+
+    bool fullband = false;
+
+    IMROTbl *R = GBL.getProbe( kvp );
+
+        if( !R ) {
+            Log() <<
+            QString("LF convert error: probe %1: Unknown probe type.")
+            .arg( ip );
+            return 2;
+        }
+
+        if( !R->nLF() )
+            fullband = true;
+        else {
+            R->fromString( 0, kvp["~imroTbl"].toString() );
+            fullband = R->anyChanFullBand();
+        }
+    delete R;
+
+    if( !fullband ) {
+        Log() <<
+        QString("LF convert error: probe %1: No LF files, AP not full-band.")
+        .arg( ip );
+        return 2;
+    }
+
+// it's full-band... seek lf filter
+
+    if( GBL.lfflt.haslopass() ) {
+        Log() << QString("Creating lf stream for probe %1.").arg( ip );
+        return 1;
+    }
+
+    Log() <<
+    QString("LF convert error: probe %1: No lf low pass filter.")
+    .arg( ip );
+
+    return 2;
+}
+
+/* ---------------------------------------------------------------- */
 /* P1EOF ---------------------------------------------------------- */
 /* ---------------------------------------------------------------- */
 
@@ -816,14 +907,26 @@ bool P1EOF::init()
 
         foreach( uint ip, GBL.vprb ) {
 
+            bool    miss_ok = GBL.t_miss_ok || GBL.prb_miss_ok;
+
             if( GBL.ap ) {
-                if( !getMeta( g, t, AP, ip, GBL.t_miss_ok || GBL.prb_miss_ok ) )
+                if( !getMeta( g, t, AP, ip, miss_ok ) )
                     return false;
             }
 
             if( GBL.lf ) {
-                if( !getMeta( g, t, LF, ip, true ) )
-                    return false;
+                switch( gP1LFCase.getCase( ip ) ) {
+                    case 0:
+                        if( !getMeta( g, t, LF, ip, miss_ok ) )
+                            return false;
+                    break;
+                    case 1:
+                        if( !getMeta( g, t, AP, ip, miss_ok ) )
+                            return false;
+                    break;
+                    default:
+                        ;
+                }
             }
         }
     }
@@ -922,82 +1025,10 @@ bool P1EOF::getMeta( int g, int t, t_js js, int ip, bool t_miss_ok )
 /* Functions ------------------------------------------------------ */
 /* ---------------------------------------------------------------- */
 
-// Return:
-// 0 - treat as 1.0 lf stream.
-// 1 - convert: full-band + lflopass filter.
-// 2 - skip: problem.
-//
-static int lfCase( int ip )
-{
-// seek 1.0 lf meta
-
-    int         t0, g0 = GBL.gt_get_first( &t0 );
-    QString     inMeta = GBL.inFile( g0, t0, LF, ip, eMETA );
-    QFileInfo   fim( inMeta );
-
-    if( fim.exists() )
-        return 0;
-
-// seek ap meta
-
-    inMeta = GBL.inFile( g0, t0, AP, ip, eMETA );
-    fim.setFile( inMeta );
-
-    if( !fim.exists() )
-        return 0;
-
-// Check full-band criteria:
-// - Either no LF channels, or,
-// - At least one AP filter OFF.
-
-    KVParams    kvp;
-
-    if( !kvp.fromMetaFile( inMeta ) )
-        return 0;
-
-    bool fullband = false;
-
-    IMROTbl *R = GBL.getProbe( kvp );
-
-        if( !R ) {
-            Log() <<
-            QString("LF convert error: probe %1: Unknown probe type.")
-            .arg( ip );
-            return 2;
-        }
-
-        if( !R->nLF() )
-            fullband = true;
-        else {
-            R->fromString( 0, kvp["~imroTbl"].toString() );
-            fullband = R->anyChanFullBand();
-        }
-    delete R;
-
-    if( !fullband ) {
-        Log() <<
-        QString("LF convert error: probe %1: No LF files, AP not full-band.")
-        .arg( ip );
-        return 2;
-    }
-
-// it's full-band... seek lf filter
-
-    if( GBL.lfflt.haslopass() ) {
-        Log() << QString("Creating lf stream for probe %1.").arg( ip );
-        return 1;
-    }
-
-    Log() <<
-    QString("LF convert error: probe %1: No lf low pass filter.")
-    .arg( ip );
-
-    return 2;
-}
-
-
 void pass1entrypoint()
 {
+    gP1LFCase.init();
+
     if( !gP1EOF.init() )
         goto done;
 
@@ -1023,7 +1054,7 @@ void pass1entrypoint()
         }
 
         if( GBL.lf ) {
-            switch( lfCase( ip ) ) {
+            switch( gP1LFCase.getCase( ip ) ) {
                 case 0: {
                     Pass1LF     P( ip );
                     if( !P.go() )

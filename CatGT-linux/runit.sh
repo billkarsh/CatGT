@@ -24,8 +24,7 @@
 # RUN_DIR=$(dirname $(readlink -f BASH_SOURCE[0]))
 #
 # - Enclosing whole parameter list in quotes is required to suppress
-# linux curly brace expansion of -supercat arguments, but using quotes
-# is recommended in general:
+# linux curly brace expansion, but using quotes is recommended in general:
 #
 #    > runit.sh 'cmd-line-parameters'
 #
