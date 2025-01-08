@@ -374,7 +374,13 @@ void Meta::read( t_js js )
 }
 
 
-void Meta::write( const QString &outBin, int g0, int t0, t_js js, int ip )
+void Meta::write(
+    const QString   &outBin,
+    int             g0,
+    int             t0,
+    t_js            js,
+    int             ip1,
+    int             ip2 )
 {
     QDateTime   tCreate( QDateTime::currentDateTime() );
     qint64      smpFLen = smpWritten;
@@ -410,9 +416,9 @@ void Meta::write( const QString &outBin, int g0, int t0, t_js js, int ip )
 
     switch( js ) {
         case NI: kvp.toMetaFile( GBL.niOutFile( g0, eMETA ) ); break;
-        case OB: kvp.toMetaFile( GBL.obOutFile( g0, ip, eMETA ) ); break;
+        case OB: kvp.toMetaFile( GBL.obOutFile( g0, ip1, eMETA ) ); break;
         case AP:
-        case LF: kvp.toMetaFile( GBL.imOutFile( g0, js, ip, eMETA ) ); break;
+        case LF: kvp.toMetaFile( GBL.imOutFile( g0, js, ip1, ip2, eMETA ) ); break;
     }
 }
 
@@ -479,7 +485,7 @@ void Meta::writeSave( int sv0, int svLim, int g0, int t0, t_js js_out )
         if( shankMap )
             kvp["~snsShankMap"] = shankMap->toString( bits, 0 );
 
-        write( S.o_name, g0, t0, js_out, S.ip2 );
+        write( S.o_name, g0, t0, js_out, S.ip1, S.ip2 );
     }
 
     if( chanMap )

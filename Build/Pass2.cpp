@@ -38,7 +38,7 @@ int Pass2::first( int ip )
     if( js >= AP && !GBL.makeOutputProbeFolder( g0, ip ) )
         return 2;
 
-    if( do_bin && !GBL.openOutputBinary( fout, outBin, g0, js, ip ) )
+    if( do_bin && !GBL.openOutputBinary( fout, outBin, g0, js, ip, ip ) )
         return 2;
 
     meta.read( js );
@@ -90,7 +90,7 @@ void Pass2::close()
         int g0 = GBL.gt_get_first( 0 );
         fout.close();
         meta.smpWritten = samps;
-        meta.write( outBin, g0, -1, js, ip );
+        meta.write( outBin, g0, -1, js, ip, ip );
         closedIP = ip;
     }
 }

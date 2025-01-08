@@ -392,14 +392,15 @@ public:
     QString inFile( int g, int t, t_js js, int ip, t_ex ex, XTR *X = 0 );
     QString niOutFile( int g0, t_ex ex, XTR *X = 0 );
     QString obOutFile( int g0, int ip, t_ex ex, XTR *X = 0 );
-    QString imOutFile( int g0, t_js js, int ip, t_ex ex, XTR *X = 0 );
+    QString imOutFile( int g0, t_js js, int ip1, int ip2, t_ex ex, XTR *X = 0 );
 
     bool openOutputBinary(
         QFile       &fout,
         QString     &outBin,
         int         g0,
         t_js        js,
-        int         ip );
+        int         ip1,
+        int         ip2 );
 
     int openInputFile(
         QFile       &fin,

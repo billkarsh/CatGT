@@ -548,6 +548,7 @@ ls -s &lt;path/myoriginalname.meta&gt; &lt;...ZZZ/goodname_g0_t0.imec0.ap.meta&g
 <li>You can enter as many -save options on one command line as needed, and several options can refer to the same input file if needed: <strong>One file in -&gt; many files out</strong>.</li>
 <li>Internally, the -sepShanks and -maxZ options automatically generate additional -save options.</li>
 <li>For each -save option that remaps an input ip1 to a new ip2, the <code>run_ga_fyi.txt</code> file adds entries to connect the new ip2-labeled output to its ip1-labeled digital extractions (see example 2).</li>
+<li>Output probe folders, when used, are named using ip1, though the individual filenames get the ip2 index.</li>
 </ul>
 <blockquote>
 <p><em>Be sure to name the SYNC channel(s) or they will not be saved.</em></p>
@@ -599,6 +600,7 @@ times_imec5_0=path/extraction_output_file_3</code></pre>
 <li>If the imro selects no sites on a given shank, that shank is omitted.</li>
 <li>The SY channel(s) are automatically included.</li>
 <li>Include no more than one -sepShanks option for a given probe index.</li>
+<li>Internally, the -sepShanks option automatically generates additional -save options.</li>
 </ul>
 <h4 id="example-1-1">Example 1</h4>
 <p>(Same case as Example 3 under the -save option)</p>
@@ -807,6 +809,10 @@ Options:
 <p>Supercat creates output file: <code>dest/supercat_run_ga/run_ga_fyi.txt</code>. This lists key output paths and filenames you can use to build downstream command lines for TPrime.</p>
 <hr />
 <h2 id="change-log">Change Log</h2>
+<p>Version 4.7</p>
+<ul>
+<li>Option -save writes correctly when no -dest folder.</li>
+</ul>
 <p>Version 4.6</p>
 <ul>
 <li>For AP-&gt;LF: -ap flag not needed.</li>

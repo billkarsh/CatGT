@@ -138,7 +138,7 @@ bool XTR::openOutTimesFile( int g0, t_ex ex )
             break;
         case AP:
         case LF:
-            file = GBL.imOutFile( g0, AP, ip, ex, this );
+            file = GBL.imOutFile( g0, AP, ip, ip, ex, this );
             strm = QString("imec%1").arg( ip );
             break;
     }
@@ -1020,7 +1020,7 @@ bool BitField::openOutFiles( int g0 )
         case NI: file = GBL.niOutFile( g0, eBFV, this ); break;
         case OB: file = GBL.obOutFile( g0, ip, eBFV, this ); break;
         case AP:
-        case LF: file = GBL.imOutFile( g0, AP, ip, eBFV, this ); break;
+        case LF: file = GBL.imOutFile( g0, AP, ip, ip, eBFV, this ); break;
     }
 
     fv = new QFile( file );
@@ -1193,7 +1193,7 @@ bool Save::init( const KVParams &kvp, const QFileInfo &fim, int theZ )
 bool Save::o_open( int g0, t_js js )
 {
     o_f = new QFile;
-    return GBL.openOutputBinary( *o_f, o_name, g0, js, ip2 );
+    return GBL.openOutputBinary( *o_f, o_name, g0, js, ip1, ip2 );
 }
 
 
@@ -2468,16 +2468,16 @@ QString CGBL::obOutFile( int g0, int ip, t_ex ex, XTR *X )
 }
 
 
-QString CGBL::imOutFile( int g0, t_js js, int ip, t_ex ex, XTR *X )
+QString CGBL::imOutFile( int g0, t_js js, int ip1, int ip2, t_ex ex, XTR *X )
 {
     QString s;
 
     if( dest.isEmpty() )
-        s = inPathUpTo_t( g0, js, ip ) + "cat";
+        s = inPathUpTo_t( g0, js, ip1 ) + "cat";
     else
         s = prb_obase;
 
-    return s + suffix( js, ip, ex, X );
+    return s + suffix( js, ip2, ex, X );
 }
 
 
@@ -2486,7 +2486,8 @@ bool CGBL::openOutputBinary(
     QString     &outBin,
     int         g0,
     t_js        js,
-    int         ip )
+    int         ip1,
+    int         ip2 )
 {
     if( !velem.size() && gt_is_tcat() ) {
         Log() <<
@@ -2497,9 +2498,9 @@ bool CGBL::openOutputBinary(
 
     switch( js ) {
         case NI: outBin = niOutFile( g0, eBIN ); break;
-        case OB: outBin = obOutFile( g0, ip, eBIN ); break;
+        case OB: outBin = obOutFile( g0, ip1, eBIN ); break;
         case AP:
-        case LF: outBin = imOutFile( g0, js, ip, eBIN ); break;
+        case LF: outBin = imOutFile( g0, js, ip1, ip2, eBIN ); break;
     }
 
     fout.setFileName( outBin );

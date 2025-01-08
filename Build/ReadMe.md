@@ -922,6 +922,8 @@ additional -save options.
 * For each -save option that remaps an input ip1 to a new ip2, the
 `run_ga_fyi.txt` file adds entries to connect the new ip2-labeled output
 to its ip1-labeled digital extractions (see example 2).
+* Output probe folders, when used, are named using ip1, though the individual
+filenames get the ip2 index.
 
 >*Be sure to name the SYNC channel(s) or they will not be saved.*
 
@@ -1017,6 +1019,7 @@ respective shanks.
 * If the imro selects no sites on a given shank, that shank is omitted.
 * The SY channel(s) are automatically included.
 * Include no more than one -sepShanks option for a given probe index.
+* Internally, the -sepShanks option automatically generates additional -save options.
 
 #### Example 1
 
@@ -1294,6 +1297,10 @@ command lines for TPrime.
 ------
 
 ## Change Log
+
+Version 4.7
+
+- Option -save writes correctly when no -dest folder.
 
 Version 4.6
 

@@ -54,7 +54,7 @@ bool Pass1AP2LF::go()
     if( svLim > sv0 )
         meta.writeSave( sv0, svLim, g0, t0, LF );
     else
-        meta.write( o_name, g0, t0, LF, ip );
+        meta.write( o_name, g0, t0, LF, ip, ip );
 
     gFOff.dwnSmp( ip );
 

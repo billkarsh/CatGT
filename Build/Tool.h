@@ -57,7 +57,13 @@ struct Meta {
                 tLast,
                 nFiles;
     void read( t_js js );
-    void write( const QString &outBin, int g0, int t0, t_js js, int ip );
+    void write(
+        const QString   &outBin,
+        int             g0,
+        int             t0,
+        t_js            js,
+        int             ip1,
+        int             ip2 );
     void writeSave( int sv0, int svLim, int g0, int t0, t_js js_out );
     qint64 pass1_sizeRead( int &ntpts, qint64 xferBytes, qint64 bufBytes );
     bool pass1_zeroFill( Pass1 &H, qint64 gapBytes );

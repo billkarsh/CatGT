@@ -30,7 +30,7 @@ bool Pass1OB::go()
 
     fileLoop();
 
-    meta.write( o_name, g0, t0, OB, ip );
+    meta.write( o_name, g0, t0, OB, ip, ip );
 
     return true;
 }

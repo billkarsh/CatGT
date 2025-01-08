@@ -83,7 +83,7 @@ bool Pass1AP::go()
     if( svLim > sv0 )
         meta.writeSave( sv0, svLim, g0, t0, AP );
     else
-        meta.write( o_name, g0, t0, AP, ip );
+        meta.write( o_name, g0, t0, AP, ip, ip );
 
     gfixEdits();
 

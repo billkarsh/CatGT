@@ -49,7 +49,7 @@ bool Pass1LF::go()
     if( svLim > sv0 )
         meta.writeSave( sv0, svLim, g0, t0, LF );
     else
-        meta.write( o_name, g0, t0, LF, ip );
+        meta.write( o_name, g0, t0, LF, ip, ip );
 
     return true;
 }

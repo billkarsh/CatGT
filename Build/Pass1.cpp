@@ -122,7 +122,7 @@ bool Pass1::o_open( int g0 )
         }
     }
 
-    return GBL.openOutputBinary( o_f, o_name, g0, js_out, ip );
+    return GBL.openOutputBinary( o_f, o_name, g0, js_out, ip, ip );
 }
 
 

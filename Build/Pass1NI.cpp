@@ -30,7 +30,7 @@ bool Pass1NI::go()
 
     fileLoop();
 
-    meta.write( o_name, g0, t0, NI, 0 );
+    meta.write( o_name, g0, t0, NI, 0, 0 );
 
     return true;
 }
