@@ -80,6 +80,9 @@ bool Pass1AP::go()
     if( shankMap )
         meta.kvp["~snsShankMap"] = shankMap->toString();
 
+    if( GBL.startsecs >= 0 )
+        meta.kvp["firstSample"] = meta.smp1st;
+
     if( svLim > sv0 )
         meta.writeSave( sv0, svLim, g0, t0, AP );
     else

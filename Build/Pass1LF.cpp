@@ -46,6 +46,9 @@ bool Pass1LF::go()
 
     fileLoop();
 
+    if( GBL.startsecs >= 0 )
+        meta.kvp["firstSample"] = meta.smp1st;
+
     if( svLim > sv0 )
         meta.writeSave( sv0, svLim, g0, t0, LF );
     else

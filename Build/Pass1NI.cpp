@@ -30,6 +30,9 @@ bool Pass1NI::go()
 
     fileLoop();
 
+    if( GBL.startsecs >= 0 )
+        meta.kvp["firstSample"] = meta.smp1st;
+
     meta.write( o_name, g0, t0, NI, 0, 0 );
 
     return true;

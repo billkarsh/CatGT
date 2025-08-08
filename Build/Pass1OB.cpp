@@ -30,6 +30,9 @@ bool Pass1OB::go()
 
     fileLoop();
 
+    if( GBL.startsecs >= 0 )
+        meta.kvp["firstSample"] = meta.smp1st;
+
     meta.write( o_name, g0, t0, OB, ip, ip );
 
     return true;
