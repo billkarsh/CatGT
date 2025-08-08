@@ -50,7 +50,8 @@ Pass1::~Pass1()
 
 bool Pass1::splitShanks()
 {
-    flip_NXT = meta.kvp["imDatPrb_type"].toInt() > 3000;
+    flip_NXT =  meta.kvp["imDatPrb_type"].toInt() > 3000 &&
+                meta.kvp["imDatApi"].toString() < "4.0.2";
 
     if( !doWrite )
         return true;
