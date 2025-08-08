@@ -5,7 +5,6 @@
 #include "Subset.h"
 
 #include <QDir>
-#include <QSet>
 
 #include <math.h>
 
@@ -122,6 +121,13 @@ void XTR::close() const
 }
 
 
+void XTR::wordError( int nC )
+{
+    Log() << QString("Word <%1> >= nchans <%2> in extractor '%3'.")
+                .arg( word ).arg( nC ).arg( sparam() );
+}
+
+
 bool XTR::openOutTimesFile( int g0, t_ex ex )
 {
     QString file,
@@ -140,6 +146,7 @@ bool XTR::openOutTimesFile( int g0, t_ex ex )
         case LF:
             file = GBL.imOutFile( g0, AP, ip, ip, ex, this );
             strm = QString("imec%1").arg( ip );
+            GBL.mip2ip1[ip] = ip;   // record source ip1
             break;
     }
 
@@ -187,7 +194,7 @@ bool XTR::openOutTimesFile( int g0, t_ex ex )
 }
 
 
-// Connect remapped ip to extractions...
+// Connect remapped ip to extractions for pass-1...
 //
 // Extractions are run on input ip1.
 // -save entries remap ip1 to ip2.
@@ -203,7 +210,9 @@ bool XTR::openOutTimesFile( int g0, t_ex ex )
 //
 void XTR::remapped_ip( int k )
 {
-    if( js != AP )
+// Test for pass-1
+
+    if( js != AP || GBL.pass() == 2 )
         return;
 
     QString lhs, rhs;
@@ -1009,6 +1018,10 @@ void BitField::init( double rate, double rangeMax )
 }
 
 
+// Note that bitfield extraction is unlikely to be run
+// on probe streams, so we don't bother with remapping
+// values to multiple ip2 as we do for times.
+//
 bool BitField::openOutFiles( int g0 )
 {
     if( !openOutTimesFile( g0, eBFT ) )
@@ -1149,7 +1162,7 @@ bool Save::init( const KVParams &kvp, const QFileInfo &fim, int theZ )
     QVector<uint>   snsFileChans, cUsr, cUsr2;
 
     if( !Subset::rngStr2Vec( cUsr, sUsr ) ) {
-        Log() << QString("Bad channel-list format:%1").arg( sparam() );
+        Log() << QString("Bad channel-list format '%1'").arg( sparam() );
         return false;
     }
 
@@ -1180,7 +1193,7 @@ bool Save::init( const KVParams &kvp, const QFileInfo &fim, int theZ )
     nC = iKeep.size();
 
     if( !nC ) {
-        Log() << QString("Specified channels not in file:%1").arg( sparam() );
+        Log() << QString("Specified channels not in file '%1'").arg( sparam() );
         return false;
     }
 
@@ -1192,7 +1205,8 @@ bool Save::init( const KVParams &kvp, const QFileInfo &fim, int theZ )
 
 bool Save::o_open( int g0, t_js js )
 {
-    o_f = new QFile;
+    GBL.mip2ip1[ip2]    = ip1;  // record derived ip2
+    o_f                 = new QFile;
     return GBL.openOutputBinary( *o_f, o_name, g0, js, ip1, ip2 );
 }
 
@@ -1499,6 +1513,128 @@ bool MaxZ::apply(
 /* Elem ---------------------------------------------------------- */
 /* --------------------------------------------------------------- */
 
+bool Elem::read_fyi()
+{
+// fyi path
+
+    QString path = dir;
+
+    if( !no_run_fld ) {
+
+        path += "/";
+
+        if( in_catgt_fld )
+            path += "catgt_";
+
+        path += QString("%1_g%2").arg( run ).arg( g );
+    }
+
+    path += QString("/%1_g%2_fyi.txt").arg( run ).arg( g );
+
+// fyi file
+
+    QFile   f( path );
+
+    if( !f.exists() ) {
+        Log() << QString("File not found '%1'.").arg( path );
+        return false;
+    }
+
+    KVParams    kvp;
+    kvp.fromMetaFile( path );
+
+// jsip2rate
+
+    {
+        KVParams::const_iterator    it = kvp.find( "jsip_srate" );
+        if( it == kvp.end() ) {
+            Log() << QString("FYI missing entry 'jsip_srate' '%1'.").arg( path );
+            return false;
+        }
+
+        QString smap = it.value().toString();
+
+        QStringList pr = smap.split(
+                            QRegExp("^\\s*\\(|\\)\\s*\\(|\\)\\s*$"),
+                            QString::SkipEmptyParts );
+        int         n  = pr.size();
+
+        if( !n ) {
+            Log() << QString("FYI entry 'jsip_srate' is empty '%1'.").arg( path );
+            return false;
+        }
+
+        for( int i = 0; i < n; ++i ) {
+            QStringList vv = pr[i].split(
+                                QRegExp("^\\s+|\\s*,\\s*"),
+                                QString::SkipEmptyParts );
+            jsip2rate[JSIP((t_js)vv[0].toInt(),vv[1].toInt())] = vv[2].toDouble();
+        }
+    }
+
+// jsip2nchn
+
+    {
+        KVParams::const_iterator    it = kvp.find( "jsip_nchan" );
+        if( it == kvp.end() ) {
+            Log() << QString("FYI missing entry 'jsip_nchan' '%1'.").arg( path );
+            return false;
+        }
+
+        QString smap = it.value().toString();
+
+        QStringList pr = smap.split(
+                            QRegExp("^\\s*\\(|\\)\\s*\\(|\\)\\s*$"),
+                            QString::SkipEmptyParts );
+        int         n  = pr.size();
+
+        if( !n ) {
+            Log() << QString("FYI entry 'jsip_nchan' is empty '%1'.").arg( path );
+            return false;
+        }
+
+        for( int i = 0; i < n; ++i ) {
+            QStringList vv = pr[i].split(
+                                QRegExp("^\\s+|\\s*,\\s*"),
+                                QString::SkipEmptyParts );
+            jsip2nchn[JSIP((t_js)vv[0].toInt(),vv[1].toInt())] = vv[2].toInt();
+        }
+    }
+
+// mip2ip1
+
+    if( (GBL.ap || GBL.lf) && GBL.vprb.size() ) {
+
+        KVParams::const_iterator    it = kvp.find( "ip2_ip1" );
+        if( it == kvp.end() ) {
+            Log() << QString("FYI missing entry 'ip2_ip1' '%1'.").arg( path );
+            return false;
+        }
+
+        QString smap = it.value().toString();
+
+        QStringList pr = smap.split(
+                            QRegExp("^\\s*\\(|\\)\\s*\\(|\\)\\s*$"),
+                            QString::SkipEmptyParts );
+        int         n  = pr.size();
+
+        if( !n ) {
+            Log() << QString("FYI entry 'ip2_ip1' is empty '%1'.").arg( path );
+            return false;
+        }
+
+        for( int i = 0; i < n; ++i ) {
+            QStringList vv = pr[i].split(
+                                QRegExp("^\\s+|\\s*,\\s*"),
+                                QString::SkipEmptyParts );
+            mip2ip1[vv[0].toInt()] = vv[1].toInt();
+        }
+    }
+
+    return true;
+}
+
+
 void Elem::unpack()
 {
     GBL.inpar           = dir;
@@ -1543,7 +1679,7 @@ static void PrintUsage()
     Log() << "-prb=0,3:5               ;if -ap or -lf AND !prb_3A process these probes\n";
     Log() << "Options:";
     Log() << "-no_run_fld              ;older data, or data files relocated without a run folder";
-    Log() << "-prb_fld                 ;use folder-per-probe organization";
+    Log() << "-prb_fld                 ;input has folder-per-probe organization";
     Log() << "-prb_miss_ok             ;instead of stopping, silently skip missing probes";
     Log() << "-gtlist={gj,tja,tjb}     ;override {-g,-t} giving each listed g-index its own t-range";
     Log() << "-t=cat                   ;extract events from CatGT output files (instead of -t=ta,tb)";
@@ -1862,7 +1998,7 @@ bad_param:
     if( !ssupercat.isEmpty() && !parseElems( ssupercat ) )
         return false;
 
-    if( velem.size() ) {
+    if( pass() == 2 ) {
 
         if( dest.isEmpty() ) {
             Log() << "Error: Supercat requires -dest option.";
@@ -1874,7 +2010,15 @@ bad_param:
             goto error;
         }
 
-        startsecs       = 0;
+        // generate unique set_ip1
+        QMap<int,int>::const_iterator
+            it, end = GBL.velem[0].mip2ip1.end();
+        foreach( int ip2, GBL.vprb ) {
+            if( (it = GBL.velem[0].mip2ip1.find( ip2 )) != end )
+                set_ip1.insert( it.value() );
+        }
+
+        startsecs       = -1;
         maxsecs         = 0;
         locin_um        = 0;
         locout_um       = 0;
@@ -1953,7 +2097,7 @@ error:
 
 // Check and sort save options
 
-    if( velem.isEmpty() ) {
+    if( pass() == 1 ) {
 
         if( !checkSaves() || !parseSepShanks() || !parseMaxZ() )
             return false;
@@ -1984,7 +2128,7 @@ error:
             ssuper      = "",
             sdest       = "";
 
-    if( !velem.size() ) {
+    if( pass() == 1 ) {
         sreq    = QString(" -dir=%1 -run=%2").arg( inpar ).arg( run );
         sgt     = gt_format_params();
     }
@@ -2000,10 +2144,10 @@ error:
     if( zfilmax >= 0 )
         szfil = QString(" -zerofillmax=%1").arg( zfilmax );
 
-    if( !velem.size() && !linefil )
+    if( pass() == 1 && !linefil )
         slinefil = QString(" -no_linefill");
 
-    if( startsecs > 0 )
+    if( startsecs >= 0 )
         sstartsecs = QString(" -startsecs=%1").arg( startsecs );
 
     if( maxsecs > 0 )
@@ -2015,7 +2159,7 @@ error:
     if( lfflt.isenabled() > 0 )
         slffilter = QString(" -lffilter=%1").arg( lfflt.format() );
 
-    if( !velem.size() && !tshift )
+    if( pass() == 1 && !tshift )
         stshift = QString(" -no_tshift");
 
     if( locout_um > 0 )
@@ -2050,7 +2194,7 @@ error:
     foreach( const MaxZ &Z, vMZ )
         sMaxZ += Z.sparam();
 
-    if( velem.size() )
+    if( pass() == 2 )
         ssuper = QString(" -supercat=%1").arg( formatElems() );
 
     if( !dest.isEmpty() )
@@ -2119,7 +2263,7 @@ error:
 
 // Inpath adjustments
 
-    if( velem.isEmpty() ) {
+    if( pass() == 1 ) {
         // Pass-1 specific
         if( !pass1FromCatGT() )
             return false;
@@ -2377,24 +2521,122 @@ void CGBL::fyi_ct_write()
 
     fyi["outpath_top"] = dir;
 
+// jsip_srate
+
+    if( !mjsiprate.isEmpty() ) {
+        QString rhs;
+        QMap<JSIP,double>::const_iterator
+            it  = mjsiprate.begin(),
+            end = mjsiprate.end();
+        for( ; it != end; ++it )
+            rhs += QString("(%1,%2,%3)")
+                    .arg( it.key().js ).arg( it.key().ip )
+                    .arg( it.value(), 0, 'f', 6 );
+        fyi["jsip_srate"] = rhs;
+    }
+
+// jsip_nchan
+
+    if( !mjsipnchn.isEmpty() ) {
+        QString rhs;
+        QMap<JSIP,int>::const_iterator
+            it  = mjsipnchn.begin(),
+            end = mjsipnchn.end();
+        for( ; it != end; ++it )
+            rhs += QString("(%1,%2,%3)")
+                    .arg( it.key().js ).arg( it.key().ip )
+                    .arg( it.value() );
+        fyi["jsip_nchan"] = rhs;
+    }
+
+// ip2_ip1
+
+    if( !mip2ip1.isEmpty() ) {
+        QString rhs;
+        QMap<int,int>::const_iterator
+            it  = mip2ip1.begin(),
+            end = mip2ip1.end();
+        for( ; it != end; ++it )
+            rhs += QString("(%1,%2)").arg( it.key() ).arg( it.value() );
+        fyi["ip2_ip1"] = rhs;
+    }
+
     fyi.toMetaFile( QString("%1/%2_fyi.txt").arg( dir ).arg( srun ) );
 }
 
 
 void CGBL::fyi_sc_write()
 {
+// --------
+// Remap ip
+// --------
+
+    QMap<QString,QVariant>  madd;
+
+// loop over all imecXX entries
+
+    QRegExp re("imec(\\d+)");
+    re.setCaseSensitivity( Qt::CaseInsensitive );
+
+    QMap<QString,QVariant>::const_iterator
+        it_fyi  = fyi.begin(),
+        end_fyi = fyi.end();
+    for( ; it_fyi != end_fyi; ++it_fyi ) {
+        if( it_fyi.key().contains( re ) ) {
+
+            int ip1 = re.cap(1).toInt();
+            QMap<int,int>::const_iterator
+                end_ip2 = GBL.velem[0].mip2ip1.end();
+
+            // for each ip2 that derives from ip1...
+            foreach( int ip2, GBL.vprb ) {
+                QMap<int,int>::const_iterator
+                    it_ip2 = GBL.velem[0].mip2ip1.find( ip2 );
+                if( it_ip2 != end_ip2 && it_ip2.value() == ip1 ) {
+                    QString key = it_fyi.key();
+                    key.replace(
+                        QString("imec%1").arg( ip1 ),
+                        QString("imec%1").arg( ip2 ) );
+                    madd[key] = it_fyi.value();
+                }
+            }
+        }
+    }
+
+// add new entries
+
+    QMap<QString,QVariant>::const_iterator
+        it_add  = madd.begin(),
+        end_add = madd.end();
+    for( ; it_add != end_add; ++it_add )
+        fyi[it_add.key()] = it_add.value();
+
+// outpath_top
+
     QString srun = QString("%1_g%2").arg( velem[0].run ).arg( velem[0].g ),
             dir  = QString("%1/supercat_%2").arg( dest ).arg( srun );
 
     fyi["outpath_top"] = dir;
 
+// ip2_ip1
+
+    {
+        QString rhs;
+        QMap<int,int>::const_iterator
+            it  = GBL.velem[0].mip2ip1.begin(),
+            end = GBL.velem[0].mip2ip1.end();
+        for( ; it != end; ++it )
+            rhs += QString("(%1,%2)").arg( it.key() ).arg( it.value() );
+        fyi["ip2_ip1"] = rhs;
+    }
+
     fyi.toMetaFile( QString("%1/%2_fyi.txt").arg( dir ).arg( srun ) );
 }
 
 
-bool CGBL::makeOutputProbeFolder( int g0, int ip )
+bool CGBL::makeOutputProbeFolder( int g0, int ip1 )
 {
-    QString fyikey = QString("outpath_probe%1").arg( ip );
+    QString fyikey = QString("outpath_parent_probe%1").arg( ip1 );
 
     if( !dest.isEmpty() ) {
 
@@ -2404,7 +2646,7 @@ bool CGBL::makeOutputProbeFolder( int g0, int ip )
 
             // Create probe subfolder: dest/tag_run_g0/run_g0_imec0
 
-            prb_obase += QString("/%1_g%2_imec%3").arg( run ).arg( g0 ).arg( ip );
+            prb_obase += QString("/%1_g%2_imec%3").arg( run ).arg( g0 ).arg( ip1 );
 
             if( !QDir().exists( prb_obase ) && !QDir().mkdir( prb_obase ) ) {
                 Log() << QString("Error creating dir '%1'.").arg( prb_obase );
@@ -2419,15 +2661,15 @@ bool CGBL::makeOutputProbeFolder( int g0, int ip )
         }
     }
     else if( prb_fld )
-        fyi[fyikey] = inPath( g0, AP, ip );
+        fyi[fyikey] = inPath( g0, AP, ip1 );
 
     return true;
 }
 
 
-QString CGBL::inFile( int g, int t, t_js js, int ip, t_ex ex, XTR *X )
+QString CGBL::inFile( int g, int t, t_js js, int ip1, int ip2, t_ex ex, XTR *X )
 {
-    QString s = inPathUpTo_t( g, js, ip );
+    QString s = inPathUpTo_t( g, js, ip1 );
 
 // t-index
 
@@ -2438,7 +2680,7 @@ QString CGBL::inFile( int g, int t, t_js js, int ip, t_ex ex, XTR *X )
     else
         t_str = QString("%1").arg( t );
 
-    return s + t_str + suffix( js, ip, ex, X );
+    return s + t_str + suffix( js, ip2, ex, X );
 }
 
 
@@ -2468,6 +2710,11 @@ QString CGBL::obOutFile( int g0, int ip, t_ex ex, XTR *X )
 }
 
 
+// Note that under probe renaming via -save directives,
+// probe folders are named according to ip1, while ip2
+// names the file. So all files derived from ip1 are
+// stored together.
+//
 QString CGBL::imOutFile( int g0, t_js js, int ip1, int ip2, t_ex ex, XTR *X )
 {
     QString s;
@@ -2489,7 +2736,7 @@ bool CGBL::openOutputBinary(
     int         ip1,
     int         ip2 )
 {
-    if( !velem.size() && gt_is_tcat() ) {
+    if( pass() == 1 && gt_is_tcat() ) {
         Log() <<
         "Error: Secondary extraction pass (-t=cat) must not"
         " concatenate, tshift or filter.";
@@ -2527,11 +2774,12 @@ int CGBL::openInputFile(
     int         g,
     int         t,
     t_js        js,
-    int         ip,
+    int         ip1,
+    int         ip2,
     t_ex        ex,
     XTR         *X )
 {
-    QString inBin = inFile( g, t, js, ip, ex, X );
+    QString inBin = inFile( g, t, js, ip1, ip2, ex, X );
 
     fib.setFile( inBin );
 
@@ -2569,9 +2817,10 @@ int CGBL::openInputBinary(
     int         g,
     int         t,
     t_js        js,
-    int         ip )
+    int         ip1,
+    int         ip2 )
 {
-    return openInputFile( fin, fib, g, t, js, ip, eBIN );
+    return openInputFile( fin, fib, g, t, js, ip1, ip2, eBIN );
 }
 
 
@@ -2586,10 +2835,11 @@ int CGBL::openInputMeta(
     int         g,
     int         t,
     t_js        js,
-    int         ip,
+    int         ip1,
+    int         ip2,
     bool        canSkip )
 {
-    QString inMeta = inFile( g, t, js, ip, eMETA );
+    QString inMeta = inFile( g, t, js, ip1, ip2, eMETA );
 
     fim.setFile( inMeta );
 
@@ -2799,6 +3049,9 @@ bool CGBL::parseElems( const QString &s )
         velem.push_back( Elem(
             trim_adjust_slashes( sl[0] ), re.cap(2),
             re.cap(3).toInt(), e_no_run_fld, catgt_fld ) );
+
+        if( !velem[ie].read_fyi() )
+            return false;
     }
 
     return true;
@@ -2815,7 +3068,7 @@ bool CGBL::checkExtractors()
 
         if( X->js < 0 || X->js > AP ) {
             Log() <<
-            QString("Error: Extractor js must be in range [0..2]:%1.")
+            QString("Error: Extractor js must be in range [0..2] '%1'.")
             .arg( X->sparam() );
             ok = false;
         }
@@ -2824,28 +3077,43 @@ bool CGBL::checkExtractors()
             case NI:
                 if( X->ip != 0 ) {
                     Log() <<
-                    QString("Warning: Extractor ip should be zero for ni stream:%1.")
+                    QString("Warning: Extractor ip should be zero for ni stream '%1'.")
                     .arg( X->sparam() );
                 }
                 break;
             case OB:
                 if( !vobx.contains( X->ip ) ) {
                     Log() <<
-                    QString("Warning: Extractor ip not among -obx=list:%1.")
+                    QString("Warning: Extractor ip not among -obx=list '%1'.")
                     .arg( X->sparam() );
                 }
                 break;
             case AP:
                 if( X->ex == eXA || X->ex == eXIA || X->ex == eBFT ) {
                     Log() <<
-                    QString("Error: Illegal extractor type for AP stream:%1.")
+                    QString("Error: Illegal extractor type for AP stream '%1'.")
                     .arg( X->sparam() );
                     ok = false;
                 }
-                if( !vprb.contains( X->ip ) ) {
-                    Log() <<
-                    QString("Warning: Extractor ip not among -prb=list:%1.")
-                    .arg( X->sparam() );
+                if( pass() == 1 ) {
+                    if( !vprb.contains( X->ip ) ) {
+                        Log() <<
+                        QString("Warning: Extractor probe-ip not among -prb=list '%1'.")
+                        .arg( X->sparam() );
+                    }
+                }
+                else {
+                    if( !set_ip1.contains( X->ip ) ) {
+                        Log() <<
+                        QString( "Warning: Extractor probe-ip unknown '%1'.")
+                        .arg( X->sparam() );
+                        Log() <<
+                        "Explanation: Supercat element-0 input includes an"
+                        " fyi file, which has an 'ip2_ip1' tag showing how"
+                        " each ip2 in the pass-1 run derives from a pass-1"
+                        " parent probe ip1...and none of those ip1 values"
+                        " match the indicated extractor ip value.";
+                    }
                 }
                 break;
             default:;
@@ -2859,14 +3127,14 @@ bool CGBL::checkExtractors()
 
                 Log() <<
                 QString("Error: Extractor bf startbit must be in range [0..15],"
-                " nbits in range [1..16-startbit]:%1.")
+                " nbits in range [1..16-startbit] '%1'.")
                 .arg( X->sparam() );
                 ok = false;
             }
 
             if( B->inarow < 1 ) {
                 B->inarow = 1;
-                Log() << QString("Warning: Extractor bf inarow must be >= 1:%1.")
+                Log() << QString("Warning: Extractor bf inarow must be >= 1 '%1'.")
                 .arg( X->sparam() );
             }
         }
@@ -2876,6 +3144,8 @@ bool CGBL::checkExtractors()
 }
 
 
+// Call only for pass-1
+//
 bool CGBL::checkSaves()
 {
     std::sort( vS.begin(), vS.end() );
@@ -2886,14 +3156,14 @@ bool CGBL::checkSaves()
 
         if( S.js < AP || S.js > LF ) {
             Log() <<
-            QString("Error: Save js must be in range [2..3]:%1.")
+            QString("Error: Save js must be in range [2..3] '%1'.")
             .arg( S.sparam() );
             ok = false;
         }
 
         if( (prb_3A && S.ip1 != 0) || !vprb.contains( S.ip1 ) ) {
             Log() <<
-            QString("Warning: Save ip1 not among -prb=list:%1.")
+            QString("Warning: Save ip1 not among -prb=list '%1'.")
             .arg( S.sparam() );
         }
     }
@@ -2990,7 +3260,7 @@ bool CGBL::makeTaggedDest()
         // Create run subfolder for all streams: dest/tag_run_g0
         // -----------------------------------------------------
 
-        if( velem.isEmpty() ) {
+        if( pass() == 1 ) {
             if( !no_catgt_fld )
                 im_obase += QString("/catgt_%1_g%2").arg( run ).arg( g0 );
         }
@@ -3067,10 +3337,10 @@ bool CGBL::addAutoExtractors()
         KVParams    kvp;
         int         t0, g0 = gt_get_first( &t0 );
 
-        if( in_catgt_fld || velem.size() )
+        if( in_catgt_fld || pass() == 2 )
             t0 = -1;
 
-        if( openInputMeta( fim, kvp, g0, t0, NI, 0, false ) )
+        if( openInputMeta( fim, kvp, g0, t0, NI, 0, 0, false ) )
             return false;
 
         QVector<uint>   snsFileChans;
@@ -3130,16 +3400,31 @@ bool CGBL::addAutoExtractors()
 
 // AP
 
-    foreach( uint ip, vprb ) {
-        D_Pulse *X = new D_Pulse;
-        X->ex       = eXD;
-        X->usrord   = -1;
-        X->js       = AP;
-        X->ip       = ip;
-        X->word     = -1;
-        X->bit      = 6;
-        X->span     = 500;
-        vX.push_back( X );
+    if( pass() == 1 ) {
+        foreach( uint ip, vprb ) {
+            D_Pulse *X = new D_Pulse;
+            X->ex       = eXD;
+            X->usrord   = -1;
+            X->js       = AP;
+            X->ip       = ip;
+            X->word     = -1;
+            X->bit      = 6;
+            X->span     = 500;
+            vX.push_back( X );
+        }
+    }
+    else {
+        foreach( int ip, set_ip1 ) {
+            D_Pulse *X = new D_Pulse;
+            X->ex       = eXD;
+            X->usrord   = -1;
+            X->js       = AP;
+            X->ip       = ip;
+            X->word     = -1;
+            X->bit      = 6;
+            X->span     = 500;
+            vX.push_back( X );
+        }
     }
 
 // Re-sort
@@ -3159,7 +3444,7 @@ QString CGBL::trim_adjust_slashes( const QString &dir )
 }
 
 
-QString CGBL::inPath( int g, t_js js, int ip )
+QString CGBL::inPath( int g, t_js js, int ip1 )
 {
     QString srun = QString("%1_g%2").arg( run ).arg( g ),
             s;
@@ -3183,19 +3468,19 @@ QString CGBL::inPath( int g, t_js js, int ip )
 // probe subfolder?
 
     if( js >= AP && prb_fld )
-        s += QString("/%1_imec%2").arg( srun ).arg( ip );
+        s += QString("/%1_imec%2").arg( srun ).arg( ip1 );
 
     return s;
 }
 
 
-QString CGBL::inPathUpTo_t( int g, t_js js, int ip )
+QString CGBL::inPathUpTo_t( int g, t_js js, int ip1 )
 {
-    return inPath( g, js, ip ) + QString("/%1_g%2_t").arg( run ).arg( g );
+    return inPath( g, js, ip1 ) + QString("/%1_g%2_t").arg( run ).arg( g );
 }
 
 
-QString CGBL::suffix( t_js js, int ip, t_ex ex, XTR *X )
+QString CGBL::suffix( t_js js, int ip2, t_ex ex, XTR *X )
 {
     QString suf;
 
@@ -3204,12 +3489,12 @@ QString CGBL::suffix( t_js js, int ip, t_ex ex, XTR *X )
 
     switch( js ) {
         case NI: suf += ".nidq"; break;
-        case OB: suf += QString(".obx%1.obx").arg( ip ); break;
+        case OB: suf += QString(".obx%1.obx").arg( ip2 ); break;
         case AP:
         case LF:
             suf += ".imec";
             if( !prb_3A )
-                suf += QString("%1").arg( ip );
+                suf += QString("%1").arg( ip2 );
             suf += (js == AP ? ".ap" : ".lf");
     }
 

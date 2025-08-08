@@ -15,7 +15,9 @@ private:
     QFile               fout;
     Meta                meta;
     std::vector<BTYPE>  &buf;
-    int                 ip,
+    QSet<int>           ip1_seen;
+    int                 ip1,
+                        ip2,
                         closedIP,
                         ex0,
                         exLim;
@@ -27,7 +29,7 @@ public:
     Pass2( std::vector<BTYPE> &buf, t_js js );
     virtual ~Pass2()    {}
 
-    int first( int ip );
+    int first( int ip2 );
     bool next( int ie );
     void close();
 

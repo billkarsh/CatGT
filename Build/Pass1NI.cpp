@@ -11,7 +11,7 @@ bool Pass1NI::go()
 
     doWrite = GBL.force_ni_ob || GBL.gt_nIndices() > 1 || GBL.startsecs >= 0;
 
-    if( GBL.openInputMeta( fim, meta.kvp, g0, t0, NI, 0, false ) )
+    if( GBL.openInputMeta( fim, meta.kvp, g0, t0, NI, 0, 0, false ) )
         return false;
 
     if( !o_open( g0 ) )

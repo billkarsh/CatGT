@@ -6,6 +6,7 @@
 
 #include <QBitArray>
 #include <QFileInfo>
+#include <QSet>
 #include <QVector>
 
 class QTextStream;
@@ -44,6 +45,20 @@ struct CniCfg
         niSumAll    = 3,
         niNTypes    = 4
     };
+};
+
+struct JSIP {
+    int js, ip;
+    JSIP()
+    :   js(0), ip(0)                            {}
+    JSIP( t_js js, int ip, bool LF2AP = false )
+    :   js(LF2AP && js==LF ? AP : js), ip(ip)   {}
+    bool operator<( const JSIP &rhs ) const
+    {
+        if( js < rhs.js )
+            return true;
+        return ip < rhs.ip;
+    }
 };
 
 struct GT3 {
@@ -114,6 +129,7 @@ struct XTR {
         bool operator()( const XTR *L, const XTR *R ) const {return *L < *R;}
     };
     void autoWord( int nC ) {if( word == -1 ) word = nC - 1;}
+    void wordError( int nC );
     virtual QString sparam() const = 0;
     virtual QString suffix( const QString &stype ) const = 0;
     virtual void init( double rate, double rangeMax ) = 0;
@@ -271,9 +287,11 @@ struct MaxZ {
 
 struct Elem {
 // supercat element
-    QMap<int,double>    iq2rate,
-                        iq2head,
-                        iq2tail;
+    QMap<JSIP,double>   jsip2rate,  // ip1-indexed from fyi
+                        jsip2head,  // ip1-indexed
+                        jsip2tail;  // ip1-indexed
+    QMap<JSIP,int>      jsip2nchn;  // ip1-indexed from fyi
+    QMap<int,int>       mip2ip1;    // ip2-indexed from fyi
     QString             dir,
                         run;
     int                 g;
@@ -289,9 +307,11 @@ struct Elem {
         bool            in_catgt_fld )
         :   dir(dir), run(run), g(g),
             no_run_fld(no_run_fld), in_catgt_fld(in_catgt_fld)  {}
-    double& rate( t_js js, int ip ) {return iq2rate[1000*(js==LF?AP:js) + ip];}
-    double& head( t_js js, int ip ) {return iq2head[1000*(js==LF?AP:js) + ip];}
-    double& tail( t_js js, int ip ) {return iq2tail[1000*(js==LF?AP:js) + ip];}
+    double& rate( t_js js, int ip ) {return jsip2rate[JSIP(js,ip)];}
+    double& head( t_js js, int ip ) {return jsip2head[JSIP(js,ip,true)];}
+    double& tail( t_js js, int ip ) {return jsip2tail[JSIP(js,ip,true)];}
+    int&    nC( t_js js, int ip )   {return jsip2nchn[JSIP(js,ip)];}
+    bool read_fyi();
     void unpack();
 };
 
@@ -316,6 +336,9 @@ public:
                         im_obase,       // derived
                         prb_obase;      // derived
     QMap<int,QVector<uint>> mexc;
+    QMap<JSIP,double>   mjsiprate;      // pass-1 -> fyi
+    QMap<JSIP,int>      mjsipnchn;      // pass-1 -> fyi
+    QMap<int,int>       mip2ip1;        // pass-1 -> fyi
     QVector<GT3>        gtlist;
     QVector<uint>       vobx,
                         vprb;
@@ -324,6 +347,7 @@ public:
     QVector<SepShanks>  vSK;
     QVector<MaxZ>       vMZ;
     QVector<Elem>       velem;
+    QSet<int>           set_ip1;        // unique ip1 for pass-2
     KVParams            fyi;            // generated
     int                 ga,
                         gb,
@@ -373,6 +397,8 @@ public:
 
     bool SetCmdLine( int argc, char* argv[] );
 
+    int pass() const    {return (velem.size() ? 2 : 1);}
+
     bool gt_parse_list( const QString &s );
     void gt_set_tcat();
     bool gt_is_tcat() const;
@@ -387,9 +413,9 @@ public:
     void fyi_ct_write();
     void fyi_sc_write();
 
-    bool makeOutputProbeFolder( int g0, int ip );
+    bool makeOutputProbeFolder( int g0, int ip1 );
 
-    QString inFile( int g, int t, t_js js, int ip, t_ex ex, XTR *X = 0 );
+    QString inFile( int g, int t, t_js js, int ip1, int ip2, t_ex ex, XTR *X = 0 );
     QString niOutFile( int g0, t_ex ex, XTR *X = 0 );
     QString obOutFile( int g0, int ip, t_ex ex, XTR *X = 0 );
     QString imOutFile( int g0, t_js js, int ip1, int ip2, t_ex ex, XTR *X = 0 );
@@ -408,7 +434,8 @@ public:
         int         g,
         int         t,
         t_js        js,
-        int         ip,
+        int         ip1,
+        int         ip2,
         t_ex        ex,
         XTR         *X = 0 );
 
@@ -418,7 +445,8 @@ public:
         int         g,
         int         t,
         t_js        js,
-        int         ip );
+        int         ip1,
+        int         ip2 );
 
     int openInputMeta(
         QFileInfo   &fim,
@@ -426,7 +454,8 @@ public:
         int         g,
         int         t,
         t_js        js,
-        int         ip,
+        int         ip1,
+        int         ip2,
         bool        canSkip );
 
     IMROTbl *getProbe( const KVParams &kvp );
@@ -452,9 +481,9 @@ private:
         const KVParams  &kvp );
     bool addAutoExtractors();
     QString trim_adjust_slashes( const QString &dir );
-    QString inPath( int g, t_js js, int ip );
-    QString inPathUpTo_t( int g, t_js js, int ip );
-    QString suffix( t_js js, int ip, t_ex ex, XTR *X = 0 );
+    QString inPath( int g, t_js js, int ip1 );
+    QString inPathUpTo_t( int g, t_js js, int ip1 );
+    QString suffix( t_js js, int ip2, t_ex ex, XTR *X = 0 );
 };
 
 /* --------------------------------------------------------------- */

@@ -121,6 +121,8 @@ bool Pass1::o_open( int g0 )
 
             return true;
         }
+
+        GBL.mip2ip1[ip] = ip;   // record source ip1
     }
 
     return GBL.openOutputBinary( o_f, o_name, g0, js_out, ip, ip );
@@ -139,6 +141,8 @@ void Pass1::initDigitalFields( double rngMax )
 
         if( X->word < meta.nC )
             X->init( meta.srate, rngMax );
+        else
+            X->wordError( meta.nC );
     }
 }
 
@@ -201,7 +205,7 @@ void Pass1::fileLoop()
         // Open binary
         // -----------
 
-        switch( GBL.openInputBinary( i_f, i_fi, g, t, js_in, ip ) ) {
+        switch( GBL.openInputBinary( i_f, i_fi, g, t, js_in, ip, ip ) ) {
             case 0: break;
             case 1: continue;
             case 2: return;

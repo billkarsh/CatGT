@@ -84,9 +84,102 @@ close:
 #endif
 
 
+#if 0
+static void compareFiles1()
+{
+#define BUFSIZE 4096
+
+    QFile   fa( "D:\\catgt_test_data_2\\OUT\\catgt_SC024_092319_NP1.0_Midbrain_g0\\SC024_092319_NP1.0_Midbrain_g0_tcat.imec0.ap.bin" ),
+            fb( "D:\\catgt_test_data_2\\ORIG\\OUT\\catgt_SC024_092319_NP1.0_Midbrain_g0\\SC024_092319_NP1.0_Midbrain_g0_tcat.imec0.ap.bin" );
+
+    fa.open( QIODevice::ReadOnly );
+    fb.open( QIODevice::ReadOnly );
+
+    quint64 asize = fa.size(),
+            bsize = fb.size();
+
+    QVector<char>   abuf( BUFSIZE ),
+                    bbuf( BUFSIZE );
+    char            *pa = &abuf[0],
+                    *pb = &bbuf[0];
+
+    if( asize != bsize ) {
+        Log()<<"dif sizes";
+        goto close;
+    }
+
+    while( bsize ) {
+
+        int n = qMin( (quint64)BUFSIZE, bsize );
+
+        fa.read( pa, n );
+        fb.read( pb, n );
+
+        if( memcmp( pa, pb, n ) ) {
+            Log()<<"diff";
+            goto close;
+        }
+
+        bsize -= n;
+    }
+
+    Log()<<"same";
+
+close:
+    fb.close();
+    fa.close();
+}
+static void compareFiles2()
+{
+#define BUFSIZE 4096
+
+    QFile   fa( "D:\\catgt_test_data_2\\OUT\\catgt_SC024_092319_NP1.0_Midbrain_g0\\SC024_092319_NP1.0_Midbrain_g0_tcat.imec0.lf.bin" ),
+            fb( "D:\\catgt_test_data_2\\ORIG\\OUT\\catgt_SC024_092319_NP1.0_Midbrain_g0\\SC024_092319_NP1.0_Midbrain_g0_tcat.imec0.lf.bin" );
+
+    fa.open( QIODevice::ReadOnly );
+    fb.open( QIODevice::ReadOnly );
+
+    quint64 asize = fa.size(),
+            bsize = fb.size();
+
+    QVector<char>   abuf( BUFSIZE ),
+                    bbuf( BUFSIZE );
+    char            *pa = &abuf[0],
+                    *pb = &bbuf[0];
+
+    if( asize != bsize ) {
+        Log()<<"dif sizes";
+        goto close;
+    }
+
+    while( bsize ) {
+
+        int n = qMin( (quint64)BUFSIZE, bsize );
+
+        fa.read( pa, n );
+        fb.read( pb, n );
+
+        if( memcmp( pa, pb, n ) ) {
+            Log()<<"diff";
+            goto close;
+        }
+
+        bsize -= n;
+    }
+
+    Log()<<"same";
+
+close:
+    fb.close();
+    fa.close();
+}
+#endif
 int main( int argc, char *argv[] )
 {
     setLogFileName( "CatGT.log" );
+
+//compareFiles1();
+//compareFiles2();return 0;
 
 //double qq=getTime();
 
@@ -99,7 +192,7 @@ int main( int argc, char *argv[] )
         return 42;
     }
 
-    if( GBL.velem.isEmpty() )
+    if( GBL.pass() == 1 )
         pass1entrypoint();
     else
         supercatentrypoint();

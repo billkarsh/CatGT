@@ -32,7 +32,7 @@ bool Pass1AP::go()
                     || GBL.tshift || GBL.locout_um > 0 || GBL.locout
                     || GBL.gblcar || GBL.gbldmx        || GBL.gfixdo;
 
-    switch( GBL.openInputMeta( fim, meta.kvp, g0, t0, AP, ip, GBL.prb_miss_ok ) ) {
+    switch( GBL.openInputMeta( fim, meta.kvp, g0, t0, AP, ip, ip, GBL.prb_miss_ok ) ) {
         case 0: break;
         case 1: return true;
         case 2: return false;

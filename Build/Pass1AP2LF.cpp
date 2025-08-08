@@ -15,7 +15,7 @@ bool Pass1AP2LF::go()
     doWrite = GBL.gt_nIndices() > 1
                 || GBL.startsecs >= 0 || GBL.lfflt.isenabled() || GBL.tshift;
 
-    switch( GBL.openInputMeta( fim, meta.kvp, g0, t0, AP, ip, GBL.prb_miss_ok ) ) {
+    switch( GBL.openInputMeta( fim, meta.kvp, g0, t0, AP, ip, ip, GBL.prb_miss_ok ) ) {
         case 0: break;
         case 1: return true;
         case 2: return false;
@@ -43,6 +43,7 @@ bool Pass1AP2LF::go()
     if( !filtersAndScaling() )
         return false;
 
+    GBL.mjsiprate[JSIP(LF,ip)] = meta.srate / 12;
     gFOff.init( meta.srate / 12, LF, ip );
 
     alloc();

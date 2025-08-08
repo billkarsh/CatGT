@@ -372,6 +372,11 @@ void Meta::read( const QFileInfo &fim, t_js js, int ip )
     gLast           = GBL.gt_get_first( &tLast );
     nFiles          = 0;
 
+    if( ip >= 0 ) {
+        GBL.mjsiprate[JSIP(js,ip)] = srate;
+        GBL.mjsipnchn[JSIP(js,ip)] = nC;
+    }
+
 // Report non-zero imErrFlags
 
     QMap<QString,QVariant>::const_iterator
@@ -816,7 +821,7 @@ int P1LFCase::lfCaseCalc( int g0, int t0, int ip )
 {
 // seek 1.0 lf meta
 
-    QString     inMeta = GBL.inFile( g0, t0, LF, ip, eMETA );
+    QString     inMeta = GBL.inFile( g0, t0, LF, ip, ip, eMETA );
     QFileInfo   fim( inMeta );
 
     if( fim.exists() )
@@ -824,7 +829,7 @@ int P1LFCase::lfCaseCalc( int g0, int t0, int ip )
 
 // seek ap meta
 
-    inMeta = GBL.inFile( g0, t0, AP, ip, eMETA );
+    inMeta = GBL.inFile( g0, t0, AP, ip, ip, eMETA );
     fim.setFile( inMeta );
 
     if( !fim.exists() )
@@ -1013,7 +1018,7 @@ bool P1EOF::getMeta( int g, int t, t_js js, int ip, bool t_miss_ok )
 {
     QFileInfo   fim;
     KVParams    kvp;
-    int         ret = GBL.openInputMeta( fim, kvp, g, t, js, ip, t_miss_ok );
+    int         ret = GBL.openInputMeta( fim, kvp, g, t, js, ip, ip, t_miss_ok );
 
     switch( ret ) {
         case 0: break;
@@ -1104,62 +1109,63 @@ done:
 
 
 // Decrement tail edge if beyond span of lf file.
+// Can use any user listed LF file derived from given ip1.
 //
-static bool _supercat_checkLF( double &tlast, double apsrate, int ip )
+static bool _supercat_checkLF( double &tlast, int ie, int ip1 )
 {
-    QFileInfo   fim;
-    KVParams    kvp;
-    qint64      lfsamp;
+    double      apsrate = GBL.velem[ie].rate( AP, ip1 );
+    qint64      lfsamp  = 0;
+    QSet<int>   sip2;   // unique ip2 from this ip1
 
-    switch( GBL.openInputMeta( fim, kvp, GBL.ga, -1, LF, ip, GBL.prb_miss_ok ) ) {
-        case 0: break;
-        case 1: return true;
-        case 2: return false;
+    QMap<int,int>::const_iterator
+        it,
+        end = GBL.velem[ie].mip2ip1.end();
+    foreach( int ip2, GBL.vprb ) {
+        it = GBL.velem[ie].mip2ip1.find( ip2 );
+        if( it != end && it.value() == ip1 )
+            sip2.insert( ip2 );
     }
 
-    lfsamp = kvp["fileSizeBytes"].toLongLong()
-                / (sizeof(qint16) * kvp["nSavedChans"].toInt());
+    foreach( int ip2, sip2 ) {
+
+        QFileInfo   fim;
+        KVParams    kvp;
+
+        switch( GBL.openInputMeta( fim, kvp, GBL.ga, -1, LF, ip1, ip2, GBL.prb_miss_ok ) ) {
+            case 0: lfsamp = kvp["fileSizeBytes"].toLongLong()
+                            / (sizeof(qint16) * kvp["nSavedChans"].toInt());
+                    break;
+            case 1: continue;
+            case 2: return false;
+        }
+    }
 
 // AP edge beyond AP-span of lf?
 
-    if( tlast * apsrate >= 12 * lfsamp )
+    if( lfsamp && tlast * apsrate >= 12 * lfsamp )
         tlast -= GBL.syncper;
 
     return true;
 }
 
 
-// Get first edge (head) and last edge (tail) for stream.
+// Get first edge (head) and last edge (tail) for ip1-stream.
 //
 // Note that this operation requires that sync edges files
-// were extracted during pass 1, which can not happen for
+// were extracted during pass-1, which can not happen for
 // LF stream. Therefore, this js parameter should be only
 // {NI, OB, AP}.
 //
-static bool _supercat_streamSelectEdges( int ie, t_js js, int ip )
+static bool _supercat_streamSelectEdges( int ie, t_js js, int ip1 )
 {
-// ---------------------
-// Get common meta items
-// ---------------------
-
-    QFileInfo   fim;
-    KVParams    kvp;
-    bool        miss_ok = (js == AP ? GBL.prb_miss_ok : false);
-
-    switch( GBL.openInputMeta( fim, kvp, GBL.ga, -1, js, ip, miss_ok ) ) {
-        case 0: break;
-        case 1: return true;
-        case 2: return false;
-    }
-
 // -------------------
 // Find sync extractor
 // -------------------
 
     XTR *X  = 0;
     int exLim,
-        ex0 = GBL.myXrange( exLim, js, ip ),
-        nC  = kvp["nSavedChans"].toInt();
+        ex0 = GBL.myXrange( exLim, js, ip1 ),
+        nC  = GBL.velem[ie].nC( js, ip1 );
 
     for( int i = ex0; i < exLim; ++i ) {
 
@@ -1172,6 +1178,13 @@ static bool _supercat_streamSelectEdges( int ie, t_js js, int ip )
         }
     }
 
+    if( !X ) {
+        Log() <<
+        QString("-supercat_trim_edges could not find sync extractor for stream(js,ip=%1,%2).")
+        .arg( js ).arg( ip1 );
+        return false;
+    }
+
 // --------------
 // Open edge file
 // --------------
@@ -1179,7 +1192,7 @@ static bool _supercat_streamSelectEdges( int ie, t_js js, int ip )
     QFileInfo   fib;
     QFile       fin;
 
-    if( GBL.openInputFile( fin, fib, GBL.ga, -1, js, ip, X->ex, X ) )
+    if( GBL.openInputFile( fin, fib, GBL.ga, -1, js, ip1, ip1, X->ex, X ) )
         return false;
 
 // ---------
@@ -1197,7 +1210,7 @@ static bool _supercat_streamSelectEdges( int ie, t_js js, int ip )
         double  t = line.toDouble( &ok );
 
         if( ok ) {
-            GBL.velem[ie].head( js, ip )    = (ie ? t : 0);
+            GBL.velem[ie].head( js, ip1 )   = (ie ? t : 0);
             tlast                           = t;
             break;
         }
@@ -1233,8 +1246,8 @@ static bool _supercat_streamSelectEdges( int ie, t_js js, int ip )
 // At least two edges?
 // -------------------
 
-    if( tlast == 0 || GBL.velem[ie].iq2head.isEmpty() ||
-        tlast - GBL.velem[ie].head( js, ip ) < 2.0 ) {
+    if( tlast == 0 || GBL.velem[ie].jsip2head.isEmpty() ||
+        tlast - GBL.velem[ie].head( js, ip1 ) < 2.0 ) {
 
         Log() <<
         QString("-supercat_trim_edges found fewer than 2 edges in file '%1'.")
@@ -1246,17 +1259,14 @@ static bool _supercat_streamSelectEdges( int ie, t_js js, int ip )
 // Check lf
 // --------
 
-    if( js == AP && GBL.lf
-        && !_supercat_checkLF( tlast, kvp["imSampRate"].toDouble(), ip ) ) {
-
+    if( js == AP && GBL.lf && !_supercat_checkLF( tlast, ie, ip1 ) )
         return false;
-    }
 
 // -----
 // Store
 // -----
 
-    GBL.velem[ie].tail( js, ip ) = tlast;
+    GBL.velem[ie].tail( js, ip1 ) = tlast;
 
     return true;
 }
@@ -1278,8 +1288,8 @@ static bool _supercat_runSelectEdges( int ie )
             return false;
     }
 
-    foreach( uint ip, GBL.vprb ) {
-        if( !_supercat_streamSelectEdges( ie, AP, ip ) )
+    foreach( int ip1, GBL.set_ip1 ) {
+        if( !_supercat_streamSelectEdges( ie, AP, ip1 ) )
             return false;
     }
 
@@ -1295,32 +1305,44 @@ static bool _supercat_runSelectEdges( int ie )
 // whole periods until "close."
 
     double  shortest = 1e99;
-    QMap<int,double>::iterator  it, end = GBL.velem[ie].iq2tail.end();
-    for( it = GBL.velem[ie].iq2tail.begin(); it != end; ++it ) {
+    QMap<JSIP,double>::const_iterator
+        it  = GBL.velem[ie].jsip2tail.begin(),
+        end = GBL.velem[ie].jsip2tail.end();
+    for( ; it != end; ++it ) {
         if( it.value() < shortest )
             shortest = it.value();
     }
 
-    QList<int>  keys = GBL.velem[ie].iq2tail.keys();
-    foreach( int iq, keys ) {
+    QList<JSIP> keys = GBL.velem[ie].jsip2tail.keys();
+    foreach( JSIP iq, keys ) {
 
-        double  tail = GBL.velem[ie].iq2tail[iq];
+        double  tail = GBL.velem[ie].jsip2tail[iq];
 
         while( tail - shortest > GBL.syncper/2 )
             tail -= GBL.syncper;
 
-        GBL.velem[ie].iq2tail[iq] = tail;
+        // At least two edges left?
+
+        if( tail - GBL.velem[ie].jsip2head[iq] < GBL.syncper ) {
+
+            Log() <<
+            QString("-supercat_trim_edges found fewer than 2 common edges in stream(js,ip=%1,%2).")
+            .arg( iq.js ).arg( iq.ip );
+            return false;
+        }
+
+        GBL.velem[ie].jsip2tail[iq] = tail;
     }
 
     return true;
 }
 
 
-static bool _supercat( Pass2 *H, int ip )
+static bool _supercat( Pass2 *H, int ip2 )
 {
     GBL.velem[0].unpack();
 
-    switch( H->first( ip ) ) {
+    switch( H->first( ip2 ) ) {
         case 0: break;
         case 1: return true;
         case 2: return false;
@@ -1359,19 +1381,24 @@ void supercatentrypoint()
     Pass2 *hAP = (GBL.ap ? new Pass2( buf, AP ) : 0);
     Pass2 *hLF = (GBL.lf ? new Pass2( buf, LF ) : 0);
 
+    QMap<int,int>::const_iterator it, end = GBL.velem[0].mip2ip1.end();
+
     if( GBL.ni && !_supercat( hNI, 0 ) )
         goto done;
 
-    foreach( uint ip, GBL.vobx ) {
-        if( !_supercat( hOB, ip ) )
+    foreach( int ip2, GBL.vobx ) {
+        if( !_supercat( hOB, ip2 ) )
             goto done;
     }
 
-    foreach( uint ip, GBL.vprb ) {
-        if( GBL.ap && !_supercat( hAP, ip ) )
-            goto done;
-        if( GBL.lf && !_supercat( hLF, ip ) )
-            goto done;
+    foreach( int ip2, GBL.vprb ) {
+        it = GBL.velem[0].mip2ip1.find( ip2 );
+        if( it != end ) {
+            if( GBL.ap && !_supercat( hAP, ip2 ) )
+                goto done;
+            if( GBL.lf && !_supercat( hLF, ip2 ) )
+                goto done;
+        }
     }
 
 done:
