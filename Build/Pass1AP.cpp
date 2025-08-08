@@ -541,7 +541,8 @@ void Pass1AP::gFixDetect(
     int             maxInt,
     int             stride )
 {
-#define RES 2
+#define RES                 2
+#define BIQUAD_TRANS_WIDE   120
 
     if( nAP <= 0 )
         return;
