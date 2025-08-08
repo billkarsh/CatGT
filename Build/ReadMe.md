@@ -94,7 +94,7 @@ Which streams:
 
 Options:
 -no_run_fld              ;older data, or data files relocated without a run folder
--prb_fld                 ;use folder-per-probe organization
+-prb_fld                 ;input has folder-per-probe organization
 -prb_miss_ok             ;instead of stopping, silently skip missing probes
 -gtlist={gj,tja,tjb}     ;override {-g,-t} giving each listed g-index its own t-range
 -t=cat                   ;extract events from CatGT output files (instead of -t=ta,tb)
@@ -423,6 +423,8 @@ and the length of the zero-filled span in the output file.
     1. A range of files is to be concatenated, that is, (gb > ga) or
     (tb > ta).
     2. If filters, tshift or startsecs are applied, so the binary data are altered.
+    3. You want to export a time range; set both -startsecs >= 0, and
+    -maxsecs > startsecs.
 
 - If you do not specify the `-dest` option, output files are stored in the
 same folder as their input files.
@@ -493,6 +495,13 @@ zero-filling of previous versions.
 Use this to start reading each input stream after a specified offset from
 the stream's beginning (float seconds). Note that an error will be flagged
 if this value exceeds the length of the first file in a concatenation series.
+
+>Note: When SpikeGLX writes data files all the streams (assuming sync is
+enabled) are precisely aligned at the first sample. Startsecs trimming is
+done using the estimated sample rate for each of the streams. Hence, any
+inaccuracy in these rates will lead to a small temporal misalignment of
+the file starts. This error is minimized by calibrating your sample clocks
+and using smaller values of startsecs.
 
 ### apfilter and lffilter options
 
@@ -668,7 +677,7 @@ A GeomMap has an entry for each saved channel that describes the
 (shank, x(um), z(um)) where its electrode resides on the shank, and a fourth
 0/1 value, `use flag`, indicating if the channel should be used in spatial
 filtering. By default, SpikeGLX marks known on-shank reference channels
-with zeroes. Your chnexcl data force the corresponding use flags to zero
+with zeros. Your chnexcl data force the corresponding use flags to zero
 before the filters are applied, and the modified `~snsGeomMap`, if present,
 is written to the CatGT output metadata.
 
@@ -676,7 +685,7 @@ A ShankMap has an entry for each saved channel that describes the
 (shank, col, row) where its electrode resides on the shank, and a fourth
 0/1 value, `use flag`, indicating if the channel should be used in spatial
 filtering. By default, SpikeGLX marks known on-shank reference channels
-with zeroes. Your chnexcl data force the corresponding use flags to zero
+with zeros. Your chnexcl data force the corresponding use flags to zero
 before the filters are applied, and the modified `~snsShankMap`, if present,
 is written to the CatGT output metadata.
 
@@ -729,10 +738,17 @@ streams in the
 
 #### Extractors positive pulse
 
-1. starts at low **non-negative** baseline (below threshold)
+1. starts at low baseline (below threshold)
 2. has a leading/rising edge (crosses above threshold)
 3. (optionally) stays high/deflected for a given duration
 4. has a trailing/falling edge (crosses below threshold)
+
+> Digital TTL signals are in the range [0,5] V, so for the xd case,
+positive pulses are inherently non-negative.
+
+> The xa extractor looks for rising edges and it works regardless of
+the baseline level of the pulse. The two threshold value can be positive
+or negative.
 
 The positive pulse extractors **{xa, xd}** make text files that report
 the times (seconds) of the leading edges of matched pulses.
@@ -792,8 +808,21 @@ reflects the parameters, e.g., `run_name_g0_tcat.imec0.ap.xd_384_6_500.txt`.
 - The threshold is not encoded in the `-xa` filename; just word and
 milliseconds.
 
-- The `run_ga_fyi.txt` file lists the full paths of all generated
-extraction files.
+- The `-save` and `-sepShanks` options can create new neural binaries
+derived from a parent probe with index ip1, and these new files are
+labeled by your provided ip2 indices. However, extraction of nonneural
+events is performed only on the parent ip1 files. For example, you
+might split a four-shank probe {0} into four separate shank files
+{1000,1001,1002,1003} using `-sepShanks=0,1000,1001,1002,1003`. The
+output will contain a single file of extracted sync edges, named for
+probe-0. The derived neural files all share the same nonneural data
+so the extractor output files are not replicated. Rather, the fyi file
+has path entries that connect each derived ip2 index with the parent
+ip1 extractor output file.
+
+- The `run_ga_fyi.txt` file lists the full paths of generated
+extractor output files. It also lists which extractor files go
+with any derived (ip2) neural file indices.
 
 - The files report the times (s) of leading edges of detected pulses;
 one time per line, `\n` line endings.
@@ -803,13 +832,17 @@ detected (native time).
 
 #### Extractors inverted pulse
 
-1. starts at high **positive** baseline (above threshold)
+1. starts at high baseline (above threshold)
 2. has a leading/falling edge (crosses below threshold)
 3. (optionally) stays low/deflected for a given duration
 4. has a trailing/rising edge (crosses above threshold)
 
->*Although the shape is "inverted," these pulses are nevertheless entirely
-non-negative.*
+> Digital TTL signals are in the range [0,5] V, so for the xid case,
+inverted pulses are still entiely non-negative.
+
+> The xia extractor looks for falling edges and it works regardless of
+the baseline level of the pulse. The two threshold value can be positive
+or negative.
 
 The inverted pulse extractors **{xia, xid}** make text files that report
 the times (seconds) of the leading edges of matched pulses.
@@ -919,11 +952,16 @@ and several options can refer to the same input file if needed:
 **One file in -> many files out**.
 * Internally, the -sepShanks and -maxZ options automatically generate
 additional -save options.
-* For each -save option that remaps an input ip1 to a new ip2, the
-`run_ga_fyi.txt` file adds entries to connect the new ip2-labeled output
-to its ip1-labeled digital extractions (see example 2).
+* The `run_ga_fyi.txt` file gets an entry of the form **ip2_ip1=(ip2,ip1)()...**
+that lists the ip1 source index for each new ip2 file index.
+* Extraction operations are performed only on the source ip1 file. However,
+the `run_ga_fyi.txt` file also gets entries that connect the new ip2-labeled
+output to its ip1-labeled digital extractions (see example 2).
 * Output probe folders, when used, are named using ip1, though the individual
-filenames get the ip2 index.
+filenames get the ip2 index. That is, all the ip2-files derived from a given
+ip1 probe are located together in a common folder, and that common folder is
+either the top-level run folder (not using out_prb_fld) or the probe folder
+named by ip1 (using out_prb_fld).
 
 >*Be sure to name the SYNC channel(s) or they will not be saved.*
 
@@ -1080,6 +1118,15 @@ runs to generate their tcat-tagged output files, and then (2) running CatGT
 on those tcat outputs `"pass 2"` using the `-supercat` option as described
 in this section.
 
+> Do both the pass 1 and the pass 2 supercat runs with version 4.8 or later
+to correctly handle probe files with alternate probe indices. Alternate
+probe indices are used with -sepShanks to split a four-shank file into multiple
+new shank files, or with -save to create new files with channel subsets that
+are stored as new pseudo-probes. Simply list the new probe indices in the
+'-prb=' list for supercat. For example, if in pass 1 you split four-shank
+probe-0 into four new probes using '-sepShanks=0,1000,1001,1002,1003' then
+in the supercat command line you could use '-prb=1000:1003'.
+
 ## --- Building The Supercat Command Line ---
 
 ### supercat option
@@ -1088,8 +1135,13 @@ The new option `-supercat={dir,run_ga}{dir,run_ga}...` takes a list of
 elements *(include the curly braces)* that specify which runs to join and
 in what order (the order listed). Remember that CatGT lets you store run
 output either in the native input folders or in a separate dest folder.
-Here's how to interpret and set a supercat element depending on how you
-did that CatGT run:
+
+>Each pass-1 run generates an output file: `output_path/run_ga_fyi.txt`,
+containing an entry: `supercat_element`. These entries make it much easier
+to construct your supercat command line.
+
+For deeper understanding and flexibility, here's how to interpret and set
+a supercat element depending on how you did the CatGT pass-1 run:
 
 **Example**
 
@@ -1113,13 +1165,22 @@ did that CatGT run:
 
 >Note that if `-no_run_fld` is used, it is applied to all elements.
 
+>Note that if `-prb_fld` is used, it is applied to all elements. That is,
+you must use the same folder organization (probe folders or not) for each
+of the pass-1 runs you want to supercat together.
+
+> **For a pass-1 run**, option -prb_fld specifies that the *pass-1 input*
+has probe folder organization, while -out_prb_fld specifies that the
+*pass-1 output* has probe folder organization if using the -dest option.
+
+> **For a pass-2 supercat run**, option -prb_fld refers to *pass-2 input*.
+So if your pass-1 output used probe folders use -prb_fld for pass-2. To
+give the final *pass-2 output* probe folders, specify -out_prb_fld in the
+supecat command line.
+
 >Note that in linux, curly braces will be misinterpreted, unless you
 enclose the whole parameter list in quotes:<br>
 > **> runit.sh 'my_params'**
-
->Each pass1 run generates an output file: `output_path/run_ga_fyi.txt`,
-containing an entry: `supercat_element`. These entries make it much easier
-to construct your supercat command line.
 
 ### supercat_trim_edges option
 
@@ -1131,7 +1192,7 @@ selected a trigger mode that sets a fixed time span for the files. Said
 another way, the starts of files in a run are aligned, but the lengths
 of the files are ragged (differences of ~thousandth of a second).
 
->As of version 3.6 pass1 CatGT runs trim any trailing ragged edges to
+>As of version 3.6 pass-1 CatGT runs trim any trailing ragged edges to
 even-up the stream lengths.
 
 By default, supercat just sews the files from different runs together end
@@ -1156,7 +1217,6 @@ with the stream's binary files.
 > - Sync was enabled in SpikeGLX for each run being supercatted.
 > - Sync edges are extracted from each stream during pass 1.
 > - Option zerofillmax should not be used during pass 1.
-> - Option maxsecs is discouraged during pass 1.
 
 >Note that to supercat lf files, we need their sync edges which can only
 >be extracted/derived from their ap counterparts:
@@ -1203,7 +1263,7 @@ Which streams:
 
 Options:
 -no_run_fld              ;older data, or data files relocated without a run folder
--prb_fld                 ;use folder-per-probe organization
+-prb_fld                 ;input to pass-2 has folder-per-probe organization
 -prb_miss_ok             ;instead of stopping, silently skip missing probes
 -gtlist={gj,tja,tjb}     ;ignored (parsed from {dir,run_ga})
 -exported                ;apply FileViewer 'exported' tag to in/output filenames
@@ -1234,7 +1294,7 @@ Options:
 -pass1_force_ni_ob_bin   ;ignored
 -dest=path               ;required
 -no_catgt_fld            ;ignored
--out_prb_fld             ;create output subfolder per probe
+-out_prb_fld             ;create pass-2 output subfolder per probe
 ```
 
 >Note that you need to provide the same extractor parameters that were used
@@ -1298,6 +1358,16 @@ command lines for TPrime.
 
 ## Change Log
 
+Version 4.8
+
+- Support NP1.0 probe PRB_1_2_0480_2.
+- FirstSample meta updated according to -startsecs.
+- Set -startsecs=0 & maxsecs to export binary time range without filters.
+- NXT voltage inversion cased out by API.
+- Error flags reported to log.
+- Handle supercat of probe ip2-files from -save or -sepShanks.
+- Include folder CatGT_std_scripts with Windows version demos.
+
 Version 4.7
 
 - Option -save writes correctly when no -dest folder.
@@ -1357,7 +1427,7 @@ Version 3.7
 Version 3.6
 
 - Option -gblcar uses median rather than mean.
-- Trim pass1 file sets to same length.
+- Trim pass-1 file sets to same length.
 - Add option -save (selective channel saving).
 
 Version 3.5
@@ -1431,7 +1501,7 @@ Version 1.9
 - Stream option -lf creates .lf. from .ap. for 2.0 probes.
 - Fix supercat premature completion bug.
 - Supercat observes -exported option.
-- Pass1 always writes new meta files for later supercat.
+- Pass-1 always writes new meta files for later supercat.
 - Add option -supercat_trim_edges.
 - Add option -supercat_skip_ni_bin.
 - Add option -maxsecs.
