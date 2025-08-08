@@ -24,10 +24,6 @@
 #include <math.h>
 #include <string.h>
 
-#ifndef M_PI
-#define M_PI    3.14159265358979323846
-#endif
-
 
 /* ---------------------------------------------------------------- */
 /* Threading helpers ---------------------------------------------- */
@@ -147,6 +143,12 @@ void Biquad::setFc( double Fc )
 {
     this->Fc = Fc;
     calcBiquad();
+}
+
+
+int Biquad::getTransWide()
+{
+    return int(1.0 / Fc);
 }
 
 
