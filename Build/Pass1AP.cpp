@@ -28,7 +28,7 @@ bool Pass1AP::go()
         theZ;
 
     doWrite = GBL.gt_nIndices() > 1
-                    || GBL.startsecs > 0 || GBL.apflt.isenabled()
+                    || GBL.startsecs >= 0 || GBL.apflt.isenabled()
                     || GBL.tshift || GBL.locout_um > 0 || GBL.locout
                     || GBL.gblcar || GBL.gbldmx        || GBL.gfixdo;
 

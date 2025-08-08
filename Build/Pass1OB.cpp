@@ -9,7 +9,7 @@ bool Pass1OB::go()
 {
     int t0, g0 = GBL.gt_get_first( &t0 );
 
-    doWrite = GBL.force_ni_ob || GBL.gt_nIndices() > 1 || GBL.startsecs > 0;
+    doWrite = GBL.force_ni_ob || GBL.gt_nIndices() > 1 || GBL.startsecs >= 0;
 
     if( GBL.openInputMeta( fim, meta.kvp, g0, t0, OB, ip, false ) )
         return false;
