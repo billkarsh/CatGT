@@ -82,11 +82,9 @@ typedef const std::vector<IMRO_ROI>&    tconstImroROIs;
 //
 struct IMROTbl
 {
-    friend class ShankView;
-
 protected:
-    std::vector<int>    col2vis_ev,
-                        col2vis_od;
+    std::vector<int>    _col2vis_ev,
+                        _col2vis_od;
     float               _shankpitch,    // microns for phys dims
                         _shankwid,
                         _tiplength,
@@ -119,6 +117,8 @@ public:
             float x0OddRow() const      {return _x0_od;}
             int nCol_hwr() const        {return _ncolhwr;}
             int nCol_vis() const        {return _ncolvis;}
+    std::vector<int> col2vis_ev() const {return _col2vis_ev;}
+    std::vector<int> col2vis_od() const {return _col2vis_od;}
             int nRow() const            {return nElecPerShank()/_ncolhwr;}
     virtual int nChan() const = 0;
     virtual int nAP() const = 0;
@@ -128,9 +128,11 @@ public:
     virtual int nSvyBanks() const       {return nBanks();}
     virtual int nChanPerBank() const    {return nAP();}
     virtual int nRefs() const = 0;
+    virtual int nOptoSites() const      {return 0;}
     virtual int maxInt() const = 0;
     virtual double maxVolts() const = 0;
     virtual bool needADCCal() const = 0;
+    virtual bool needGainCal() const    {return true;}
 
     // {0=NP1000, 1=NP2000, 2=NP2010, 3=NP1110}-like
     virtual int chanMapping() const     {return 0;}
@@ -168,6 +170,7 @@ public:
     virtual void eaChansOrder( QVector<int> &v ) const = 0;
     virtual int refid( int ch ) const = 0;
     virtual int refTypeAndFields( int &shank, int &bank, int ch ) const = 0;
+    QString chan0Ref() const;
     virtual int apGain( int ch ) const = 0;
     virtual int lfGain( int ch ) const = 0;
     virtual int apFlt( int ch ) const = 0;

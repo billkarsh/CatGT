@@ -124,13 +124,15 @@ bool IMRO_ROI::operator<( const IMRO_ROI &rhs ) const
 IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
 {
 // Old codes ---------------------------------
-    if( pn.startsWith( "PRB_1_4" ) ) {
+    if( pn.startsWith( "PRB_1_4" ) ||
+        pn.startsWith( "PRB_1_2" ) ) {
         // PRB_1_4_0480_1 (Silicon cap)
         // PRB_1_4_0480_1_C (Metal cap)
+        // PRB_1_2_0480_2
         _ncolhwr    = 2;
         _ncolvis    = 4;
-        col2vis_ev  = {1,3};
-        col2vis_od  = {0,2};
+        _col2vis_ev = {1,3};
+        _col2vis_od = {0,2};
         _shankpitch = 0;
         _shankwid   = 70;
         _tiplength  = 209;
@@ -144,8 +146,8 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
         // NP 2.0 SS scrambled el 1280
         _ncolhwr    = 2;
         _ncolvis    = 2;
-        col2vis_ev  = {0,1};
-        col2vis_od  = {0,1};
+        _col2vis_ev = {0,1};
+        _col2vis_od = {0,1};
         _shankpitch = 0;
         _shankwid   = 70;
         _tiplength  = 206;
@@ -159,8 +161,8 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
         // NP 2.0 MS el 1280
         _ncolhwr    = 2;
         _ncolvis    = 2;
-        col2vis_ev  = {0,1};
-        col2vis_od  = {0,1};
+        _col2vis_ev = {0,1};
+        _col2vis_od = {0,1};
         _shankpitch = 250;
         _shankwid   = 70;
         _tiplength  = 206;
@@ -182,8 +184,8 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
             case 1014:  // 1.0 NHP short biocompatible packaging sterilized, cap
                 _ncolhwr    = 2;
                 _ncolvis    = 4;
-                col2vis_ev  = {1,3};
-                col2vis_od  = {0,2};
+                _col2vis_ev = {1,3};
+                _col2vis_od = {0,2};
                 _shankpitch = 0;
                 _shankwid   = 70;
                 _tiplength  = 209;
@@ -197,8 +199,8 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
             case 1017:  // 1.0 NHP short linear biocompatible packaging sterilized, cap
                 _ncolhwr    = 2;
                 _ncolvis    = 2;
-                col2vis_ev  = {0,1};
-                col2vis_od  = {0,1};
+                _col2vis_ev = {0,1};
+                _col2vis_od = {0,1};
                 _shankpitch = 0;
                 _shankwid   = 70;
                 _tiplength  = 209;
@@ -211,8 +213,8 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
             case 1021:  // NHP phase 2 (active) 25 mm, SOI60 el 2496
                 _ncolhwr    = 2;
                 _ncolvis    = 4;
-                col2vis_ev  = {1,3};
-                col2vis_od  = {0,2};
+                _col2vis_ev = {1,3};
+                _col2vis_od = {0,2};
                 _shankpitch = 0;
                 _shankwid   = 125;
                 _tiplength  = 373;
@@ -224,8 +226,8 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
             case 1022:  // NHP phase 2 (active) 25 mm, SOI115 linear
                 _ncolhwr    = 2;
                 _ncolvis    = 2;
-                col2vis_ev  = {0,1};
-                col2vis_od  = {0,1};
+                _col2vis_ev = {0,1};
+                _col2vis_od = {0,1};
                 _shankpitch = 0;
                 _shankwid   = 125;
                 _tiplength  = 373;
@@ -238,8 +240,8 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
             case 1031:  // NHP phase 2 (active) 45 mm, SOI125 el 4416
                 _ncolhwr    = 2;
                 _ncolvis    = 4;
-                col2vis_ev  = {1,3};
-                col2vis_od  = {0,2};
+                _col2vis_ev = {1,3};
+                _col2vis_od = {0,2};
                 _shankpitch = 0;
                 _shankwid   = 125;
                 _tiplength  = 373;
@@ -252,8 +254,8 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
             case 1033:  // NHP phase 2 (active) 45 mm, SOI115 / 125 linear sterilized, cap
                 _ncolhwr    = 2;
                 _ncolvis    = 2;
-                col2vis_ev  = {0,1};
-                col2vis_od  = {0,1};
+                _col2vis_ev = {0,1};
+                _col2vis_od = {0,1};
                 _shankpitch = 0;
                 _shankwid   = 125;
                 _tiplength  = 373;
@@ -265,8 +267,8 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
             case 1100:  // UHD phase 1 el 384
                 _ncolhwr    = 8;
                 _ncolvis    = 8;
-                col2vis_ev  = {0,1,2,3,4,5,6,7};
-                col2vis_od  = {0,1,2,3,4,5,6,7};
+                _col2vis_ev = {0,1,2,3,4,5,6,7};
+                _col2vis_od = {0,1,2,3,4,5,6,7};
                 _shankpitch = 0;
                 _shankwid   = 70;
                 _tiplength  = 206.5;
@@ -278,8 +280,8 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
             case 1110:  // UHD phase 2 el 6144
                 _ncolhwr    = 8;
                 _ncolvis    = 8;
-                col2vis_ev  = {0,1,2,3,4,5,6,7};
-                col2vis_od  = {0,1,2,3,4,5,6,7};
+                _col2vis_ev = {0,1,2,3,4,5,6,7};
+                _col2vis_od = {0,1,2,3,4,5,6,7};
                 _shankpitch = 0;
                 _shankwid   = 73;
                 _tiplength  = 203.5;
@@ -291,8 +293,8 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
             case 1120:  // UHD phase 3 (layout 2) 2x192 (4.5um pitch)
                 _ncolhwr    = 2;
                 _ncolvis    = 14;
-                col2vis_ev  = {0,1};
-                col2vis_od  = {0,1};
+                _col2vis_ev = {0,1};
+                _col2vis_od = {0,1};
                 _shankpitch = 0;
                 _shankwid   = 70;
                 _tiplength  = 205.75;
@@ -304,8 +306,8 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
             case 1121:  // UHD phase 3 (layout 1) 1x384 (3um pitch)
                 _ncolhwr    = 1;
                 _ncolvis    = 21;
-                col2vis_ev  = {0};
-                col2vis_od  = {0};
+                _col2vis_ev = {0};
+                _col2vis_od = {0};
                 _shankpitch = 0;
                 _shankwid   = 70;
                 _tiplength  = 205.25;
@@ -317,8 +319,8 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
             case 1122:  // UHD phase 3 (layout 3) 16x24 (3um pitch)
                 _ncolhwr    = 16;
                 _ncolvis    = 16;
-                col2vis_ev  = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
-                col2vis_od  = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
+                _col2vis_ev = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
+                _col2vis_od = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
                 _shankpitch = 0;
                 _shankwid   = 70;
                 _tiplength  = 205.25;
@@ -330,8 +332,8 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
             case 1123:  // UHD phase 3 (layout 4) 12x32 (4.5um pitch)
                 _ncolhwr    = 12;
                 _ncolvis    = 12;
-                col2vis_ev  = {0,1,2,3,4,5,6,7,8,9,10,11};
-                col2vis_od  = {0,1,2,3,4,5,6,7,8,9,10,11};
+                _col2vis_ev = {0,1,2,3,4,5,6,7,8,9,10,11};
+                _col2vis_od = {0,1,2,3,4,5,6,7,8,9,10,11};
                 _shankpitch = 0;
                 _shankwid   = 70;
                 _tiplength  = 205.75;
@@ -345,8 +347,8 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
             case 1221:  // Custom layout defaults
                 _ncolhwr    = 2;
                 _ncolvis    = 4;
-                col2vis_ev  = {1,3};
-                col2vis_od  = {0,2};
+                _col2vis_ev = {1,3};
+                _col2vis_od = {0,2};
                 _shankpitch = 0;
                 _shankwid   = 125;
                 _tiplength  = 372;
@@ -358,8 +360,8 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
             case 1300:  // Opto
                 _ncolhwr    = 2;
                 _ncolvis    = 2;
-                col2vis_ev  = {0,1};
-                col2vis_od  = {0,1};
+                _col2vis_ev = {0,1};
+                _col2vis_od = {0,1};
                 _shankpitch = 0;
                 _shankwid   = 70;
                 _tiplength  = 209;
@@ -374,8 +376,8 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
             case 2005:  // Neuropixels 2.0 single shank NHP short linear probe with cap
                 _ncolhwr    = 2;
                 _ncolvis    = 2;
-                col2vis_ev  = {0,1};
-                col2vis_od  = {0,1};
+                _col2vis_ev = {0,1};
+                _col2vis_od = {0,1};
                 _shankpitch = 0;
                 _shankwid   = 70;
                 _tiplength  = 206;
@@ -387,8 +389,8 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
             case 2006:  // Neuropixels 2.0 single shank NHP short staggered sterilized, cap
                 _ncolhwr    = 2;
                 _ncolvis    = 4;
-                col2vis_ev  = {1,3};
-                col2vis_od  = {0,2};
+                _col2vis_ev = {1,3};
+                _col2vis_od = {0,2};
                 _shankpitch = 0;
                 _shankwid   = 70;
                 _tiplength  = 206;
@@ -402,8 +404,8 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
             case 2014:  // Neuropixels 2.0 multishank probe with cap
                 _ncolhwr    = 2;
                 _ncolvis    = 2;
-                col2vis_ev  = {0,1};
-                col2vis_od  = {0,1};
+                _col2vis_ev = {0,1};
+                _col2vis_od = {0,1};
                 _shankpitch = 250;
                 _shankwid   = 70;
                 _tiplength  = 206;
@@ -416,8 +418,8 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
             case 2021:  // 2.0 quad base (Ph 2C) with cap
                 _ncolhwr    = 2;
                 _ncolvis    = 2;
-                col2vis_ev  = {0,1};
-                col2vis_od  = {0,1};
+                _col2vis_ev = {0,1};
+                _col2vis_od = {0,1};
                 _shankpitch = 250;
                 _shankwid   = 70;
                 _tiplength  = 206;
@@ -429,8 +431,8 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
             case 3000:  // Passive NXT probe
                 _ncolhwr    = 1;
                 _ncolvis    = 4;
-                col2vis_ev  = {3};
-                col2vis_od  = {3};
+                _col2vis_ev = {3};
+                _col2vis_od = {3};
                 _shankpitch = 0;
                 _shankwid   = 70;
                 _tiplength  = 206;
@@ -443,8 +445,8 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
             case 3011:  // NXT single shank (Ph 1B) with cap
                 _ncolhwr    = 2;
                 _ncolvis    = 2;
-                col2vis_ev  = {0,1};
-                col2vis_od  = {0,1};
+                _col2vis_ev = {0,1};
+                _col2vis_od = {0,1};
                 _shankpitch = 0;
                 _shankwid   = 70;
                 _tiplength  = 203;
@@ -455,10 +457,11 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
                 break;
             case 3020:  // NXT multishank (Ph 1B)
             case 3021:  // NXT multishank (Ph 1B) with cap
+            case 3022:  // NXT multishank (Pre A) with cap
                 _ncolhwr    = 2;
                 _ncolvis    = 2;
-                col2vis_ev  = {0,1};
-                col2vis_od  = {0,1};
+                _col2vis_ev = {0,1};
+                _col2vis_od = {0,1};
                 _shankpitch = 250;
                 _shankwid   = 70;
                 _tiplength  = 204;
@@ -471,8 +474,8 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
                 // likely early model 1.0
                 _ncolhwr    = 2;
                 _ncolvis    = 4;
-                col2vis_ev  = {1,3};
-                col2vis_od  = {0,2};
+                _col2vis_ev = {1,3};
+                _col2vis_od = {0,2};
                 _shankpitch = 0;
                 _shankwid   = 70;
                 _tiplength  = 209;
@@ -486,8 +489,8 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
     else if( pn == "Probe3A" ) {
         _ncolhwr    = 2;
         _ncolvis    = 4;
-        col2vis_ev  = {1,3};
-        col2vis_od  = {0,2};
+        _col2vis_ev = {1,3};
+        _col2vis_od = {0,2};
         _shankpitch = 0;
         _shankwid   = 70;
         _tiplength  = 209;
@@ -500,8 +503,8 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
         // likely early model 1.0
         _ncolhwr    = 2;
         _ncolvis    = 4;
-        col2vis_ev  = {1,3};
-        col2vis_od  = {0,2};
+        _col2vis_ev = {1,3};
+        _col2vis_od = {0,2};
         _shankpitch = 0;
         _shankwid   = 70;
         _tiplength  = 209;
@@ -622,7 +625,7 @@ void IMROTbl::toShankMap_vis( ShankMap &S ) const
 
         sh = elShankColRow( cl, rw, ic );
         u  = !chIsRef( ic );
-        cl = (rw & 1 ? col2vis_od[cl] : col2vis_ev[cl]);
+        cl = (rw & 1 ? _col2vis_od[cl] : _col2vis_ev[cl]);
 
         S.e.push_back( ShankMapDesc( sh, cl, rw, u ) );
     }
@@ -653,7 +656,7 @@ void IMROTbl::toShankMap_snsFileChans(
 
         sh = elShankColRow( cl, rw, ic );
         u  = !chIsRef( ic );
-        cl = (rw & 1 ? col2vis_od[cl] : col2vis_ev[cl]);
+        cl = (rw & 1 ? _col2vis_od[cl] : _col2vis_ev[cl]);
 
         S.e.push_back( ShankMapDesc( sh, cl, rw, u ) );
     }
@@ -698,6 +701,33 @@ int IMROTbl::maxBank( int ch, int shank ) const
 {
     Q_UNUSED( shank )
     return (nElecPerShank() - 1 - ch % nChanPerBank()) / nChanPerBank();
+}
+
+
+QString IMROTbl::chan0Ref() const
+{
+#ifdef HAVE_IMEC
+    int shank, bank, type = refTypeAndFields( shank, bank, 0 );
+
+    switch( type ) {
+        case EXT_REF: return "ext";
+        case TIP_REF:
+        {
+            QString tipj = QString("tip%1").arg( shank );
+            for( int ic = 1, nc = nShank(); ic < nc; ++ic ) {
+                type = refTypeAndFields( shank, bank, ic );
+                if( type != TIP_REF || shank != ic )
+                    return tipj;
+            }
+            return "join_tips";
+        }
+        case INT_REF: return QString("shank%1_bank%2").arg( shank ).arg( bank );
+        case GND_REF: return "gnd";
+        default:      return "???";
+    }
+#else
+    return QString();
+#endif
 }
 
 
@@ -800,7 +830,6 @@ int IMROTbl::selectRefs( int slot, int port, int dock ) const
 // Disconnect the 4 shank switches
 // -------------------------------
 
-#ifndef HAVE_NXT
     if( nShank() == 4 ) {
 
         for( int ic = 0; ic < 4; ++ic ) {
@@ -812,7 +841,6 @@ int IMROTbl::selectRefs( int slot, int port, int dock ) const
                 return err;
         }
     }
-#endif
 
 // ---------------------------------------
 // Connect all according to table ref data
@@ -1096,10 +1124,30 @@ bool IMROTbl::pnToType( int &type, const QString &pn )
 
     type = -1;
 
+#ifdef HAVE_NXT
+
+    switch( pn.mid( 2 ).toInt() ) {
+        case 3010:  // NXT single shank (Ph 1B)
+        case 3011:  // NXT single shank (Ph 1B) with cap
+            type = 3010;
+            supp = true;
+            break;
+        case 3020:  // NXT multishank (Ph 1B)
+        case 3021:  // NXT multishank (Ph 1B) with cap
+        case 3022:  // NXT multishank (Pre A) with cap
+            type = 3020;
+            supp = true;
+            break;
+    }
+
+#else
+
 // Old codes ---------------------------------
-    if( pn.startsWith( "PRB_1_4" ) ) {
+    if( pn.startsWith( "PRB_1_4" ) ||
+        pn.startsWith( "PRB_1_2" ) ) {
         // PRB_1_4_0480_1 (Silicon cap)
         // PRB_1_4_0480_1_C (Metal cap)
+        // PRB_1_2_0480_2
         type = 0;
         supp = true;
     }
@@ -1208,22 +1256,9 @@ bool IMROTbl::pnToType( int &type, const QString &pn )
                 type = 1200;
                 supp = true;
                 break;
-            case 3010:  // NXT single shank (Ph 1B)
-            case 3011:  // NXT single shank (Ph 1B) with cap
-#ifdef HAVE_NXT
-                type = 3010;
-                supp = true;
-#endif
-                break;
-            case 3020:  // NXT multishank (Ph 1B)
-            case 3021:  // NXT multishank (Ph 1B) with cap
-#ifdef HAVE_NXT
-                type = 3020;
-                supp = true;
-#endif
-                break;
         }
     }
+#endif
 
     return supp;
 }
@@ -1232,9 +1267,11 @@ bool IMROTbl::pnToType( int &type, const QString &pn )
 IMROTbl* IMROTbl::alloc( const QString &pn )
 {
 // Old codes ---------------------------------
-    if( pn.startsWith( "PRB_1_4" ) ) {
+    if( pn.startsWith( "PRB_1_4" ) ||
+        pn.startsWith( "PRB_1_2" ) ) {
         // PRB_1_4_0480_1 (Silicon cap)
         // PRB_1_4_0480_1_C (Metal cap)
+        // PRB_1_2_0480_2
         return new IMROTbl_T0( pn );
     }
     else if( pn.startsWith( "PRB2_1" ) ) {
@@ -1311,6 +1348,7 @@ IMROTbl* IMROTbl::alloc( const QString &pn )
                 return new IMROTbl_T3010( pn );
             case 3020:  // NXT multishank (Ph 1B)
             case 3021:  // NXT multishank (Ph 1B) with cap
+            case 3022:  // NXT multishank (Pre A) with cap
                 return new IMROTbl_T3020( pn );
             default:
                 return 0;
