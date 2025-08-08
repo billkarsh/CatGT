@@ -341,7 +341,7 @@ void FFT::timeShiftChannel( int igrp )
 /* Meta ----------------------------------------------------------- */
 /* ---------------------------------------------------------------- */
 
-void Meta::read( t_js js )
+void Meta::read( const QFileInfo &fim, t_js js, int ip )
 {
     switch( js ) {
         case NI:
@@ -371,6 +371,24 @@ void Meta::read( t_js js )
     smpBytes        = nC*sizeof(qint16);
     gLast           = GBL.gt_get_first( &tLast );
     nFiles          = 0;
+
+// Report non-zero imErrFlags
+
+    QMap<QString,QVariant>::const_iterator
+        it  = kvp.begin(),
+        end = kvp.end();
+    for( ; it != end; ++it ) {
+        if( it.key().startsWith( "imErrFlags" ) ) {
+            if( !it.value().toString().trimmed().startsWith( "0 " ) ) {
+                Log() <<
+                QString("Note: Metadata <%1=%2> in '%3'.")
+                .arg( it.key() )
+                .arg( it.value().toString().trimmed() )
+                .arg( fim.fileName() );
+            }
+            break;
+        }
+    }
 }
 
 

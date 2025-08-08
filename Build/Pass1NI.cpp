@@ -17,7 +17,7 @@ bool Pass1NI::go()
     if( !o_open( g0 ) )
         return false;
 
-    meta.read( NI );
+    meta.read( fim, NI, 0 );
 
     initDigitalFields( meta.kvp["niAiRangeMax"].toDouble() );
 

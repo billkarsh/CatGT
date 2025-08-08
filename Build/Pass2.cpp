@@ -41,7 +41,7 @@ int Pass2::first( int ip )
     if( do_bin && !GBL.openOutputBinary( fout, outBin, g0, js, ip, ip ) )
         return 2;
 
-    meta.read( js );
+    meta.read( fim, js, -1 );
 
     if( js != LF ) {
 

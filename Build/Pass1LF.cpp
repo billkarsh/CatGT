@@ -30,7 +30,7 @@ bool Pass1LF::go()
     if( !o_open( g0 ) )
         return false;
 
-    meta.read( LF );
+    meta.read( fim, LF, ip );
 
     for( int is = sv0; is < svLim; ++is ) {
         if( !GBL.vS[is].init( meta.kvp, fim, theZ ) )

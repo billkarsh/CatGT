@@ -33,7 +33,7 @@ bool Pass1AP2LF::go()
     if( !o_open( g0 ) )
         return false;
 
-    meta.read( AP );
+    meta.read( fim, AP, ip );
 
     for( int is = sv0; is < svLim; ++is ) {
         if( !GBL.vS[is].init( meta.kvp, fim, theZ ) )

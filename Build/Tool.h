@@ -56,7 +56,7 @@ struct Meta {
                 gLast,
                 tLast,
                 nFiles;
-    void read( t_js js );
+    void read( const QFileInfo &fim, t_js js, int ip );
     void write(
         const QString   &outBin,
         int             g0,
