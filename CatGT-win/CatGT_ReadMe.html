@@ -21,6 +21,94 @@
 <li>Optionally extract tables of other nonneural event times to be aligned with spikes.</li>
 <li>Optionally join the above outputs across different runs (supercat feature).</li>
 </ul>
+<p><strong>Topics</strong>:</p>
+<ul>
+<li><a href="#install">Install</a></li>
+<li><a href="#usage-quick-ref">Usage Quick Ref</a>
+<ul>
+<li><a href="#command-line-parameters">Command Line Parameters</a></li>
+<li><a href="#parameter-ordering">Parameter Ordering</a></li>
+<li><a href="#pass-1-and-pass-2">Pass-1 and Pass-2</a>
+<ul>
+<li><a href="#pass-1">Pass-1</a></li>
+<li><a href="#extraction-pass">Extraction pass</a></li>
+<li><a href="#pass-2">Pass-2</a></li>
+</ul></li>
+<li><a href="#sample-scripts">Sample scripts</a></li>
+</ul></li>
+<li><a href="#output">Output</a>
+<ul>
+<li><a href="#errors">Errors</a></li>
+<li><a href="#when-output-is-made">When output is made</a></li>
+<li><a href="#where-output-goes">Where output goes</a></li>
+<li><a href="#how-output-is-named">How output is named</a></li>
+<li><a href="#metadata-output-files">Metadata output files</a></li>
+<li><a href="#supplementary-output-files">Supplementary output files</a></li>
+</ul></li>
+<li><a href="#individual-parameter-notes">Individual Parameter Notes</a>
+<ul>
+<li><a href="#dir">dir</a></li>
+<li><a href="#run_name">run_name</a></li>
+<li><a href="#stream-identifiers--ni--ob--ap--lf">Stream identifiers <code>{-ni, -ob, -ap, -lf}</code></a></li>
+<li><a href="#obx-which-oneboxes">obx (which OneBox(es))</a></li>
+<li><a href="#prb_3a">prb_3A</a></li>
+<li><a href="#prb-which-probes">prb (which probe(s))</a></li>
+<li><a href="#index-range-g--t--concatenation">Index range (g-, t- concatenation)</a>
+<ul>
+<li><a href="#background">Background</a></li>
+<li><a href="#usage-notes">Usage notes</a></li>
+<li><a href="#using-catgt-output-files-as-input-for-an-extraction-pass">Using CatGT output files as input for an extraction pass</a></li>
+<li><a href="#running-catgt-on-nonstandard-file-names">Running CatGT on nonstandard file names</a></li>
+<li><a href="#missing-files-and-gap-zero-filling">Missing files and gap zero-filling</a></li>
+</ul></li>
+<li><a href="#gtlist-option">gtlist option</a></li>
+<li><a href="#no_linefill-option">no_linefill option</a></li>
+<li><a href="#startsecs-option">startsecs option</a></li>
+<li><a href="#apfilter-and-lffilter-options">apfilter and lffilter options</a></li>
+<li><a href="#no_tshift-option">no_tshift option</a></li>
+<li><a href="#loccar_umloccar-option">loccar_um/loccar option</a></li>
+<li><a href="#gblcar-option">gblcar option</a></li>
+<li><a href="#gbldmx-option">gbldmx option</a></li>
+<li><a href="#gfix-option">gfix option</a>
+<ul>
+<li><a href="#tuning-gfix-parameters">Tuning gfix parameters</a></li>
+</ul></li>
+<li><a href="#chnexcl-option">chnexcl option</a></li>
+<li><a href="#extractors">Extractors</a>
+<ul>
+<li><a href="#extractors-js-stream-type">Extractors js (stream-type)</a></li>
+<li><a href="#extractors-ip-stream-index">Extractors ip (stream-index)</a></li>
+<li><a href="#extractors-word">Extractors word</a></li>
+<li><a href="#extractors-positive-pulse">Extractors positive pulse</a></li>
+<li><a href="#extractors-xa">Extractors xa</a></li>
+<li><a href="#extractors-xd">Extractors xd</a></li>
+<li><a href="#extractors-both-xa-and-xd">Extractors both xa and xd</a></li>
+<li><a href="#extractors-inverted-pulse">Extractors inverted pulse</a></li>
+<li><a href="#extractors-bf-bit-field">Extractors bf (bit-field)</a></li>
+<li><a href="#extractors-inarow-option">Extractors inarow option</a></li>
+<li><a href="#extractors-no_auto_sync-option">Extractors no_auto_sync option</a></li>
+</ul></li>
+<li><a href="#tcat-defer-extraction-to-a-later-pass">-t=cat defer extraction to a later pass</a></li>
+<li><a href="#save-option">save option</a></li>
+<li><a href="#sepshanks-option">sepShanks option</a></li>
+<li><a href="#maxz-option">maxZ option</a></li>
+</ul></li>
+<li><a href="#supercat-multiple-runs">Supercat Multiple Runs</a>
+<ul>
+<li><a href="#building-the-supercat-command-line----">Building The Supercat Command Line</a></li>
+<li><a href="#supercat-option">supercat option</a></li>
+<li><a href="#supercat_trim_edges-option">supercat_trim_edges option</a></li>
+<li><a href="#supercat_skip_ni_ob_bin-option-pass1_force_ni_ob_bin">supercat_skip_ni_ob_bin option &amp; pass1_force_ni_ob_bin</a></li>
+<li><a href="#supercat-other-parameters">supercat (other parameters)</a></li>
+<li><a href="#zero-filling">Zero filling</a></li>
+</ul></li>
+<li><a href="#supercat-behaviors----">Supercat Behaviors</a>
+<ul>
+<li><a href="#zero-filling">Zero filling</a></li>
+<li><a href="#supercat-output">supercat output</a></li>
+</ul></li>
+<li><a href="#change-log">Change Log</a></li>
+</ul>
 <hr />
 <h2 id="install">Install</h2>
 <h3 id="windows">(Windows)</h3>
@@ -42,12 +130,6 @@
 <li>Tested with Scientific Linux 7.3.</li>
 <li>Tested with Oracle Linux Server 8.3.</li>
 <li>Let me know if it runs on other distributions.</li>
-</ul>
-<hr />
-<h2 id="output">Output</h2>
-<ul>
-<li>Results are placed next to source, named like this, with t-index = 'cat': <code>path/run_name_g5_tcat.imec1.ap.bin</code>.</li>
-<li>Errors and run messages are appended to <code>CatGT.log</code> in the current working directory.</li>
 </ul>
 <hr />
 <h2 id="usage-quick-ref">Usage Quick Ref</h2>
@@ -137,6 +219,57 @@ Options:
 <li>Loccar, gblcar, gbldmx (AP-band only)</li>
 <li>Write file</li>
 <li>Apply gfix transient edits to file</li>
+</ul>
+<h3 id="pass-1-and-pass-2">Pass-1 and Pass-2</h3>
+<p>This language helps discriminate &quot;regular&quot; CatGT runs <code>pass-1</code> from supercat runs <code>pass-2</code>, because you can run data though CatGT more than once to do additional processing. This section defines these terms.</p>
+<h4 id="pass-1">Pass-1</h4>
+<p>Generally, on the first pass you will <strong>alter</strong> the data using filters, time-shifts, artifact removal etc. Altering operations are only permitted in pass-1. You can also join g- and/or t-series together into a single output stream. All these operations are applied to data <strong>from a single SpikeGLX run</strong>.</p>
+<h4 id="extraction-pass">Extraction pass</h4>
+<p>This is covered more <a href="#using-catgt-output-files-as-input-for-an-extraction-pass">here</a> but briefly, you can operate the TTL edge extractors like {xd, xa, ...} in the same pass-1 command line with all other pass-1 operations, or you can do extraction as an afterthought in a lazy separate <code>extraction pass</code>.</p>
+<h4 id="pass-2">Pass-2</h4>
+<p>Pass-2 runs are <strong>supercat</strong> runs. In this case we do not alter the data. Rather, supercat joins (concatenates) data together from <strong>disparate SpikeGLX runs</strong>. It does this in a way that preserves temporal alignment across the streams within those runs. You might do this to find/apply a common set of spike templates from sessions that span days or months. Supercat can only be run on pass-1 output data.</p>
+<h3 id="sample-scripts">Sample scripts</h3>
+<p>The Windows version of CatGT includes folder <code>CatGT_std_scripts</code> with examples of typical command-lines you might use for both pass-1 and pass-2 runs.</p>
+<hr />
+<h2 id="output">Output</h2>
+<h3 id="errors">Errors</h3>
+<p>Errors and run messages are appended to <code>CatGT.log</code> in the current working directory.</p>
+<p>If CatGT.log does not exist it will be created automatically.</p>
+<p>Try deleting CatGT.log before a run to make it clear which messages apply to what you just did.</p>
+<h3 id="when-output-is-made">When output is made</h3>
+<ul>
+<li><p>Extractors always create output files.</p></li>
+<li>New .bin/.meta files are output only in these cases:
+<ol style="list-style-type: decimal">
+<li>A range of files is being concatenated, that is, (gb &gt; ga) or (tb &gt; ta).</li>
+<li>Filters, tshift or startsecs are applied, so the binary data are altered.</li>
+<li>A time range is exported: set both -startsecs &gt;= 0, and -maxsecs &gt; startsecs.</li>
+</ol></li>
+<li><p>In most cases, NI and OBX files are useful for extractions of non-neural signal events, but we don't alter these files per se. That is, the binaries would not be reproduced into the output because that's wasteful of space. However, you can force new binaries to be made using <code>-pass1_force_ni_ob_bin</code>. That will make sure supercat finds and joins the binaries just in case you want that.</p></li>
+</ul>
+<h3 id="where-output-goes">Where output goes</h3>
+<ul>
+<li><p>If you do not specify the <code>-dest</code> option, pass-1 output files are stored in the same folder as their input files.</p></li>
+<li><p>The <code>-dest=myPath</code> option will store the output in a destination folder of your choosing. If you do not specify the <code>-no_catgt_fld</code> option, it will further create an output subfolder for the run having a <code>catgt</code> tag: <code>myPath/catgt_run_name_ga</code>.</p></li>
+</ul>
+<h3 id="how-output-is-named">How output is named</h3>
+<ul>
+<li><p>Generally, pass-1 output files have the <code>tcat</code> label. For example, if an input file named <code>path/run_name_g5_t7.imec1.ap.bin</code> is band-pass filtered the output would be <code>path/run_name_g5_tcat.imec1.ap.bin</code>.</p></li>
+<li><p>If a range of g-indices and/or t-indices was specified <code>-g=ga,gb, -t=ta,tb</code> the concatenated output file is named using <code>ga and tcat</code>. For example, <code>-g=5,20 -t=3,67</code> creates file <code>path/run_name_g5_tcat.imec1.ap.bin</code>. This output is written to the <code>ga</code> folder. That is, the g-index is set to the lowest specified input g-index, and the t-index becomes <code>tcat</code> to indicate this file contains a range.</p></li>
+<li><p>The <code>tcat</code> naming convention is used even if a range in g is specified, e.g., <code>-g=0,100</code>, but there is just one t-index for each gate <code>t=0</code>.</p></li>
+</ul>
+<h3 id="metadata-output-files">Metadata output files</h3>
+<ul>
+<li><p>A meta file is also created for each output binary, e.g.: <code>path/run_name_g5_tcat.imec1.ap.meta</code>.</p></li>
+<li><p>The meta file also gets <code>catGTCmdlineN=&lt;command line string&gt;</code>.</p></li>
+<li><p>The meta item e.g., <code>catNFiles=1</code>, indicates count of concatenated files.</p></li>
+<li><p>The meta item e.g., <code>catGVals=0,1</code>, indicates range of g-indices used.</p></li>
+<li><p>The meta item e.g., <code>catTVals=0,20</code>, indicates range of t-indices used.</p></li>
+</ul>
+<h3 id="supplementary-output-files">Supplementary output files</h3>
+<ul>
+<li><p>CatGT creates a pass-1 output file: <code>output_path/run_ga_ct_offsets.txt</code>. This tabulates, for each stream, where the first sample of each input file is relative to the start of the concatenated output file. It records these offsets in units of samples, and again in units of seconds on that stream's clock.</p></li>
+<li><p>CatGT always creates output file: <code>output_path/run_ga_fyi.txt</code>. This lists key output paths and filenames you can use to build downstream command lines for supercat or TPrime.</p></li>
 </ul>
 <hr />
 <h2 id="individual-parameter-notes">Individual Parameter Notes</h2>
@@ -264,7 +397,7 @@ ls -s &lt;path/myoriginalname.meta&gt; &lt;...ZZZ/goodname_g0_t0.imec0.ap.meta&g
 <ol start="4" style="list-style-type: decimal">
 <li>Close makelinks.sh, set its executable flag, run it.</li>
 </ol>
-<h3 id="missing-files-and-gap-zero-filling">Missing files and gap zero-filling</h3>
+<h4 id="missing-files-and-gap-zero-filling">Missing files and gap zero-filling</h4>
 <p>You can control how CatGT works during file concatenation when one or more of your input files is missing, or, if input file <code>N+1</code> starts later in time than the end of input file <code>N</code>; what we term a &quot;gap&quot; in the recording.</p>
 <p>If you do not use the <code>-t_miss_ok</code> option, the default behavior is to require all files in the series to be present. Processing of a stream will stop if a binary or meta file is not found. If the expected file set is found but there is a gap between the files, the gap is filled with zeros for all channels. If instead, adjacent files overlap in time, the overlap region is represented just once in the output file.</p>
 <p>If you include <code>-t_miss_ok</code> in the command line, then processing does not stop. Rather, the entire missing file (or run of consecutive missing files) is counted as an extended gap. The gap is replaced by zeros when a next expected file set is found.</p>
@@ -278,26 +411,6 @@ ls -s &lt;path/myoriginalname.meta&gt; &lt;...ZZZ/goodname_g0_t0.imec0.ap.meta&g
 <blockquote>
 <p>As of version 4.4, all zero-filled regions are replaced with line fills. (See discussion under no_linefill option).</p>
 </blockquote>
-<h3 id="output-files">Output files</h3>
-<ul>
-<li>New .bin/.meta files are output only in these cases:
-<ol style="list-style-type: decimal">
-<li>A range of files is to be concatenated, that is, (gb &gt; ga) or (tb &gt; ta).</li>
-<li>If filters, tshift or startsecs are applied, so the binary data are altered.</li>
-<li>You want to export a time range; set both -startsecs &gt;= 0, and -maxsecs &gt; startsecs.</li>
-</ol></li>
-<li><p>If you do not specify the <code>-dest</code> option, output files are stored in the same folder as their input files.</p></li>
-<li><p>If a range of g-indices was specified <code>-g=ga,gb</code> the data are all written to the <code>ga</code> folder. Such output files look like <code>path/run_name_g2_tcat.imec1.ap.bin</code>, that is, the g-index is set to the lowest specified input g-index, and the t-index becomes <code>tcat</code> to indicate this file contains a range.</p></li>
-<li><p>The <code>tcat</code> naming convention is used even if a range in g is specified, e.g., <code>-g=0,100</code>, but there is just one t-index for each gate <code>t=0</code>.</p></li>
-<li><p>The <code>-dest=myPath</code> option will store the output in a destination folder of your choosing. If you do not specify the <code>-no_catgt_fld</code> option, it will further create an output subfolder for the run having a <code>catgt_</code> tag: <code>myPath/catgt_run_name_ga</code>.</p></li>
-<li><p>A meta file is also created for each output binary, e.g.: <code>path/run_name_g5_tcat.imec1.ap.meta</code>.</p></li>
-<li><p>The meta file also gets <code>catGTCmdlineN=&lt;command line string&gt;</code>.</p></li>
-<li><p>The meta item e.g., <code>catNFiles</code>, indicates count of concatenated files.</p></li>
-<li><p>The meta item e.g., <code>catGVals=0,1</code>, indicates range of g-indices used.</p></li>
-<li><p>The meta item e.g., <code>catTVals=0,20</code>, indicates range of t-indices used.</p></li>
-<li><p>CatGT creates a pass-1 output file: <code>output_path/run_ga_ct_offsets.txt</code>. This tabulates, for each stream, where the first sample of each input file is relative to the start of the concatenated output file. It records these offsets in units of samples, and again in units of seconds on that stream's clock.</p></li>
-<li><p>CatGT always creates output file: <code>output_path/run_ga_fyi.txt</code>. This lists key output paths and filenames you can use to build downstream command lines for supercat or TPrime.</p></li>
-</ul>
 <h3 id="gtlist-option">gtlist option</h3>
 <p>This option overrides the <code>-g=</code> and <code>-t=</code> options so that you can specify a separate t-range for each g-index. Specify the list like this:</p>
 <p><code>-gtlist={g0,t0a,t0b}{g1,t1a,t1b}...</code> <em>(include the curly braces)</em>.</p>
@@ -326,7 +439,7 @@ ls -s &lt;path/myoriginalname.meta&gt; &lt;...ZZZ/goodname_g0_t0.imec0.ap.meta&g
 <li>xxfilter=butter,N,0,Flo ; order-N low-pass</li>
 </ul>
 <p>Our Butterworth filters are implemented in the frequency domain. As such they are always acausal (zero phase error). The rate of roll-off of the FFT implementation is about a factor of two slower than in the time domain. For example, to match the result of a single pass (forward-only) order-3 Butterworth (as per MATLAB filter()), specify order 6 here. To match forward-backward time-domain filtering with an order-3 (as per MATLAB filtfilt()), which doubles the effective order, specify order 12 here.</p>
-<h4 id="no_tshift-option">no_tshift option</h4>
+<h3 id="no_tshift-option">no_tshift option</h3>
 <p>Imec probes digitize the voltages on all of their channels during each sample period (~ 1/(30kHz)). However, the converting circuits (ADCs) are expensive in power and real estate, so there are only a few dozen on the probe and they are shared by the ~384 channels. The channels are organized into multiplex channel groups that are digitized together, consequently each group's actual sampling time is slightly offset from that of other groups.</p>
 <p>CatGT automatically applies an operation we call <code>tshift</code> to undo the effects of multiplexing by temporally aligning channels to each other. Note that the &quot;shift&quot; is smaller than one sample so file sizes do not change. Rather, the amplitude is redistributed among existing samples. Tshift improves the results of operations that compare or combine different channels, such as global CAR filtering or whitening. The FFT-based correction method was proposed by Olivier Winter of the International Brain Laboratory.</p>
 <p>Note that tshift and band-pass filtering should always be done on Neuropixel probe data. The issue is only whether these are applied by CatGT or by some other component of your analysis pipeline.</p>
@@ -429,7 +542,7 @@ ls -s &lt;path/myoriginalname.meta&gt; &lt;...ZZZ/goodname_g0_t0.imec0.ap.meta&g
 </ul>
 <h4 id="extractors-word">Extractors word</h4>
 <p>Word is a zero-based channel index. It selects the 16-bit data word to process.</p>
-<p>word = -1, selects the last word in that stream. That's especially useful to specify the SY word at the end of a OneBox or probe stream.</p>
+<p>word = -1, selects the last word in that stream. That's especially useful to specify the SY word at the end of a OneBox or probe stream. It can also be used for NI streams as shorthand for a trailing digital word.</p>
 <blockquote>
 <p>It may be helpful to review the organization of words and bits in data streams in the <a href="https://github.com/billkarsh/SpikeGLX/blob/master/Markdown/UserManual.md#channel-naming-and-ordering">SpikeGLX User Manual</a>.</p>
 </blockquote>
@@ -836,6 +949,10 @@ Options:
 <p>Supercat creates output file: <code>dest/supercat_run_ga/run_ga_fyi.txt</code>. This lists key output paths and filenames you can use to build downstream command lines for TPrime.</p>
 <hr />
 <h2 id="change-log">Change Log</h2>
+<p>Version 4.9</p>
+<ul>
+<li>Fix -sepShanks can skip multiple with -1's.</li>
+</ul>
 <p>Version 4.8</p>
 <ul>
 <li>Support NP1.0 probe PRB_1_2_0480_2.</li>
