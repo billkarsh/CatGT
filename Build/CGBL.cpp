@@ -1253,14 +1253,20 @@ bool SepShanks::parse( QSet<int> &seen )
         return false;
     }
 
-    if( (ipj[0] < 0) && (ipj[1] < 0) && (ipj[2] < 0) && (ipj[3] < 0) ) {
-        Log() << QString("Error: -sepShanks=%1 all ipj negative.").arg( sUsr );
-        return false;
+    QSet<int> seenj;    // non-neg only
+    for( int is = 0; is < 4; ++is ) {
+        int ipk = ipj[is];
+        if( ipk < 0 )
+            continue;
+        if( seenj.contains( ipk ) ) {
+            Log() << QString("Error: -sepShanks=%1 duplicate ipj.").arg( sUsr );
+            return false;
+        }
+        seenj.insert( ipk );
     }
 
-    if( (ipj[1] == ipj[0]) || (ipj[2] == ipj[0]) || (ipj[3] == ipj[0]) ||
-        (ipj[2] == ipj[1]) || (ipj[3] == ipj[1]) || (ipj[3] == ipj[2]) ) {
-        Log() << QString("Error: -sepShanks=%1 duplicate ipj.").arg( sUsr );
+    if( seenj.isEmpty() ) {
+        Log() << QString("Error: -sepShanks=%1 all ipj negative.").arg( sUsr );
         return false;
     }
 
