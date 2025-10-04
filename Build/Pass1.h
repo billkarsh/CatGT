@@ -59,6 +59,7 @@ protected:
 
     bool splitShanks();
     bool parseMaxZ( int &theZ );
+    void mySrange();
     bool o_open( int g0 );
     void initDigitalFields( double rngMax );
     bool openDigitalFiles( int g0 );

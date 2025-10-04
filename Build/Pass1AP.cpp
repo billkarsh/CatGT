@@ -27,11 +27,6 @@ bool Pass1AP::go()
     int t0, g0 = GBL.gt_get_first( &t0 ),
         theZ;
 
-    doWrite = GBL.gt_nIndices() > 1
-                    || GBL.startsecs >= 0 || GBL.apflt.isenabled()
-                    || GBL.tshift || GBL.locout_um > 0 || GBL.locout
-                    || GBL.gblcar || GBL.gbldmx        || GBL.gfixdo;
-
     switch( GBL.openInputMeta( fim, meta.kvp, g0, t0, AP, ip, ip, GBL.prb_miss_ok ) ) {
         case 0: break;
         case 1: return true;
@@ -43,6 +38,15 @@ bool Pass1AP::go()
 
     if( !parseMaxZ( theZ ) )
         return false;
+
+    mySrange();
+
+    doWrite = GBL.gt_nIndices() > 1
+                    || svLim > sv0
+                    || GBL.startsecs >= 0
+                    || GBL.apflt.isenabled()
+                    || GBL.tshift || GBL.locout_um > 0 || GBL.locout
+                    || GBL.gblcar || GBL.gbldmx        || GBL.gfixdo;
 
     if( !GBL.makeOutputProbeFolder( g0, ip ) )
         return false;

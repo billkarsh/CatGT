@@ -53,9 +53,6 @@ bool Pass1::splitShanks()
     flip_NXT =  meta.kvp["imDatPrb_type"].toInt() > 3000 &&
                 meta.kvp["imDatApi"].toString() < "4.0.2";
 
-    if( !doWrite )
-        return true;
-
     if( js_in != AP )
         return true;
 
@@ -79,9 +76,6 @@ bool Pass1::parseMaxZ( int &theZ )
 {
     theZ = -1;
 
-    if( !doWrite )
-        return true;
-
     if( js_in < AP )
         return true;
 
@@ -103,14 +97,19 @@ bool Pass1::parseMaxZ( int &theZ )
 }
 
 
+void Pass1::mySrange()
+{
+    if( js_in >= AP )
+        sv0 = GBL.mySrange( svLim, js_in, ip );
+}
+
+
 bool Pass1::o_open( int g0 )
 {
     if( !doWrite )
         return true;
 
     if( js_in >= AP ) {
-
-        sv0 = GBL.mySrange( svLim, js_in, ip );
 
         if( svLim > sv0 ) {
 

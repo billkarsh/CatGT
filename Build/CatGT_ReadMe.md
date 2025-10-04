@@ -266,8 +266,9 @@ to what you just did.
 
 - New .bin/.meta files are output only in these cases:
     1. A range of files is being concatenated, that is, (gb > ga) or (tb > ta).
-    2. Filters, tshift or startsecs are applied, so the binary data are altered.
-    3. A time range is exported: set both -startsecs >= 0, and -maxsecs > startsecs.
+    2. A -save, -sepShanks, or -maxZ directive alters the channel list.
+    3. Filters, tshift or startsecs are applied, so the binary data are altered.
+    4. A time range is exported: set both -startsecs >= 0, and -maxsecs > startsecs.
 
 - In most cases, NI and OBX files are useful for extractions of non-neural
 signal events, but we don't alter these files per se. That is, the binaries
@@ -1491,7 +1492,8 @@ command lines for TPrime.
 
 Version 4.9
 
-- Fix -sepShanks can skip multiple with -1's.
+- Fix -sepShanks multiple ipj=-1 allowed.
+- Write bin if -save, -sepShanks, -maxZ directives.
 
 Version 4.8
 

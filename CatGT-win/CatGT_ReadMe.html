@@ -242,6 +242,7 @@ Options:
 <li>New .bin/.meta files are output only in these cases:
 <ol style="list-style-type: decimal">
 <li>A range of files is being concatenated, that is, (gb &gt; ga) or (tb &gt; ta).</li>
+<li>A -save, -sepShanks, or -maxZ directive alters the channel list.</li>
 <li>Filters, tshift or startsecs are applied, so the binary data are altered.</li>
 <li>A time range is exported: set both -startsecs &gt;= 0, and -maxsecs &gt; startsecs.</li>
 </ol></li>
@@ -951,7 +952,8 @@ Options:
 <h2 id="change-log">Change Log</h2>
 <p>Version 4.9</p>
 <ul>
-<li>Fix -sepShanks can skip multiple with -1's.</li>
+<li>Fix -sepShanks multiple ipj=-1 allowed.</li>
+<li>Write bin if -save, -sepShanks, -maxZ directives.</li>
 </ul>
 <p>Version 4.8</p>
 <ul>
