@@ -33,6 +33,7 @@
     * [dir](#dir)
     * [run_name](#run_name)
     * [Stream identifiers `{-ni, -ob, -ap, -lf}`](#stream-identifiers--ni--ob--ap--lf)
+    * [Converting AP to LF files](#converting-ap-to-lf-files)
     * [obx (which OneBox(es))](#obx-which-oneboxes)
     * [prb_3A](#prb_3a)
     * [prb (which probe(s))](#prb-which-probes)
@@ -167,6 +168,7 @@ Options:
 -maxsecs=7.5             ;set a maximum output file length (float seconds)
 -apfilter=Typ,N,Fhi,Flo  ;apply ap band-pass filter of given {type, order, corners(float Hz)}
 -lffilter=Typ,N,Fhi,Flo  ;apply lf band-pass filter of given {type, order, corners(float Hz)}
+-ap2lf_dwnsmp=12         ;down-sample factor when converting ap to lf file
 -no_tshift               ;DO NOT time-align channels to account for ADC multiplexing
 -loccar_um=40,140        ;apply ap local CAR annulus (exclude radius, include radius)
 -loccar=2,8              ;apply ap local CAR annulus (exclude radius, include radius)
@@ -373,6 +375,8 @@ In a given run you might have saved a variety of stream/file types
 {nidq.bin, obx.bin, ap.bin, lf.bin}. Use the `{-ni, -ob, -ap, -lf}`
 flags to indicate which streams within this run you wish to process.
 
+### Converting AP to LF files
+
 The -lf option can be used in two ways:
 
 1. If there are .lf. files present in the run folder, which is usual for
@@ -380,8 +384,8 @@ The -lf option can be used in two ways:
 options will be applied to those files.
 
 2. If there are no .lf. files already present in the run, then the {-lf,
--lffilter} options are used to generate a downsampled (2500 Hz) lf.bin/meta
-file set from the .ap. data if the following conditions are met:
+-lffilter, -ap2lf_dwnsmp} options are used to generate a downsampled
+lf.bin/meta file set from the .ap. data if the following conditions are met:
 
 - The .ap. data are full-band.
 - -lf is set.
@@ -396,6 +400,15 @@ the `Save chans` string to exclude LF channels. For example, `0:383,768`
 with `Force LF` unchecked saves only AP and SY channels. If you've already
 saved .lf. files you will have to remove or rename them to allow the
 CatGT LF generation to work.
+
+Parameter -ap2lf_dwnsmp sets the down-sample factor for the conversion.
+The value must be in range [2,30] and it must evenly divide 30000 with
+no remainder. We choose 30 as the limit, which produces a 1 KHz rate,
+because that's the minimum needed to sample 500 Hz, considered to be the
+top of the LF band.
+
+If you omit parameter -ap2lf_dwnsmp the default value is 12. That produces
+sample rate 30000/12 = 2500 Hz to match NP 1.0.
 
 ### obx (which OneBox(es))
 
@@ -1406,6 +1419,7 @@ Options:
 -maxsecs=7.5             ;ignored
 -apfilter=Typ,N,Fhi,Flo  ;ignored
 -lffilter=Typ,N,Fhi,Flo  ;ignored
+-ap2lf_dwnsmp=12         ;ignored
 -no_tshift               ;ignored
 -loccar_um=40,140        ;ignored
 -loccar=2,8              ;ignored
@@ -1492,8 +1506,9 @@ command lines for TPrime.
 
 Version 4.9
 
-- Fix -sepShanks multiple ipj=-1 allowed.
+- Fix -sepShanks: allow multiple ipj=-1.
 - Write bin if -save, -sepShanks, -maxZ directives.
+- Add -ap2lf_dwnsmp factor range [2,30]; default 12.
 
 Version 4.8
 

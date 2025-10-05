@@ -688,7 +688,7 @@ void FOffsets::dwnSmp( int ip )
         QVector<qint64> &V = moff[s];
 
         for( int i = 1, n = V.size(); i < n; ++i )
-            V[i] /= 12;
+            V[i] /= GBL.ap2lf_dwnsmp;
     }
 }
 
@@ -1133,6 +1133,7 @@ static bool _supercat_checkLF( double &tlast, int ie, int ip1 )
 
         switch( GBL.openInputMeta( fim, kvp, GBL.ga, -1, LF, ip1, ip2, GBL.prb_miss_ok ) ) {
             case 0: lfsamp = kvp["fileSizeBytes"].toLongLong()
+                            * (apsrate / kvp["imSampRate"].toDouble())
                             / (sizeof(qint16) * kvp["nSavedChans"].toInt());
                     break;
             case 1: continue;
@@ -1142,7 +1143,7 @@ static bool _supercat_checkLF( double &tlast, int ie, int ip1 )
 
 // AP edge beyond AP-span of lf?
 
-    if( lfsamp && tlast * apsrate >= 12 * lfsamp )
+    if( lfsamp && tlast * apsrate >= lfsamp )
         tlast -= GBL.syncper;
 
     return true;

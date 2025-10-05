@@ -354,6 +354,7 @@ public:
                         ta,
                         tb,
                         zfilmax,
+                        ap2lf_dwnsmp,
                         locin,
                         locout,
                         inarow;
@@ -385,8 +386,8 @@ public:
         :   syncper(-1), startsecs(-1), maxsecs(0),
             locin_um(0), locout_um(0),
             gfixamp(0), gfixslp(0), gfixbas(0),
-            ga(-1), gb(-1), ta(-2), tb(-2),
-            zfilmax(-1), locin(0), locout(0), inarow(-1),
+            ga(-1), gb(-1), ta(-2), tb(-2), zfilmax(-1),
+            ap2lf_dwnsmp(-1), locin(0), locout(0), inarow(-1),
             no_run_fld(false), prb_fld(false), prb_miss_ok(false),
             exported(false), in_catgt_fld(false), t_miss_ok(false),
             ni(false), ob(false), ap(false), lf(false), prb_3A(false),

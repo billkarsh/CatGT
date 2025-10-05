@@ -1697,6 +1697,7 @@ static void PrintUsage()
     Log() << "-maxsecs=7.5             ;set a maximum output file length (float seconds)";
     Log() << "-apfilter=Typ,N,Fhi,Flo  ;apply ap band-pass filter of given {type, order, corners(float Hz)}";
     Log() << "-lffilter=Typ,N,Fhi,Flo  ;apply lf band-pass filter of given {type, order, corners(float Hz)}";
+    Log() << "-ap2lf_dwnsmp=12         ;down-sample factor when converting ap to lf file";
     Log() << "-no_tshift               ;DO NOT time-align channels to account for ADC multiplexing";
     Log() << "-loccar_um=40,140        ;apply ap local CAR annulus (exclude radius, include radius)";
     Log() << "-loccar=2,8              ;apply ap local CAR annulus (exclude radius, include radius)";
@@ -1831,6 +1832,8 @@ bool CGBL::SetCmdLine( int argc, char* argv[] )
             if( !lfflt.parse( sarg ) )
                 return false;
         }
+        else if( GetArg( &ap2lf_dwnsmp, "-ap2lf_dwnsmp=%d", argv[i] ) )
+            ;
         else if( GetArgList( vd, "-loccar_um=", argv[i] ) && vd.size() == 2 ) {
 
             locin_um  = vd[0];
@@ -2037,6 +2040,7 @@ bad_param:
         gtlist.clear();
         gt_set_tcat();
         zfilmax         = -1;
+        ap2lf_dwnsmp    = -1;
         locin           = 0;
         locout          = 0;
         inarow          = -1;
@@ -2082,6 +2086,19 @@ error:
         return false;
     }
 
+// ap2lf_dwnsmp valid
+
+    if( ap2lf_dwnsmp > -1 ) {
+        if( ap2lf_dwnsmp < 2 || ap2lf_dwnsmp > 30 ) {
+            Log() << "ap2lf_dwnsmp must be in range [2,30].";
+            goto error;
+        }
+        if( 30000 % ap2lf_dwnsmp != 0 ) {
+            Log() << "ap2lf_dwnsmp must evenly divide 30000.";
+            goto error;
+        }
+    }
+
 // One type of CAR
 
     int nSel = 0;
@@ -2121,6 +2138,7 @@ error:
             smaxsecs    = "",
             sapfilter   = "",
             slffilter   = "",
+            sap2lfds    = "",
             stshift     = "",
             sloccar_um  = "",
             sloccar     = "",
@@ -2164,6 +2182,9 @@ error:
 
     if( lfflt.isenabled() > 0 )
         slffilter = QString(" -lffilter=%1").arg( lfflt.format() );
+
+    if( ap2lf_dwnsmp >= 0 )
+        sap2lfds = QString(" -ap2lf_dwnsmp=%1").arg( ap2lf_dwnsmp );
 
     if( pass() == 1 && !tshift )
         stshift = QString(" -no_tshift");
@@ -2213,7 +2234,7 @@ error:
     sCmd =
         QString(
             "CatGT%1%2%3%4%5%6%7%8%9%10%11%12%13%14%15%16%17%18%19%20%21"
-            "%22%23%24%25%26%27%28%29%30%31%32%33%34%35%36%37%38%39%40")
+            "%22%23%24%25%26%27%28%29%30%31%32%33%34%35%36%37%38%39%40%41")
         .arg( sreq )
         .arg( sgt )
         .arg( no_run_fld ? " -no_run_fld" : "" )
@@ -2234,6 +2255,7 @@ error:
         .arg( smaxsecs )
         .arg( sapfilter )
         .arg( slffilter )
+        .arg( sap2lfds )
         .arg( stshift )
         .arg( sloccar_um )
         .arg( sloccar )
@@ -2261,6 +2283,11 @@ error:
 
     if( prb_3A )
         vprb.fill( 0, 1 );
+
+// Set default ap2lf_dwnsmp
+
+    if( ap2lf_dwnsmp < 0 )
+        ap2lf_dwnsmp = 12;
 
 // Set default inarow
 

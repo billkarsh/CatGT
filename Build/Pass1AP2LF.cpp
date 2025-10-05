@@ -46,8 +46,8 @@ bool Pass1AP2LF::go()
     if( !filtersAndScaling() )
         return false;
 
-    GBL.mjsiprate[JSIP(LF,ip)] = meta.srate / 12;
-    gFOff.init( meta.srate / 12, LF, ip );
+    GBL.mjsiprate[JSIP(LF,ip)] = meta.srate / GBL.ap2lf_dwnsmp;
+    gFOff.init( meta.srate / GBL.ap2lf_dwnsmp, LF, ip );
 
     alloc();
 
@@ -66,11 +66,11 @@ bool Pass1AP2LF::go()
 }
 
 
-// All EOF tracking done at 30 kHz. Only thing different
-// is this function will only write every twelfth sample.
+// All EOF tracking done at 30 kHz. Only thing different is
+// this function will only write every ap2lf_dwnsmp (DS) sample.
 // Do that by sliding the samples forward in buf.
 //
-// Counting lessons:
+// Counting lessons: (DS=12 in figure)
 //
 // xxLxxxxxxxxxxxL... : Buffer holding nsmp
 // xxL                : first (partial) group
@@ -79,35 +79,36 @@ bool Pass1AP2LF::go()
 //
 // (A) offset + 1               : count spanned by first group
 // (B) nsmp - (A)               : count excluding first group
-// (C) (nsmp - offset - 1) / 12 : num whole groups after first
+// (C) (nsmp - offset - 1) / DS : num whole groups after first
 // (D) nlf = 1 + (C)            : num L in buffer (first + wholes)
-// (E) (A) + 12 * (C)           : count spanned by L's
-// (E) offset + 1 + 12 * (nlf - 1)
+// (E) (A) + DS * (C)           : count spanned by L's
+// (E) offset + 1 + DS * (nlf - 1)
 // (F) nsmp - (E)               : remainder count
-// (G) 12 - (F)                 : count spanned by first group of next buffer
-// (H) 11 - (F)                 : offset to first L of next buffer
-// (H) 11 - nsmp + offset + 1 + 12 * (nlf - 1)
-// (H) offset' = 12 - nsmp + offset + 12 * (nlf - 1)
+// (G) DS - (F)                 : count spanned by first group of next buffer
+// (H) DS - 1 - (F)             : offset to first L of next buffer
+// (H) DS - 1 - nsmp + offset + 1 + DS * (nlf - 1)
+// (H) offset' = DS - nsmp + offset + DS * (nlf - 1)
 //
 // For zero filling, want remaining count of last buffer:
-// (I) offset' + 1  : count spanned by first group of "next" virtual buffer
-// (J) 12 - (I)     : remainder in last buffer
-// (J) 11 - offset' : remainder from last file
+// (I) offset' + 1      : count spanned by first group of "next" virtual buffer
+// (J) DS - (I)         : remainder in last buffer
+// (J) DS - 1 - offset' : remainder from last file
 //
 bool Pass1AP2LF::_write( qint64 bytes )
 {
     int nC          = meta.nC,
         smpBytes    = nC * sizeof(qint16),
-        nsmp        = bytes / smpBytes;
+        nsmp        = bytes / smpBytes,
+        DS          = GBL.ap2lf_dwnsmp;
 
     if( offset >= nsmp ) {
         offset -= nsmp;
         return true;
     }
 
-    int nlf = 1 + (nsmp - offset - 1) / 12,
+    int nlf = 1 + (nsmp - offset - 1) / DS,
         nmv = nlf,
-        d12 = 12 * nC,
+        dDS = DS * nC,
         wrt;
 
     qint16  *dst = &o_buf[0],
@@ -115,14 +116,14 @@ bool Pass1AP2LF::_write( qint64 bytes )
 
     if( !offset ) {
         dst += nC;
-        src += d12;
+        src += dDS;
         --nmv;
     }
 
-    for( int i = 0; i < nmv; ++i, dst += nC, src += d12 )
+    for( int i = 0; i < nmv; ++i, dst += nC, src += dDS )
         memcpy( dst, src, smpBytes );
 
-    offset = 12 - nsmp + offset + 12 * (nlf - 1);
+    offset = DS - nsmp + offset + DS * (nlf - 1);
 
     wrt = nlf * smpBytes;
 
@@ -132,14 +133,16 @@ bool Pass1AP2LF::_write( qint64 bytes )
 
 bool Pass1AP2LF::zero( qint64 gapBytes, qint64 zfBytes )
 {
-    gapBytes = meta.smpBytes * (11 - offset + gapBytes/meta.smpBytes) / 12;
-    zfBytes  = meta.smpBytes * (11 - offset + zfBytes /meta.smpBytes) / 12;
+    int DS = GBL.ap2lf_dwnsmp;
+
+    gapBytes = meta.smpBytes * (DS - 1 - offset + gapBytes/meta.smpBytes) / DS;
+    zfBytes  = meta.smpBytes * (DS - 1 - offset + zfBytes /meta.smpBytes) / DS;
     offset   = 0;   // want first sample of next file
 
     Log() <<
     QString("Gap before file '%1' out_start_smp=%2 inp_gap_smp=%3 out_zeros_smp=%4")
     .arg( i_fi.fileName() )
-    .arg( meta.smpWritten / 12 )
+    .arg( meta.smpWritten / DS )
     .arg( gapBytes / meta.smpBytes )
     .arg( zfBytes / meta.smpBytes );
 
@@ -148,7 +151,7 @@ bool Pass1AP2LF::zero( qint64 gapBytes, qint64 zfBytes )
 
     if( js_in >= AP && GBL.linefil ) {
         vSeg.push_back(
-        LineSeg( meta.smpWritten / 12, zfBytes / meta.smpBytes ) );
+        LineSeg( meta.smpWritten / DS, zfBytes / meta.smpBytes ) );
     }
 
     qint64  o_bufBytes = o_buf.size() * sizeof(qint16);
@@ -163,7 +166,7 @@ bool Pass1AP2LF::zero( qint64 gapBytes, qint64 zfBytes )
             return false;
 
         zfBytes         -= cpyBytes;
-        meta.smpWritten += 12 * cpyBytes / meta.smpBytes;
+        meta.smpWritten += DS * cpyBytes / meta.smpBytes;
 
     } while( zfBytes > 0 );
 
@@ -191,16 +194,16 @@ bool Pass1AP2LF::filtersAndScaling()
 
 // To turn AP file into LF-like file:
 // - filename .ap. -> .lf. (handled by meta.set())
-// - firstSample n -> n/12.
+// - firstSample n -> n/DS.
 // - smpWritten measured.
-// - imSampleRate n -> n/12.
+// - imSampleRate n -> n/DS.
 // - snsChanMap rename AP -> LF.
 //
 void Pass1AP2LF::adjustMeta()
 {
 // firstSample
 
-    meta.kvp["firstSample"] = meta.smp1st /= 12;
+    meta.kvp["firstSample"] = meta.smp1st /= GBL.ap2lf_dwnsmp;
 
     if( svLim > sv0 ) {
         // EOF as samples same for all vS[]
@@ -212,7 +215,7 @@ void Pass1AP2LF::adjustMeta()
 
 // imSampleRate
 
-    meta.kvp["imSampRate"] = meta.srate /= 12;
+    meta.kvp["imSampRate"] = meta.srate /= GBL.ap2lf_dwnsmp;
 
 // snsChanMap
 
