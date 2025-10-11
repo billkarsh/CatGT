@@ -326,6 +326,11 @@ file is relative to the start of the concatenated output file. It records
 these offsets in units of samples, and again in units of seconds on that
 stream's clock.
 
+>Note: Even if you specify parameters like -sepShanks or -save, that
+generate new ip2 probe id's from an input ip1 id, the tabulated offset
+data are labeled according to the input ip1 values, as those values would
+be the same for all ip2 that are derived from that ip1.
+
 - CatGT always creates output file: `output_path/run_ga_fyi.txt`.
 This lists key output paths and filenames you can use to build downstream
 command lines for supercat or TPrime.
@@ -1495,6 +1500,14 @@ This tabulates, for each stream, where the first sample of each input
 "tcat" file is relative to the start of the concatenated output file. It
 records these offsets in units of samples, and again in units of seconds
 on that stream's clock.
+
+>Note: Unlike the pass-1 run_ga_ct_offsets.txt file where table entries
+are labeled according to ip1 values, here, we use ip2 labels because that's
+what you provide in the supercat input -prb= list.
+
+>Note: The sc_offsets file also tabulates the sample rate of the data in
+each section (element) of the concatenation. That's because these are
+actually different runs that might have had different hardware rates.
 
 Supercat creates output file: `dest/supercat_run_ga/run_ga_fyi.txt`.
 This lists key output paths and filenames you can use to build downstream
