@@ -39,16 +39,12 @@ bool IMRO_Site::operator<( const IMRO_Site &rhs ) const
 {
     if( s < rhs.s )
         return true;
-
     if( s > rhs.s )
         return false;
-
     if( r < rhs.r )
         return true;
-
     if( r > rhs.r )
         return false;
-
     return c < rhs.c;
 }
 
@@ -86,19 +82,14 @@ bool IMRO_ROI::operator<( const IMRO_ROI &rhs ) const
 {
     if( s < rhs.s )
         return true;
-
     if( s > rhs.s )
         return false;
-
     if( r0 < rhs.r0 )
         return true;
-
     if( r0 > rhs.r0 )
         return false;
-
     if( rLim < rhs.rLim )
         return true;
-
     if( rLim > rhs.rLim )
         return false;
 
@@ -107,7 +98,6 @@ bool IMRO_ROI::operator<( const IMRO_ROI &rhs ) const
 
     if( cme < crh )
         return true;
-
     if( cme > crh )
         return false;
 
@@ -1124,24 +1114,6 @@ bool IMROTbl::pnToType( int &type, const QString &pn )
 
     type = -1;
 
-#ifdef HAVE_NXT
-
-    switch( pn.mid( 2 ).toInt() ) {
-        case 3010:  // NXT single shank (Ph 1B)
-        case 3011:  // NXT single shank (Ph 1B) with cap
-            type = 3010;
-            supp = true;
-            break;
-        case 3020:  // NXT multishank (Ph 1B)
-        case 3021:  // NXT multishank (Ph 1B) with cap
-        case 3022:  // NXT multishank (Pre A) with cap
-            type = 3020;
-            supp = true;
-            break;
-    }
-
-#else
-
 // Old codes ---------------------------------
     if( pn.startsWith( "PRB_1_4" ) ||
         pn.startsWith( "PRB_1_2" ) ) {
@@ -1256,9 +1228,19 @@ bool IMROTbl::pnToType( int &type, const QString &pn )
                 type = 1200;
                 supp = true;
                 break;
+            case 3010:  // NXT single shank (Ph 1B)
+            case 3011:  // NXT single shank (Ph 1B) with cap
+                type = 3010;
+                supp = true;
+                break;
+            case 3020:  // NXT multishank (Ph 1B)
+            case 3021:  // NXT multishank (Ph 1B) with cap
+            case 3022:  // NXT multishank (Pre A) with cap
+                type = 3020;
+                supp = true;
+                break;
         }
     }
-#endif
 
     return supp;
 }

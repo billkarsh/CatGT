@@ -116,16 +116,13 @@ struct XTR {
         {
             if( js < rhs.js )
                 return true;
-            else if( js == rhs.js ) {
-                if( ip < rhs.ip )
-                    return true;
-                else if( ip == rhs.ip )
-                    return usrord < rhs.usrord;
-                else
-                    return false;
-            }
-            else
+            if( js > rhs.js )
                 return false;
+            if( ip < rhs.ip )
+                return true;
+            if( ip > rhs.ip )
+                return false;
+            return usrord < rhs.usrord;
         }
     struct pointerCompare {
         bool operator()( const XTR *L, const XTR *R ) const {return *L < *R;}
@@ -229,16 +226,13 @@ struct Save {
         {
             if( js < rhs.js )
                 return true;
-            else if( js == rhs.js ) {
-                if( ip1 < rhs.ip1 )
-                    return true;
-                else if( ip1 == rhs.ip1 )
-                    return ip2 < rhs.ip2;
-                else
-                    return false;
-            }
-            else
+            if( js > rhs.js )
                 return false;
+            if( ip1 < rhs.ip1 )
+                return true;
+            if( ip1 > rhs.ip1 )
+                return false;
+            return ip2 < rhs.ip2;
         }
     static bool parse( const char *s );
     QString sparam() const;
@@ -338,9 +332,9 @@ public:
                         im_obase,       // derived
                         prb_obase;      // derived
     QMap<int,QVector<uint>> mexc;
-    QMap<JSIP,double>   mjsiprate;      // pass-1 -> fyi
-    QMap<JSIP,int>      mjsipnchn;      // pass-1 -> fyi
-    QMap<int,int>       mip2ip1;        // pass-1 -> fyi
+    QMap<JSIP,double>   mjsiprate;      // pass-1: ip1 only  -> fyi
+    QMap<JSIP,int>      mjsipnchn;      // pass-1: ip1 only  -> fyi
+    QMap<int,int>       mip2ip1;        // pass-1: ip1 & ip2 -> fyi
     QVector<GT3>        gtlist;
     QVector<uint>       vobx,
                         vprb;

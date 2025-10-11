@@ -895,22 +895,16 @@ bool P1EOF::GTJSIP::operator<( const GTJSIP &rhs ) const
 {
     if( g < rhs.g )
         return true;
-
     if( g > rhs.g )
         return false;
-
     if( t < rhs.t )
         return true;
-
     if( t > rhs.t )
         return false;
-
     if( js < rhs.js )
         return true;
-
     if( js > rhs.js )
         return false;
-
     return ip < rhs.ip;
 }
 
