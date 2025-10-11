@@ -57,6 +57,8 @@ struct JSIP {
     {
         if( js < rhs.js )
             return true;
+        if( js > rhs.js )
+            return false;
         return ip < rhs.ip;
     }
 };

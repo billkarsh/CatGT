@@ -1200,7 +1200,8 @@ static bool _supercat_streamSelectEdges( int ie, t_js js, int ip1 )
 // Get edges
 // ---------
 
-    double  tlast = 0;
+    double  head = -1,
+            tlast = 0;
     QString line;
     bool    ok;
 
@@ -1211,8 +1212,9 @@ static bool _supercat_streamSelectEdges( int ie, t_js js, int ip1 )
         double  t = line.toDouble( &ok );
 
         if( ok ) {
-            GBL.velem[ie].head( js, ip1 )   = (ie ? t : 0);
-            tlast                           = t;
+            head    = (ie ? t : 0);
+            tlast   = t;
+            GBL.velem[ie].head( js, ip1 ) = head;
             break;
         }
     }
@@ -1247,9 +1249,7 @@ static bool _supercat_streamSelectEdges( int ie, t_js js, int ip1 )
 // At least two edges?
 // -------------------
 
-    if( tlast == 0 || GBL.velem[ie].jsip2head.isEmpty() ||
-        tlast - GBL.velem[ie].head( js, ip1 ) < 2.0 ) {
-
+    if( tlast == 0 || head < 0 || tlast - head < 2.0 ) {
         Log() <<
         QString("-supercat_trim_edges found fewer than 2 edges in file '%1'.")
         .arg( fib.filePath() );

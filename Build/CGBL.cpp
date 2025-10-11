@@ -1539,9 +1539,7 @@ bool Elem::read_fyi()
 
 // fyi file
 
-    QFile   f( path );
-
-    if( !f.exists() ) {
+    if( !QFile( path ).exists() ) {
         Log() << QString("File not found '%1'.").arg( path );
         return false;
     }
