@@ -13,7 +13,7 @@ public:
     Pass1NI() : Pass1( NI, NI, 0 )  {}
     virtual ~Pass1NI()              {}
 
-    bool go();
+    virtual bool run();
 };
 
 #endif  // PASS1NI_H

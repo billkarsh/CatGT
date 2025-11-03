@@ -5,7 +5,7 @@
 
 
 
-bool Pass1OB::go()
+bool Pass1OB::run()
 {
     int t0, g0 = GBL.gt_get_first( &t0 );
 

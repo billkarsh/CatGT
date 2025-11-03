@@ -2,6 +2,8 @@
 #include "Tool.h"
 #include "Util.h"
 
+#include <QCoreApplication> // pump events for threads
+
 #if 0
 static void compareFiles()
 {
@@ -176,6 +178,8 @@ close:
 #endif
 int main( int argc, char *argv[] )
 {
+    QCoreApplication    a( argc, argv );    // pump events for threads
+
     setLogFileName( "CatGT.log" );
 
 //compareFiles1();

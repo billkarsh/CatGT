@@ -7,7 +7,7 @@
 
 
 
-bool Pass1AP2LF::go()
+bool Pass1AP2LF::run()
 {
     int t0, g0 = GBL.gt_get_first( &t0 ),
         theZ;
@@ -18,16 +18,16 @@ bool Pass1AP2LF::go()
         case 2: return false;
     }
 
+    mySaves();
+
     if( !splitShanks() )
         return false;
 
     if( !parseMaxZ( theZ ) )
         return false;
 
-    mySrange();
-
     doWrite = GBL.gt_nIndices() > 1
-                || svLim > sv0 || GBL.startsecs >= 0
+                || vSprb.size() || GBL.startsecs >= 0
                 || GBL.lfflt.isenabled() || GBL.tshift;
 
     if( !GBL.makeOutputProbeFolder( g0, ip ) )
@@ -38,15 +38,18 @@ bool Pass1AP2LF::go()
 
     meta.read( fim, AP, ip );
 
-    for( int is = sv0; is < svLim; ++is ) {
-        if( !GBL.vS[is].init( meta.kvp, fim, theZ ) )
+    for( int is = 0, ns = vSprb.size(); is < ns; ++is ) {
+        if( !vSprb[is].init( meta.kvp, fim, theZ ) )
             return false;
     }
 
     if( !filtersAndScaling() )
         return false;
 
-    GBL.mjsiprate[JSIP(LF,ip)] = meta.srate / GBL.ap2lf_dwnsmp;
+    GBL.fyiMtx.lock();
+        GBL.mjsiprate[JSIP(LF,ip)] = meta.srate / GBL.ap2lf_dwnsmp;
+    GBL.fyiMtx.unlock();
+
     gFOff.init( meta.srate / GBL.ap2lf_dwnsmp, LF, ip );
 
     alloc();
@@ -55,8 +58,8 @@ bool Pass1AP2LF::go()
 
     adjustMeta();
 
-    if( svLim > sv0 )
-        meta.writeSave( sv0, svLim, g0, t0, LF );
+    if( vSprb.size() )
+        meta.writeSave( vSprb, g0, t0, LF );
     else
         meta.write( o_name, g0, t0, LF, ip, ip );
 
@@ -205,9 +208,9 @@ void Pass1AP2LF::adjustMeta()
 
     meta.kvp["firstSample"] = meta.smp1st /= GBL.ap2lf_dwnsmp;
 
-    if( svLim > sv0 ) {
-        // EOF as samples same for all vS[]
-        const Save &S = GBL.vS[sv0];
+    if( vSprb.size() ) {
+        // EOF (units of samples) same for all vS[]
+        const Save &S = vSprb[0];
         meta.smpWritten = S.o_f->size() / S.smpBytes;
     }
     else

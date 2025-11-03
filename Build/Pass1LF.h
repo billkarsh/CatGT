@@ -13,7 +13,7 @@ public:
     Pass1LF( int ip ) : Pass1( LF, LF, ip ) {}
     virtual ~Pass1LF()                      {}
 
-    bool go();
+    virtual bool run();
 
     virtual void digital( const qint16 *data, int ntpts )   {}
 

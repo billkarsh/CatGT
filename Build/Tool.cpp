@@ -11,6 +11,16 @@
 #include "ShankMap.h"
 #include "Subset.h"
 
+// Simply define TRY_THREADS here to enable fftw to execute
+// plans with internal multithreading. However, in practice
+// with our algorithm the fft workload per execution is too
+// small to overcome the overhead penalty of multithreading.
+// Single-threaded outperforms any number of worker threads.
+//
+//#define TRY_THREADS
+
+#include <QThread>
+
 #include <math.h>
 
 
@@ -20,35 +30,13 @@
 /* FFT ------------------------------------------------------------ */
 /* ---------------------------------------------------------------- */
 
-// With FFT-based filtering one must use a long enough FFT to adequately
-// sample low frequencies. A one second span is good down to 1 Hz (really,
-// 0.5 Hz not too bad), so handles LFP band data without much distortion.
-// 32768 is a little longer than one second.
-//
-// Freq domain filtering will cause some ringing in low freq components
-// so we process the data in overlapped 32768 sample chunks, throwing
-// away about 500 points from each chunk end (except at the file ends).
-//
-// - FFT is used for {tshift, filters}.
-// - FFT chunks are a power of 2 in size.
-// - FFT ops make edge artifacts so we trim margins and keep middles.
-// - FFT chunks are, therefore, overlapped.
-// - The middles are resulting OBUFs.
-// - The input buffer holds NMID output middles to reduce reload frequency.
-// - The input buffer holds a premargin for FFT overlap and gfix look-back.
-// - The input buffer holds a postmargin for FFT overlap and gfix look-ahead.
-
-#define SZFFT   32768
-#define SZMRG   500
-#define SZMID   (SZFFT - 2*SZMRG)
-#define SZOBUF  SZFFT
-#define NMID    1
-#define SZIBUF  (NMID*SZMID + 2*SZMRG)
+QMutex  FFT::fftMtx;
 
 
 FFT::~FFT()
 {
     if( cplx ) {
+        QMutexLocker    ml( &fftMtx );
         fftw_destroy_plan( pfwd );
         fftw_destroy_plan( pbwd );
         fftw_free( cplx );
@@ -56,6 +44,10 @@ FFT::~FFT()
 
     if( real )
         fftw_free( real );
+
+#ifdef TRY_THREADS
+    fftw_cleanup_threads();
+#endif
 }
 
 
@@ -195,8 +187,18 @@ void FFT::init(
         if( !ic2grp.size() )
             ic2grp.fill( -1, meta.nC );
 
+#ifdef TRY_THREADS
+// Choose a reasonable upper bound like 4.
+// Don't hog whole machine: idealThreadCount().
+//
+        fftw_init_threads();
+        fftw_plan_with_nthreads( qMin( QThread::idealThreadCount(), 4 ) );
+#endif
+
         real = fftw_alloc_real( SZFFT );
         cplx = fftw_alloc_complex( SZFFT/2 + 1 );
+
+        QMutexLocker    ml( &fftMtx );
         pfwd = fftw_plan_dft_r2c_1d( SZFFT, real, cplx, FFTW_ESTIMATE );
         pbwd = fftw_plan_dft_c2r_1d( SZFFT, cplx, real, FFTW_ESTIMATE );
     }
@@ -373,8 +375,10 @@ void Meta::read( const QFileInfo &fim, t_js js, int ip )
     nFiles          = 0;
 
     if( ip >= 0 ) {
-        GBL.mjsiprate[JSIP(js,ip)] = srate;
-        GBL.mjsipnchn[JSIP(js,ip)] = nC;
+        GBL.fyiMtx.lock();
+            GBL.mjsiprate[JSIP(js,ip)] = srate;
+            GBL.mjsipnchn[JSIP(js,ip)] = nC;
+        GBL.fyiMtx.unlock();
     }
 
 // Report non-zero imErrFlags
@@ -446,7 +450,7 @@ void Meta::write(
 }
 
 
-void Meta::writeSave( int sv0, int svLim, int g0, int t0, t_js js_out )
+void Meta::writeSave( const QVector<Save> &vSprb, int g0, int t0, t_js js_out )
 {
     ChanMapIM                   *chanMap    = 0;
     GeomMap                     *geomMap    = 0;
@@ -454,8 +458,7 @@ void Meta::writeSave( int sv0, int svLim, int g0, int t0, t_js js_out )
     KVParams::const_iterator    it_kvp;
     int                         nimec = 0;
 
-    for( int is = sv0; is < svLim; ++is ) {
-        const Save &S = GBL.vS[is];
+    foreach( const Save &S, vSprb ) {
         if( S.ip2 > nimec )
             nimec = S.ip2;
     }
@@ -479,9 +482,7 @@ void Meta::writeSave( int sv0, int svLim, int g0, int t0, t_js js_out )
         shankMap->fromString( it_kvp.value().toString() );
     }
 
-    for( int is = sv0; is < svLim; ++is ) {
-
-        const Save &S = GBL.vS[is];
+    foreach( const Save &S, vSprb ) {
 
         smpBytes = S.smpBytes;
 
@@ -660,7 +661,8 @@ FOffsets    gFOff;  // global file offsets
 
 void FOffsets::init( double rate, t_js js, int ip )
 {
-    QString s = stream( js, ip );
+    QString         s = stream( js, ip );
+    QMutexLocker    ml( &offMtx );
 
     mrate0[s] = rate;
     moff[s].push_back( GBL.startsecs > 0 ? -qint64(GBL.startsecs * rate) : 0 );
@@ -669,19 +671,22 @@ void FOffsets::init( double rate, t_js js, int ip )
 
 void FOffsets::addOffset( qint64 off, t_js js, int ip )
 {
+    QMutexLocker    ml( &offMtx );
     moff[stream( js, ip )].push_back( off );
 }
 
 
 void FOffsets::addRate( double rate, t_js js, int ip )
 {
+    QMutexLocker    ml( &offMtx );
     mrate[stream( js, ip )].push_back( rate );
 }
 
 
 void FOffsets::dwnSmp( int ip )
 {
-    QString s = stream( LF, ip );
+    QString         s = stream( LF, ip );
+    QMutexLocker    ml( &offMtx );
 
     if( moff.find( s ) != moff.end() ) {
 
@@ -1045,62 +1050,158 @@ bool P1EOF::getMeta( int g, int t, t_js js, int ip, bool t_miss_ok )
 }
 
 /* ---------------------------------------------------------------- */
-/* Functions ------------------------------------------------------ */
+/* Pass-1 Functions ----------------------------------------------- */
 /* ---------------------------------------------------------------- */
+
+struct P1Job {
+    int ip, type;   // type: 0=AUX, 1=LF, 2=AP2LF, 3=AP
+    P1Job()
+    :   ip(0), type(0)      {}
+    P1Job( int ip, int type )
+    :   ip(ip), type(type)  {}
+    bool run() const;
+    bool operator<( const P1Job &rhs ) const
+    {
+        if( type < rhs.type )
+            return true;
+        if( type > rhs.type )
+            return false;
+        return ip < rhs.ip;
+    }
+};
+
+bool P1Job::run() const
+{
+    Pass1   *P;
+    bool    ok;
+
+    if( type == 3 )
+        P = new Pass1AP( ip );
+    else if( type == 2 )
+        P = new Pass1AP2LF( ip );
+    else if( type == 1 )
+        P = new Pass1LF( ip );
+    else if( ip >= 0 )
+        P = new Pass1OB( ip );
+    else
+        P = new Pass1NI;
+
+    ok = P->run();
+    delete P;
+
+    return ok;
+}
+
+
+void P1Worker::run()
+{
+    J.run();
+    emit finished();
+}
+
+
+class P1Thread
+{
+public:
+    QThread     *thread;
+    P1Worker    *worker;
+public:
+    P1Thread( const P1Job &J );
+    virtual ~P1Thread();
+};
+
+P1Thread::P1Thread( const P1Job &J )
+{
+    thread  = new QThread;
+    worker  = new P1Worker( J );
+
+    worker->moveToThread( thread );
+
+    QObject::connect( thread, SIGNAL(started()), worker, SLOT(run()) );
+    QObject::connect( worker, SIGNAL(finished()), worker, SLOT(deleteLater()) );
+    QObject::connect( worker, SIGNAL(destroyed()), thread, SLOT(quit()), Qt::DirectConnection );
+
+    thread->start();
+}
+
+P1Thread::~P1Thread()
+{
+// worker object auto-deleted asynchronously
+// thread object manually deleted synchronously (so we can call wait())
+
+    if( thread->isRunning() )
+        thread->wait();
+
+    delete thread;
+}
+
 
 void pass1entrypoint()
 {
+// Init
+
     gP1LFCase.init();
 
     if( !gP1EOF.init() )
-        goto done;
+        return;
 
-    if( GBL.ni ) {
-        Pass1NI P;
-        if( !P.go() )
-            goto done;
-    }
+// List jobs, assigning: type=effort
 
-    foreach( uint ip, GBL.vobx ) {
+    std::vector<P1Job>  vJ;
 
-        Pass1OB P( ip );
-        if( !P.go() )
-            goto done;
-    }
+    if( GBL.ni )
+        vJ.push_back( P1Job( -1, 0 ) );
+
+    foreach( uint ip, GBL.vobx )
+        vJ.push_back( P1Job( ip, 0 ) );
 
     foreach( uint ip, GBL.vprb ) {
-
-        if( GBL.ap ) {
-            Pass1AP P( ip );
-            if( !P.go() )
-                goto done;
-        }
-
+        if( GBL.ap )
+            vJ.push_back( P1Job( ip, 3 ) );
         if( GBL.lf ) {
             switch( gP1LFCase.getCase( ip ) ) {
-                case 0: {
-                    Pass1LF     P( ip );
-                    if( !P.go() )
-                        goto done;
-                }
-                break;
-                case 1: {
-                    Pass1AP2LF  P( ip );
-                    if( !P.go() )
-                        goto done;
-                }
-                break;
+                case 0: vJ.push_back( P1Job( ip, 1 ) ); break;
+                case 1: vJ.push_back( P1Job( ip, 2 ) ); break;
                 default:
                     ;
             }
         }
     }
 
+// Sort jobs by type=effort
+
+    std::sort( vJ.begin(), vJ.end() );
+
+#if 0
+// Execute serially, stop on first failure
+
+    foreach( const P1Job &J, vJ ) {
+        if( !J.run() )
+            goto done;
+    }
+#else
+// Execute in parallel
+
+    std::vector<P1Thread*>  T;
+    int                     j_local = vJ.size() - 1;
+
+    for( int j = 0; j < j_local; ++j )
+        T.push_back( new P1Thread( vJ[j] ) );
+
+    vJ[j_local].run();
+
+    for( int it = 0, nT = T.size(); it < nT; ++it )
+        delete T[it];
+#endif
+
 done:
     gFOff.ct_write();
     GBL.fyi_ct_write();
 }
 
+/* ---------------------------------------------------------------- */
+/* Pass-2 Functions ----------------------------------------------- */
+/* ---------------------------------------------------------------- */
 
 // Decrement tail edge if beyond span of lf file.
 // Can use any user listed LF file derived from given ip1.

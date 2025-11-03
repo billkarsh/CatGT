@@ -26,7 +26,7 @@ public:
         :   Pass1( AP, AP, ip ), geomMap(0), shankMap(0), hp_gfix(0)    {}
     virtual ~Pass1AP();
 
-    bool go();
+    virtual bool run();
 
     virtual void neural( qint16 *data, int ntpts );
 

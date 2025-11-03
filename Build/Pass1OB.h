@@ -13,7 +13,7 @@ public:
     Pass1OB( int ip ) : Pass1( OB, OB, ip ) {}
     virtual ~Pass1OB()                      {}
 
-    bool go();
+    virtual bool run();
 };
 
 #endif  // PASS1OB_H

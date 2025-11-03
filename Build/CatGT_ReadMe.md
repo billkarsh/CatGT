@@ -175,7 +175,7 @@ Options:
 -gblcar                  ;apply ap global CAR filter over all channels
 -gbldmx                  ;apply ap global demuxed CAR filter over channel groups
 -gfix=0.40,0.10,0.02     ;rmv ap artifacts: ||amp(mV)||, ||slope(mV/sample)||, ||noise(mV)||
--chnexcl={prb;chans}     ;this probe, exclude listed chans from ap loccar, gblcar, gfix
+-chnexcl={prb;chans}     ;this probe, exclude listed acq chans from ap loccar, gblcar, gfix
 -xa=0,0,2,3.0,4.5,25     ;extract pulse signal from analog chan (js,ip,word,thresh1(V),thresh2(V),millisec)
 -xd=2,0,384,6,500        ;extract pulse signal from digital chan (js,ip,word,bit,millisec)
 -xia=0,0,2,3.0,4.5,2     ;inverted version of xa
@@ -270,7 +270,7 @@ to what you just did.
     1. A range of files is being concatenated, that is, (gb > ga) or (tb > ta).
     2. A -save, -sepShanks, or -maxZ directive alters the channel list.
     3. Filters, tshift or startsecs are applied, so the binary data are altered.
-    4. A time range is exported: set both -startsecs >= 0, and -maxsecs > startsecs.
+    4. A time range is exported: set -startsecs >= 0.
 
 - In most cases, NI and OBX files are useful for extractions of non-neural
 signal events, but we don't alter these files per se. That is, the binaries
@@ -812,11 +812,20 @@ mixtures of channels, such as the spatial filters {loccar, gblcar, gfix}.
 
 The option `-chnexcl={probe;chan_list}{probe;chan_list}...` takes a list of
 elements *(include the curly braces)* that specify a probe index; and a
-list of channels to exclude for that probe. Channel lists are specified
-like page lists in a printer dialog, `1,10,40:51` for example. Be careful
-to use a semicolon (;) between probe and channel list, and use only commas
-and colons (,:) within your channel lists. Include no more than one excluded
-channel list for a given probe index.
+list of *acquisition* channels to exclude for that probe. Channel lists are
+specified like page lists in a printer dialog, `1,10,40:51` for example. Be
+careful to use a semicolon (;) between probe and channel list, and use only
+commas and colons (,:) within your channel lists. Include no more than one
+excluded channel list for a given probe index.
+
+>Acquisition channel naming. Suppose your probe has 384 neural channels.
+These channels are always acquired from the hardware and would have indices
+[0,383] inclusive. A confusion comes with the selective save feature in
+SpikeGLX wherein you might save only ten channels to your data files, say,
+acquired channels [200,209]. Suppose you determine that channel 202 is noisy
+and you want to mask it out. This is the third channel in each timepoint of
+the file. Nevertheless, in the chnexcl option reference it as '202,' its
+original acquisition index.
 
 Note that the CatGT spatial filters honor metadata items `~snsGeomMap`
 and `~snsShankMap`. The GeomMap replaces the ShankMap in metadata as of
@@ -1516,6 +1525,11 @@ command lines for TPrime.
 ------
 
 ## Change Log
+
+Version 5.1
+
+- Updated command line logging.
+- Pass-1 streams execute in parallel.
 
 Version 5.0
 

@@ -190,7 +190,7 @@ Options:
 -gblcar                  ;apply ap global CAR filter over all channels
 -gbldmx                  ;apply ap global demuxed CAR filter over channel groups
 -gfix=0.40,0.10,0.02     ;rmv ap artifacts: ||amp(mV)||, ||slope(mV/sample)||, ||noise(mV)||
--chnexcl={prb;chans}     ;this probe, exclude listed chans from ap loccar, gblcar, gfix
+-chnexcl={prb;chans}     ;this probe, exclude listed acq chans from ap loccar, gblcar, gfix
 -xa=0,0,2,3.0,4.5,25     ;extract pulse signal from analog chan (js,ip,word,thresh1(V),thresh2(V),millisec)
 -xd=2,0,384,6,500        ;extract pulse signal from digital chan (js,ip,word,bit,millisec)
 -xia=0,0,2,3.0,4.5,2     ;inverted version of xa
@@ -246,7 +246,7 @@ Options:
 <li>A range of files is being concatenated, that is, (gb &gt; ga) or (tb &gt; ta).</li>
 <li>A -save, -sepShanks, or -maxZ directive alters the channel list.</li>
 <li>Filters, tshift or startsecs are applied, so the binary data are altered.</li>
-<li>A time range is exported: set both -startsecs &gt;= 0, and -maxsecs &gt; startsecs.</li>
+<li>A time range is exported: set -startsecs &gt;= 0.</li>
 </ol></li>
 <li><p>In most cases, NI and OBX files are useful for extractions of non-neural signal events, but we don't alter these files per se. That is, the binaries would not be reproduced into the output because that's wasteful of space. However, you can force new binaries to be made using <code>-pass1_force_ni_ob_bin</code>. That will make sure supercat finds and joins the binaries just in case you want that.</p></li>
 </ul>
@@ -518,7 +518,10 @@ ls -s &lt;path/myoriginalname.meta&gt; &lt;...ZZZ/goodname_g0_t0.imec0.ap.meta&g
 <p>Use the SpikeGLX FileViewer to select appropriate amplitude and slope values for a given run. Be sure to turn high-pass filtering ON and spatial <code>&lt;S&gt;</code> filters OFF to match the conditions the CatGT artifact detector will use. Zoom the time scale (ctrl + click&amp;drag) to see the individual sample points and their connecting segments. Set the slope this way: Zoom in on the artifact initial peak, the points with greatest amplitude. Suppose consecutive points {A,B,C,D} make up the peak and {B,C,D} exceed the amplitude threshold. Then there are three slopes {B-A,C-B,D-C} connecting these points. Select the largest value. That is, set the slope to the fastest voltage change near the peak. An artifact will usually be several times faster than a neuronal spike.</p>
 <h3 id="chnexcl-option">chnexcl option</h3>
 <p>Use this option to prevent bad channels from corrupting calculations over mixtures of channels, such as the spatial filters {loccar, gblcar, gfix}.</p>
-<p>The option <code>-chnexcl={probe;chan_list}{probe;chan_list}...</code> takes a list of elements <em>(include the curly braces)</em> that specify a probe index; and a list of channels to exclude for that probe. Channel lists are specified like page lists in a printer dialog, <code>1,10,40:51</code> for example. Be careful to use a semicolon (;) between probe and channel list, and use only commas and colons (,:) within your channel lists. Include no more than one excluded channel list for a given probe index.</p>
+<p>The option <code>-chnexcl={probe;chan_list}{probe;chan_list}...</code> takes a list of elements <em>(include the curly braces)</em> that specify a probe index; and a list of <em>acquisition</em> channels to exclude for that probe. Channel lists are specified like page lists in a printer dialog, <code>1,10,40:51</code> for example. Be careful to use a semicolon (;) between probe and channel list, and use only commas and colons (,:) within your channel lists. Include no more than one excluded channel list for a given probe index.</p>
+<blockquote>
+<p>Acquisition channel naming. Suppose your probe has 384 neural channels. These channels are always acquired from the hardware and would have indices [0,383] inclusive. A confusion comes with the selective save feature in SpikeGLX wherein you might save only ten channels to your data files, say, acquired channels [200,209]. Suppose you determine that channel 202 is noisy and you want to mask it out. This is the third channel in each timepoint of the file. Nevertheless, in the chnexcl option reference it as '202,' its original acquisition index.</p>
+</blockquote>
 <p>Note that the CatGT spatial filters honor metadata items <code>~snsGeomMap</code> and <code>~snsShankMap</code>. The GeomMap replaces the ShankMap in metadata as of SpikeGLX version 20230202.</p>
 <p>A GeomMap has an entry for each saved channel that describes the (shank, x(um), z(um)) where its electrode resides on the shank, and a fourth 0/1 value, <code>use flag</code>, indicating if the channel should be used in spatial filtering. By default, SpikeGLX marks known on-shank reference channels with zeros. Your chnexcl data force the corresponding use flags to zero before the filters are applied, and the modified <code>~snsGeomMap</code>, if present, is written to the CatGT output metadata.</p>
 <p>A ShankMap has an entry for each saved channel that describes the (shank, col, row) where its electrode resides on the shank, and a fourth 0/1 value, <code>use flag</code>, indicating if the channel should be used in spatial filtering. By default, SpikeGLX marks known on-shank reference channels with zeros. Your chnexcl data force the corresponding use flags to zero before the filters are applied, and the modified <code>~snsShankMap</code>, if present, is written to the CatGT output metadata.</p>
@@ -967,6 +970,11 @@ Options:
 <p>Supercat creates output file: <code>dest/supercat_run_ga/run_ga_fyi.txt</code>. This lists key output paths and filenames you can use to build downstream command lines for TPrime.</p>
 <hr />
 <h2 id="change-log">Change Log</h2>
+<p>Version 5.1</p>
+<ul>
+<li>Updated command line logging.</li>
+<li>Pass-1 streams execute in parallel.</li>
+</ul>
 <p>Version 5.0</p>
 <ul>
 <li>Fix supercat database lookup.</li>

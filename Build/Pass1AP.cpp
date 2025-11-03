@@ -22,7 +22,7 @@ Pass1AP::~Pass1AP()
 }
 
 
-bool Pass1AP::go()
+bool Pass1AP::run()
 {
     int t0, g0 = GBL.gt_get_first( &t0 ),
         theZ;
@@ -33,16 +33,16 @@ bool Pass1AP::go()
         case 2: return false;
     }
 
+    mySaves();
+
     if( !splitShanks() )
         return false;
 
     if( !parseMaxZ( theZ ) )
         return false;
 
-    mySrange();
-
     doWrite = GBL.gt_nIndices() > 1
-                    || svLim > sv0
+                    || vSprb.size()
                     || GBL.startsecs >= 0
                     || GBL.apflt.isenabled()
                     || GBL.tshift || GBL.locout_um > 0 || GBL.locout
@@ -56,8 +56,8 @@ bool Pass1AP::go()
 
     meta.read( fim, AP, ip );
 
-    for( int is = sv0; is < svLim; ++is ) {
-        if( !GBL.vS[is].init( meta.kvp, fim, theZ ) )
+    for( int is = 0, ns = vSprb.size(); is < ns; ++is ) {
+        if( !vSprb[is].init( meta.kvp, fim, theZ ) )
             return false;
     }
 
@@ -87,8 +87,8 @@ bool Pass1AP::go()
     if( GBL.startsecs >= 0 )
         meta.kvp["firstSample"] = meta.smp1st;
 
-    if( svLim > sv0 )
-        meta.writeSave( sv0, svLim, g0, t0, AP );
+    if( vSprb.size() )
+        meta.writeSave( vSprb, g0, t0, AP );
     else
         meta.write( o_name, g0, t0, AP, ip, ip );
 
@@ -386,12 +386,9 @@ void Pass1AP::gfixEdits()
 
 void Pass1AP::gfixZeros( qint64 L, int N )
 {
-    if( svLim > sv0 ) {
-
-        for( int is = sv0; is < svLim; ++is ) {
-            const Save  &S = GBL.vS[is];
+    if( vSprb.size() ) {
+        foreach( const Save &S, vSprb )
             gfixZero1( S.o_f, L, N, S.smpBytes, S.nC, S.nN );
-        }
     }
     else
         gfixZero1( &o_f, L, N, meta.smpBytes, meta.nC, meta.nN );

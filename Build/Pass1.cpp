@@ -4,32 +4,6 @@
 #include "Biquad.h"
 #include "Subset.h"
 
-
-// With FFT-based filtering one must use a long enough FFT to adequately
-// sample low frequencies. A one second span is good down to 1 Hz (really,
-// 0.5 Hz not too bad), so handles LFP band data without much distortion.
-// 32768 is a little longer than one second.
-//
-// Freq domain filtering will cause some ringing in low freq components
-// so we process the data in overlapped 32768 sample chunks, throwing
-// away about 500 points from each chunk end (except at the file ends).
-//
-// - FFT is used for {tshift, filters}.
-// - FFT chunks are a power of 2 in size.
-// - FFT ops make edge artifacts so we trim margins and keep middles.
-// - FFT chunks are, therefore, overlapped.
-// - The middles are resulting OBUFs.
-// - The input buffer holds NMID output middles to reduce reload frequency.
-// - The input buffer holds a premargin for FFT overlap and gfix look-back.
-// - The input buffer holds a postmargin for FFT overlap and gfix look-ahead.
-
-#define SZFFT   32768
-#define SZMRG   500
-#define SZMID   (SZFFT - 2*SZMRG)
-#define SZOBUF  SZFFT
-#define NMID    1
-#define SZIBUF  (NMID*SZMID + 2*SZMRG)
-
 #define IBUF( i_pos )   &i_buf[(i_pos)*meta.nC]
 #define IBYT( i_pos )   ((i_pos)*meta.smpBytes)
 
@@ -40,11 +14,23 @@
 
 Pass1::~Pass1()
 {
-    for( int is = sv0; is < svLim; ++is )
-        GBL.vS[is].close();
+    foreach( const Save &S, vSprb )
+        S.close();
 
     if( hipass ) delete hipass;
     if( lopass ) delete lopass;
+}
+
+
+void Pass1::mySaves()
+{
+    if( js_in >= AP ) {
+
+        int svLim, sv0 = GBL.mySrange( svLim, js_in, ip );
+
+        for( int is = sv0; is < svLim; ++is )
+            vSprb.push_back( GBL.vS[is] );
+    }
 }
 
 
@@ -65,7 +51,7 @@ bool Pass1::splitShanks()
         if( K.ip < ip )
             continue;
 
-        return K.split( meta.kvp, fim );
+        return K.split( vSprb, meta.kvp, fim );
     }
 
     return true;
@@ -90,17 +76,10 @@ bool Pass1::parseMaxZ( int &theZ )
 
         theZ = iz;
 
-        return Z.apply( meta.kvp, fim, js_in, js_out );
+        return Z.apply( vSprb, meta.kvp, fim, js_in, js_out );
     }
 
     return true;
-}
-
-
-void Pass1::mySrange()
-{
-    if( js_in >= AP )
-        sv0 = GBL.mySrange( svLim, js_in, ip );
 }
 
 
@@ -111,17 +90,19 @@ bool Pass1::o_open( int g0 )
 
     if( js_in >= AP ) {
 
-        if( svLim > sv0 ) {
+        if( vSprb.size() ) {
 
-            for( int is = sv0; is < svLim; ++is ) {
-                if( !GBL.vS[is].o_open( g0, js_out ) )
+            for( int is = 0, ns = vSprb.size(); is < ns; ++is ) {
+                if( !vSprb[is].o_open( g0, js_out ) )
                     return false;
             }
 
             return true;
         }
 
-        GBL.mip2ip1[ip] = ip;   // record source ip1
+        GBL.fyiMtx.lock();
+            GBL.mip2ip1[ip] = ip;   // record source ip1
+        GBL.fyiMtx.unlock();
     }
 
     return GBL.openOutputBinary( o_f, o_name, g0, js_out, ip, ip );
@@ -155,7 +136,7 @@ bool Pass1::openDigitalFiles( int g0 )
         if( X->word >= meta.nC )
             continue;
 
-        if( !X->openOutFiles( g0 ) )
+        if( !X->openOutFiles( vSprb, g0 ) )
             return false;
     }
 
@@ -311,15 +292,13 @@ void Pass1::digital( const qint16 *data, int ntpts )
 //
 bool Pass1::_write( qint64 bytes )
 {
-    if( svLim > sv0 ) {
+    if( vSprb.size() ) {
 
         qint64  smp = bytes / meta.smpBytes;
 
-        for( int is = sv0; is < svLim; ++is ) {
+        foreach( const Save &S, vSprb ) {
 
-            const Save  &S = GBL.vS[is];
-            vec_i16     sub;
-
+            vec_i16 sub;
             Subset::subset( sub, o_buf, S.iKeep, meta.nC );
             bytes = smp * S.smpBytes;
 
@@ -681,12 +660,9 @@ void Pass1::lineFill()
 {
     vec_i16 Ya, Yb;
 
-    if( svLim > sv0 ) {
-
-        for( int is = sv0; is < svLim; ++is ) {
-            const Save  &S = GBL.vS[is];
+    if( vSprb.size() ) {
+        foreach( const Save &S, vSprb )
             lineFill1( S.o_f, Ya, Yb, S.smpBytes, S.nC, S.nN );
-        }
     }
     else
         lineFill1( &o_f, Ya, Yb, meta.smpBytes, meta.nC, meta.nN );

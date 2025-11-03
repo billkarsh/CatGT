@@ -7,7 +7,7 @@
 
 
 
-bool Pass1LF::go()
+bool Pass1LF::run()
 {
     int t0, g0 = GBL.gt_get_first( &t0 ),
         theZ;
@@ -18,13 +18,13 @@ bool Pass1LF::go()
         case 2: return false;
     }
 
+    mySaves();
+
     if( !parseMaxZ( theZ ) )
         return false;
 
-    mySrange();
-
     doWrite = GBL.gt_nIndices() > 1
-                || svLim > sv0 || GBL.startsecs >= 0
+                || vSprb.size() || GBL.startsecs >= 0
                 || GBL.lfflt.isenabled() || GBL.tshift;
 
     if( !GBL.makeOutputProbeFolder( g0, ip ) )
@@ -35,8 +35,8 @@ bool Pass1LF::go()
 
     meta.read( fim, LF, ip );
 
-    for( int is = sv0; is < svLim; ++is ) {
-        if( !GBL.vS[is].init( meta.kvp, fim, theZ ) )
+    for( int is = 0, ns = vSprb.size(); is < ns; ++is ) {
+        if( !vSprb[is].init( meta.kvp, fim, theZ ) )
             return false;
     }
 
@@ -52,8 +52,8 @@ bool Pass1LF::go()
     if( GBL.startsecs >= 0 )
         meta.kvp["firstSample"] = meta.smp1st;
 
-    if( svLim > sv0 )
-        meta.writeSave( sv0, svLim, g0, t0, LF );
+    if( vSprb.size() )
+        meta.writeSave( vSprb, g0, t0, LF );
     else
         meta.write( o_name, g0, t0, LF, ip, ip );
 

@@ -108,14 +108,16 @@ SOURCES += \
     Util_osdep.cpp
 
 win32 {
-    QMAKE_LIBDIR    += $${_PRO_FILE_PWD_}
-    LIBS            += -lWS2_32 -lUser32 -lwinmm
-    LIBS            += -llibfftw3-3
-    DEFINES         += _CRT_SECURE_NO_WARNINGS WIN32
+    QMAKE_LIBDIR            += $${_PRO_FILE_PWD_}
+    LIBS                    += -lWS2_32 -lUser32 -lwinmm
+    LIBS                    += -llibfftw3-3
+    DEFINES                 += _CRT_SECURE_NO_WARNINGS WIN32
+    QMAKE_CXXFLAGS_RELEASE  += -O3 -fomit-frame-pointer -fno-plt
 }
 
 unix {
-    LIBS            += -lfftw3
+    LIBS                    += -lfftw3
+    QMAKE_CXXFLAGS_RELEASE  += -O3 -fomit-frame-pointer
 }
 
 QMAKE_TARGET_COMPANY = Bill Karsh

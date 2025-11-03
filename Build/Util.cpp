@@ -21,6 +21,7 @@ namespace Util {
 /* Log messages to console ---------------------------------------- */
 /* ---------------------------------------------------------------- */
 
+QMutex          Log::logMtx;
 static QString  logName;
 
 
@@ -46,9 +47,10 @@ Log::~Log()
                     "M/dd/yy hh:mm:ss.zzz" ) )
             .arg( str );
 
-    QFile f( logName );
+    QMutexLocker    ml( &logMtx );
+    QFile           f( logName );
     f.open( QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text );
-    QTextStream ts( &f );
+    QTextStream     ts( &f );
 
     ts << msg << "\n";
 }

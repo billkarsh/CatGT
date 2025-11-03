@@ -4,6 +4,7 @@
 #include <QObject>
 #include <QDateTime>
 #include <QFile>
+#include <QMutex>
 #include <QString>
 #include <QTextStream>
 
@@ -44,7 +45,8 @@ void setLogFileName( QString name );
 class Log
 {
 private:
-    QTextStream stream;
+    QTextStream     stream;
+    static QMutex   logMtx;
 protected:
     QString str;
 

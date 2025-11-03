@@ -16,7 +16,7 @@ public:
     Pass1AP2LF( int ip ) : Pass1( AP, LF, ip ), offset(0)   {}
     virtual ~Pass1AP2LF()                                   {}
 
-    bool go();
+    virtual bool run();
 
     virtual void digital( const qint16 *data, int ntpts )   {}
     virtual bool _write( qint64 bytes );

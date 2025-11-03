@@ -37,12 +37,11 @@ protected:
     QString             o_name;
     vec_i16             i_buf,
                         o_buf;
+    QVector<Save>       vSprb;
     QVector<LineSeg>    vSeg;
     t_js                js_in,
                         js_out;
     int                 ip,
-                        sv0,
-                        svLim,  // entries iff svLim > sv0
                         i_nxt,  // next input middle (samples)
                         i_lim,  // input count (samples)
                         gfix0,  // cur o_buf start in i_buf
@@ -50,16 +49,20 @@ protected:
     bool                doWrite,
                         flip_NXT;
 
-protected:
+public:
     Pass1( t_js js_in, t_js js_out, int ip )
-    :   hipass(0), lopass(0), js_in(js_in), js_out(js_out), ip(ip),
-        sv0(-1), svLim(-1), i_nxt(0), i_lim(0), doWrite(false),
+    :   hipass(0), lopass(0),
+        js_in(js_in), js_out(js_out), ip(ip),
+        i_nxt(0), i_lim(0), doWrite(false),
         flip_NXT(false) {}
     virtual ~Pass1();
 
+    virtual bool run() = 0;
+
+protected:
+    void mySaves();
     bool splitShanks();
     bool parseMaxZ( int &theZ );
-    void mySrange();
     bool o_open( int g0 );
     void initDigitalFields( double rngMax );
     bool openDigitalFiles( int g0 );

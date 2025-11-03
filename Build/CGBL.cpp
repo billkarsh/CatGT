@@ -72,20 +72,24 @@ next_icur:
 /* Filter -------------------------------------------------------- */
 /* --------------------------------------------------------------- */
 
-bool Filter::parse( const QString &s )
+bool Filter::parse( const QString &option, const QString &s )
 {
     const QStringList   sl = s.split(
                                 QRegExp(","),
                                 QString::SkipEmptyParts );
     if( sl.size() != 4 ) {
-        Log() << "Filters need 4 arguments: -xxfilter=type,order,Fhi,Flo";
+        Log() <<
+        QString("Error: '%1%2' : Filters need 4 arguments: -xxfilter=type,order,Fhi,Flo.")
+        .arg( option ).arg( s );
         return false;
     }
 
     type = sl.at(0);
 
     if( type != "biquad" && type != "butter" ) {
-        Log() << "Only biquad and butter filters are supported.";
+        Log() <<
+        QString("Error: '%1%2' : Only biquad and butter filters are supported.")
+        .arg( option ).arg( s );
         return false;
     }
 
@@ -93,8 +97,432 @@ bool Filter::parse( const QString &s )
     Fhi     = sl.at(2).toDouble();
     Flo     = sl.at(3).toDouble();
 
+    if( Fhi >= Flo ) {
+        Log() <<
+        QString("Error: '%1%2' : Filter bandpass edges are reversed.")
+        .arg( option ).arg( s );
+        return false;
+    }
+
     if( isbiquad() )
         order = 2;
+
+    return true;
+}
+
+
+/* --------------------------------------------------------------- */
+/* Save ---------------------------------------------------------- */
+/* --------------------------------------------------------------- */
+
+bool Save::parse( QVector<Save> &vSprb, const char *s )
+{
+    int js, ip1, ip2, n;
+
+    if( 3 > sscanf( s, "%d,%d,%d%n", &js, &ip1, &ip2, &n ) ) {
+        Log() << "Save options need 4 arguments: -save=js,ip1,ip2,chan-list";
+        return false;
+    }
+
+    if( ip2 < 0 ) {
+        Log() << "Save option ip2 cannot be negative.";
+        return false;
+    }
+
+// trim leading "   ,   "
+
+    QString C( s + n );
+    n = 0;
+    for( int i = 0, sz = C.size(); i < sz; ++i ) {
+        if( C[i] == ' ' || C[i] == ',' )
+            ++n;
+        else
+            break;
+    }
+    if( n )
+        C.remove( 0, n );
+
+    Save    S( t_js(js), ip1, ip2, C );
+
+    if( Subset::isAllChansStr( C ) )
+        Log() << "Skipping directive to save all:" << S.sparam();
+    else
+        vSprb.push_back( S );
+
+    return true;
+}
+
+
+QString Save::sparam() const
+{
+    return QString(" -save=%1,%2,%3,%4")
+            .arg( js ).arg( ip1 ).arg( ip2 ).arg( sUsr );
+}
+
+
+bool Save::init( const KVParams &kvp, const QFileInfo &fim, int theZ )
+{
+// Reinit these for summing: In AP2LF mode the record is used twice
+    iKeep.clear();
+    nN = 0;
+
+    QVector<uint>   snsFileChans, cUsr, cUsr2;
+
+    if( !Subset::rngStr2Vec( cUsr, sUsr ) ) {
+        Log() << QString("Bad channel-list format '%1'").arg( sparam() );
+        return false;
+    }
+
+    if( !GBL.getSavedChannels( snsFileChans, kvp, fim ) )
+        return false;
+
+    const QStringList   sl = kvp["acqApLfSy"].toString().split(
+                                QRegExp("^\\s+|\\s*,\\s*"),
+                                QString::SkipEmptyParts );
+    int nAP = sl[0].toInt(),
+        cSY = nAP + sl[1].toInt();
+
+    if( js == AP )
+        nAP = 0;    // offset channel indices for bitsAP test
+
+    for( int ic = 0, nU = cUsr.size(); ic < nU; ++ic ) {
+
+        int cU  = cUsr[ic],
+            idx = snsFileChans.indexOf( cU );
+
+        if( idx >= 0 && (theZ < 0 || GBL.vMZ[theZ].bitsAP.testBit( cU - nAP ))  ) {
+            cUsr2.push_back( cU );
+            iKeep.push_back( idx );
+            nN += (cU < cSY);
+        }
+    }
+
+    nC = iKeep.size();
+
+    if( !nC ) {
+        Log() << QString("Specified channels not in file '%1'").arg( sparam() );
+        return false;
+    }
+
+    sUsr_out    = Subset::vec2RngStr( cUsr2 );
+    smpBytes    = nC*sizeof(qint16);
+    return true;
+}
+
+
+bool Save::o_open( int g0, t_js js )
+{
+    GBL.fyiMtx.lock();
+        GBL.mip2ip1[ip2] = ip1; // record derived ip2
+    GBL.fyiMtx.unlock();
+
+    o_f = new QFile;
+    return GBL.openOutputBinary( *o_f, o_name, g0, js, ip1, ip2 );
+}
+
+
+void Save::close() const
+{
+    if( o_f ) {
+        delete o_f;
+        o_f = 0;
+    }
+}
+
+/* --------------------------------------------------------------- */
+/* SepShanks ----------------------------------------------------- */
+/* --------------------------------------------------------------- */
+
+// Now, just check for bad params.
+// Parse again later when metadata available.
+//
+bool SepShanks::parse( QSet<int> &seen )
+{
+    QStringList sl = sUsr.split(
+                        QRegExp("^\\s+|\\s*,\\s*|\\s+$"),
+                        QString::SkipEmptyParts );
+    int         ns = sl.size();
+
+    if( ns != 5 ) {
+        Log() << QString("Error: -sepShanks=%1 has bad format.").arg( sUsr );
+        return false;
+    }
+
+    ip = sl[0].toInt();
+
+    for( int j = 0; j < 4; ++j )
+        ipj[j] = sl[j+1].toInt();
+
+    if( ip < 0 ) {
+        Log() << QString("Error: -sepShanks=%1 has negative ip.").arg( sUsr );
+        return false;
+    }
+
+    if( (ipj[0] == ip) + (ipj[1] == ip) + (ipj[2] == ip) + (ipj[3] == ip) > 1 ) {
+        Log() << QString("Error: -sepShanks=%1 more than one ipj = ip.").arg( sUsr );
+        return false;
+    }
+
+    QSet<int> seenj;    // non-neg only
+    for( int is = 0; is < 4; ++is ) {
+        int ipk = ipj[is];
+        if( ipk < 0 )
+            continue;
+        if( seenj.contains( ipk ) ) {
+            Log() << QString("Error: -sepShanks=%1 duplicate ipj.").arg( sUsr );
+            return false;
+        }
+        seenj.insert( ipk );
+    }
+
+    if( seenj.isEmpty() ) {
+        Log() << QString("Error: -sepShanks=%1 all ipj negative.").arg( sUsr );
+        return false;
+    }
+
+    if( seen.contains( ip ) ) {
+        Log() << QString("Error: -sepShanks names probe %1 twice.").arg( ip );
+        return false;
+    }
+
+    seen.insert( ip );
+
+    return true;
+}
+
+
+QString SepShanks::sparam() const
+{
+    return QString(" -sepShanks=%1").arg( sUsr );
+}
+
+
+bool SepShanks::split(
+    QVector<Save>   &vSprb,
+    const KVParams  &kvp,
+    const QFileInfo &fim )
+{
+// already used?
+
+    if( ip < 0 )
+        return true;
+
+// Prep imro
+
+    IMROTbl *R = GBL.getProbe( kvp );
+    if( !R ) {
+        Log() << QString("Can't identify probe type in metadata '%1'.")
+                    .arg( fim.fileName() );
+        return false;
+    }
+
+    if( R->nShank() == 1 ) {
+        ip = -1;
+        delete R;
+        return true;
+    }
+
+    R->fromString( 0, kvp["~imroTbl"].toString() );
+
+    int nAP = R->nAP(),
+        nSY = R->nSY();
+
+// Prep saved chan list
+
+    QVector<uint>   snsFileChans;
+    if( !GBL.getSavedChannels( snsFileChans, kvp, fim ) ) {
+        delete R;
+        return false;
+    }
+
+// Prep shank lists
+
+    QBitArray   K[4];
+
+    for( int j = 0; j < 4; ++j )
+        K[j].resize( nAP + nSY );
+
+// Fill
+
+    for( int ic = 0, nc = snsFileChans.size(); ic < nc; ++ic ) {
+
+        int C = snsFileChans[ic];
+
+        if( C < nAP )
+            K[R->shnk( C )].setBit( C );
+        else if( nSY == 1 ) {
+            // each shank gets common SY
+            for( int j = 0; j < 4; ++j )
+                K[j].setBit( C );
+        }
+        else {
+            // each shank gets own SY
+            K[C - nAP].setBit( C );
+        }
+    }
+
+// Split
+
+    for( int j = 0; j < 4; ++j ) {
+
+        if( ipj[j] < 0 )
+            continue;
+
+        QBitArray   B = K[j];
+        B.truncate( nAP );
+        if( !B.count( true ) )
+            continue;
+
+        QString arg = QString("2,%1,%2,%3")
+                        .arg( ip ).arg( ipj[j] )
+                        .arg( Subset::bits2RngStr( K[j] ) );
+
+        Save::parse( vSprb, STR2CHR( arg ) );
+        std::sort( vSprb.begin(), vSprb.end() );
+    }
+
+    ip = -1;
+    delete R;
+    return true;
+}
+
+/* --------------------------------------------------------------- */
+/* MaxZ ---------------------------------------------------------- */
+/* --------------------------------------------------------------- */
+
+// Now, just check for bad params.
+// Parse again later when metadata available.
+//
+bool MaxZ::parse( QSet<int> &seen )
+{
+    QStringList sl = sUsr.split(
+                        QRegExp("^\\s+|\\s*,\\s*|\\s+$"),
+                        QString::SkipEmptyParts );
+    int         ns = sl.size();
+
+    if( ns != 3 ) {
+        Log() << QString("Error: -maxZ=%1 has bad format.").arg( sUsr );
+        return false;
+    }
+
+    ip   = sl[0].toInt();
+    type = sl[1].toInt();
+    z    = sl[2].toDouble();
+
+    if( type < 0 || type > 2 ) {
+        Log() << QString("Error: -maxZ=%1 has bad type value.").arg( sUsr );
+        return false;
+    }
+
+    if( seen.contains( ip ) ) {
+        Log() << QString("Error: -maxZ names probe %1 twice.").arg( ip );
+        return false;
+    }
+
+    seen.insert( ip );
+
+    return true;
+}
+
+
+QString MaxZ::sparam() const
+{
+    return QString(" -maxZ=%1").arg( sUsr );
+}
+
+
+bool MaxZ::apply(
+    QVector<Save>   &vSprb,
+    const KVParams  &kvp,
+    const QFileInfo &fim,
+    int             js_in,
+    int             js_out )
+{
+// Form bitsAP
+
+    int nAP, nLF, nSY;
+
+    IMROTbl *R = GBL.getProbe( kvp );
+    if( !R ) {
+        Log() << QString("Can't identify probe type in metadata '%1'.")
+                    .arg( fim.fileName() );
+        return false;
+    }
+    R->fromString( 0, kvp["~imroTbl"].toString() );
+
+    nAP = R->nAP();
+    nLF = R->nLF();
+    nSY = R->nSY();
+
+    bitsAP.resize( nAP );
+
+    int maxRow; // inclusive
+    switch( type ) {
+        case 0:
+            maxRow = int(z);
+            break;
+        case 1:
+            maxRow =
+            ceil( (z - R->zPitch()) / R->zPitch() );
+            break;
+        default:
+            maxRow =
+            ceil( (z - R->tipLength() - R->zPitch()) / R->zPitch() );
+    }
+    maxRow = qBound( 0, maxRow, R->nRow() - 1 );
+
+    for( int ic = 0; ic < nAP; ++ic ) {
+        int col, row;
+        R->elShankColRow( col, row, ic );
+        if( row <= maxRow )
+            bitsAP.setBit( ic );
+    }
+
+    delete R;
+
+    // Create/modify AP chnexcl list
+
+    if( js_out == AP ) {
+
+        QBitArray   bexc = ~bitsAP;
+
+        if( bexc.count( true ) ) {
+
+            if( GBL.mexc.contains( ip ) ) {
+
+                Subset::rngStr2Vec( GBL.mexc[ip],
+                    Subset::vec2RngStr( GBL.mexc[ip] )
+                    + ","
+                    + Subset::bits2RngStr( bexc ) );
+            }
+            else
+                Subset::bits2Vec( GBL.mexc[ip], bexc );
+        }
+    }
+
+    // Add Save record if doesn't already exist.
+    // This is a simple save-all directive that
+    // will be edited later.
+
+    if( vSprb.size() )
+        return true;
+
+    QString sNU;
+    if( js_in == AP )
+        sNU = QString("0:%1").arg( nAP - 1 );
+    else
+        sNU = QString("%1:%2").arg( nAP ).arg( nAP + nLF - 1 );
+
+    QString sSY = QString("%1").arg( nAP + nLF );
+    if( nSY > 1 )
+        sSY += QString(":%1").arg( nAP + nLF + nSY - 1 );
+
+    QString arg = QString("%1,%2,%2,%3,%4")
+                    .arg( js_in ).arg( ip )
+                    .arg( sNU ).arg( sSY );
+
+    Save::parse( vSprb, STR2CHR( arg ) );
+    std::sort( vSprb.begin(), vSprb.end() );
 
     return true;
 }
@@ -103,9 +531,9 @@ bool Filter::parse( const QString &s )
 /* Extractors ---------------------------------------------------- */
 /* --------------------------------------------------------------- */
 
-bool XTR::openOutFiles( int g0 )
+bool XTR::openOutFiles( const QVector<Save> &vSprb, int g0 )
 {
-    return openOutTimesFile( g0, ex );
+    return openOutTimesFile( vSprb, g0, ex );
 }
 
 
@@ -128,10 +556,11 @@ void XTR::wordError( int nC )
 }
 
 
-bool XTR::openOutTimesFile( int g0, t_ex ex )
+bool XTR::openOutTimesFile( const QVector<Save> &vSprb, int g0, t_ex ex )
 {
-    QString file,
-            strm;
+    QMutexLocker    ml( &GBL.fyiMtx );
+    QString         file,
+                    strm;
 
     switch( js ) {
         case NI:
@@ -164,7 +593,7 @@ bool XTR::openOutTimesFile( int g0, t_ex ex )
 
     if( usrord == -1 ) {
         GBL.fyi[QString("sync_%1").arg( strm )] = file;
-        remapped_ip( -1 );
+        remapped_ip( vSprb, -1 );
     }
     else {
         XTR *X0;
@@ -181,7 +610,7 @@ bool XTR::openOutTimesFile( int g0, t_ex ex )
                     if( this == GBL.vX[k] ) {
                         k -= i + (X0->usrord == -1);
                         GBL.fyi[QString("times_%1_%2").arg( strm ).arg( k )] = file;
-                        remapped_ip( k );
+                        remapped_ip( vSprb, k );
                         break;
                     }
                 }
@@ -208,7 +637,7 @@ bool XTR::openOutTimesFile( int g0, t_ex ex )
 // - (k=-1) "sync_imec(ip2)=sync_imec(ip1)"
 // - (k>=0) "times_imec(ip2)_k=times_imec(ip1)_k"
 //
-void XTR::remapped_ip( int k )
+void XTR::remapped_ip( const QVector<Save> &vSprb, int k )
 {
 // Test for pass-1
 
@@ -226,24 +655,9 @@ void XTR::remapped_ip( int k )
         rhs = GBL.fyi[QString(lhs).arg( ip )].toString();
     }
 
-    for( int is = 0, ns = GBL.vS.size(); is < ns; ++is ) {
-
-        const Save  &S = GBL.vS[is];
-
-        if( S.js > AP )
-            return;
-        if( S.js < AP )
-            continue;
-
-        if( S.ip1 > ip )
-            return;
-        if( S.ip1 < ip )
-            continue;
-
-        if( S.ip2 == S.ip1 )
-            continue;
-
-        GBL.fyi[QString(lhs).arg( S.ip2 )] = rhs;
+    foreach( const Save &S, vSprb ) {
+        if( S.ip2 != S.ip1 )
+            GBL.fyi[QString(lhs).arg( S.ip2 )] = rhs;
     }
 }
 
@@ -1022,9 +1436,9 @@ void BitField::init( double rate, double rangeMax )
 // on probe streams, so we don't bother with remapping
 // values to multiple ip2 as we do for times.
 //
-bool BitField::openOutFiles( int g0 )
+bool BitField::openOutFiles( const QVector<Save> &vSprb, int g0 )
 {
-    if( !openOutTimesFile( g0, eBFT ) )
+    if( !openOutTimesFile( vSprb, g0, eBFT ) )
         return false;
 
     QString file;
@@ -1102,417 +1516,6 @@ void BitField::close() const
         delete fv;
 
     XTR::close();
-}
-
-/* --------------------------------------------------------------- */
-/* Save ---------------------------------------------------------- */
-/* --------------------------------------------------------------- */
-
-bool Save::parse( const char *s )
-{
-    int js, ip1, ip2, n;
-
-    if( 3 > sscanf( s, "%d,%d,%d%n", &js, &ip1, &ip2, &n ) ) {
-        Log() << "Save options need 4 arguments: -save=js,ip1,ip2,chan-list";
-        return false;
-    }
-
-    if( ip2 < 0 ) {
-        Log() << "Save option ip2 cannot be negative.";
-        return false;
-    }
-
-// trim leading "   ,   "
-
-    QString C( s + n );
-    n = 0;
-    for( int i = 0, sz = C.size(); i < sz; ++i ) {
-        if( C[i] == ' ' || C[i] == ',' )
-            ++n;
-        else
-            break;
-    }
-    if( n )
-        C.remove( 0, n );
-
-    Save    S( t_js(js), ip1, ip2, C );
-
-    if( Subset::isAllChansStr( C ) )
-        Log() << "Skipping directive to save all:" << S.sparam();
-    else
-        GBL.vS.push_back( S );
-
-    return true;
-}
-
-
-QString Save::sparam() const
-{
-    return QString(" -save=%1,%2,%3,%4")
-            .arg( js ).arg( ip1 ).arg( ip2 ).arg( sUsr );
-}
-
-
-bool Save::init( const KVParams &kvp, const QFileInfo &fim, int theZ )
-{
-// Reinit these for summing: In AP2LF mode the record is used twice
-    iKeep.clear();
-    nN = 0;
-
-    QVector<uint>   snsFileChans, cUsr, cUsr2;
-
-    if( !Subset::rngStr2Vec( cUsr, sUsr ) ) {
-        Log() << QString("Bad channel-list format '%1'").arg( sparam() );
-        return false;
-    }
-
-    if( !GBL.getSavedChannels( snsFileChans, kvp, fim ) )
-        return false;
-
-    const QStringList   sl = kvp["acqApLfSy"].toString().split(
-                                QRegExp("^\\s+|\\s*,\\s*"),
-                                QString::SkipEmptyParts );
-    int nAP = sl[0].toInt(),
-        cSY = nAP + sl[1].toInt();
-
-    if( js == AP )
-        nAP = 0;    // offset channel indices for bitsAP test
-
-    for( int ic = 0, nU = cUsr.size(); ic < nU; ++ic ) {
-
-        int cU  = cUsr[ic],
-            idx = snsFileChans.indexOf( cU );
-
-        if( idx >= 0 && (theZ < 0 || GBL.vMZ[theZ].bitsAP.testBit( cU - nAP ))  ) {
-            cUsr2.push_back( cU );
-            iKeep.push_back( idx );
-            nN += (cU < cSY);
-        }
-    }
-
-    nC = iKeep.size();
-
-    if( !nC ) {
-        Log() << QString("Specified channels not in file '%1'").arg( sparam() );
-        return false;
-    }
-
-    sUsr_out    = Subset::vec2RngStr( cUsr2 );
-    smpBytes    = nC*sizeof(qint16);
-    return true;
-}
-
-
-bool Save::o_open( int g0, t_js js )
-{
-    GBL.mip2ip1[ip2]    = ip1;  // record derived ip2
-    o_f                 = new QFile;
-    return GBL.openOutputBinary( *o_f, o_name, g0, js, ip1, ip2 );
-}
-
-
-void Save::close()
-{
-    if( o_f ) {
-        delete o_f;
-        o_f = 0;
-    }
-}
-
-/* --------------------------------------------------------------- */
-/* SepShanks ----------------------------------------------------- */
-/* --------------------------------------------------------------- */
-
-// Now, just check for bad params.
-// Parse again later when metadata available.
-//
-bool SepShanks::parse( QSet<int> &seen )
-{
-    QStringList sl = sUsr.split(
-                        QRegExp("^\\s+|\\s*,\\s*|\\s+$"),
-                        QString::SkipEmptyParts );
-    int         ns = sl.size();
-
-    if( ns != 5 ) {
-        Log() << QString("Error: -sepShanks=%1 has bad format.").arg( sUsr );
-        return false;
-    }
-
-    ip = sl[0].toInt();
-
-    for( int j = 0; j < 4; ++j )
-        ipj[j] = sl[j+1].toInt();
-
-    if( ip < 0 ) {
-        Log() << QString("Error: -sepShanks=%1 has negative ip.").arg( sUsr );
-        return false;
-    }
-
-    if( (ipj[0] == ip) + (ipj[1] == ip) + (ipj[2] == ip) + (ipj[3] == ip) > 1 ) {
-        Log() << QString("Error: -sepShanks=%1 more than one ipj = ip.").arg( sUsr );
-        return false;
-    }
-
-    QSet<int> seenj;    // non-neg only
-    for( int is = 0; is < 4; ++is ) {
-        int ipk = ipj[is];
-        if( ipk < 0 )
-            continue;
-        if( seenj.contains( ipk ) ) {
-            Log() << QString("Error: -sepShanks=%1 duplicate ipj.").arg( sUsr );
-            return false;
-        }
-        seenj.insert( ipk );
-    }
-
-    if( seenj.isEmpty() ) {
-        Log() << QString("Error: -sepShanks=%1 all ipj negative.").arg( sUsr );
-        return false;
-    }
-
-    if( seen.contains( ip ) ) {
-        Log() << QString("Error: -sepShanks names probe %1 twice.").arg( ip );
-        return false;
-    }
-
-    seen.insert( ip );
-
-    return true;
-}
-
-
-QString SepShanks::sparam() const
-{
-    return QString(" -sepShanks=%1").arg( sUsr );
-}
-
-
-bool SepShanks::split( const KVParams &kvp, const QFileInfo &fim )
-{
-// already used?
-
-    if( ip < 0 )
-        return true;
-
-// Prep imro
-
-    IMROTbl *R = GBL.getProbe( kvp );
-    if( !R ) {
-        Log() << QString("Can't identify probe type in metadata '%1'.")
-                    .arg( fim.fileName() );
-        return false;
-    }
-
-    if( R->nShank() == 1 ) {
-        ip = -1;
-        delete R;
-        return true;
-    }
-
-    R->fromString( 0, kvp["~imroTbl"].toString() );
-
-    int nAP = R->nAP(),
-        nSY = R->nSY();
-
-// Prep saved chan list
-
-    QVector<uint>   snsFileChans;
-    if( !GBL.getSavedChannels( snsFileChans, kvp, fim ) ) {
-        delete R;
-        return false;
-    }
-
-// Prep shank lists
-
-    QBitArray   K[4];
-
-    for( int j = 0; j < 4; ++j )
-        K[j].resize( nAP + nSY );
-
-// Fill
-
-    for( int ic = 0, nc = snsFileChans.size(); ic < nc; ++ic ) {
-
-        int C = snsFileChans[ic];
-
-        if( C < nAP )
-            K[R->shnk( C )].setBit( C );
-        else if( nSY == 1 ) {
-            // each shank gets common SY
-            for( int j = 0; j < 4; ++j )
-                K[j].setBit( C );
-        }
-        else {
-            // each shank gets own SY
-            K[C - nAP].setBit( C );
-        }
-    }
-
-// Split
-
-    for( int j = 0; j < 4; ++j ) {
-
-        if( ipj[j] < 0 )
-            continue;
-
-        QBitArray   B = K[j];
-        B.truncate( nAP );
-        if( !B.count( true ) )
-            continue;
-
-        QString arg = QString("2,%1,%2,%3")
-                        .arg( ip ).arg( ipj[j] )
-                        .arg( Subset::bits2RngStr( K[j] ) );
-
-        Save::parse( STR2CHR( arg ) );
-        std::sort( GBL.vS.begin(), GBL.vS.end() );
-    }
-
-    ip = -1;
-    delete R;
-    return true;
-}
-
-/* --------------------------------------------------------------- */
-/* MaxZ ---------------------------------------------------------- */
-/* --------------------------------------------------------------- */
-
-// Now, just check for bad params.
-// Parse again later when metadata available.
-//
-bool MaxZ::parse( QSet<int> &seen )
-{
-    QStringList sl = sUsr.split(
-                        QRegExp("^\\s+|\\s*,\\s*|\\s+$"),
-                        QString::SkipEmptyParts );
-    int         ns = sl.size();
-
-    if( ns != 3 ) {
-        Log() << QString("Error: -maxZ=%1 has bad format.").arg( sUsr );
-        return false;
-    }
-
-    ip   = sl[0].toInt();
-    type = sl[1].toInt();
-    z    = sl[2].toDouble();
-
-    if( type < 0 || type > 2 ) {
-        Log() << QString("Error: -maxZ=%1 has bad type value.").arg( sUsr );
-        return false;
-    }
-
-    if( seen.contains( ip ) ) {
-        Log() << QString("Error: -maxZ names probe %1 twice.").arg( ip );
-        return false;
-    }
-
-    seen.insert( ip );
-
-    return true;
-}
-
-
-QString MaxZ::sparam() const
-{
-    return QString(" -maxZ=%1").arg( sUsr );
-}
-
-
-bool MaxZ::apply(
-    const KVParams  &kvp,
-    const QFileInfo &fim,
-    int             js_in,
-    int             js_out )
-{
-// Form bitsAP
-
-    int nAP, nLF, nSY;
-
-    IMROTbl *R = GBL.getProbe( kvp );
-    if( !R ) {
-        Log() << QString("Can't identify probe type in metadata '%1'.")
-                    .arg( fim.fileName() );
-        return false;
-    }
-    R->fromString( 0, kvp["~imroTbl"].toString() );
-
-    nAP = R->nAP();
-    nLF = R->nLF();
-    nSY = R->nSY();
-
-    bitsAP.resize( nAP );
-
-    int maxRow; // inclusive
-    switch( type ) {
-        case 0:
-            maxRow = int(z);
-            break;
-        case 1:
-            maxRow =
-            ceil( (z - R->zPitch()) / R->zPitch() );
-            break;
-        default:
-            maxRow =
-            ceil( (z - R->tipLength() - R->zPitch()) / R->zPitch() );
-    }
-    maxRow = qBound( 0, maxRow, R->nRow() - 1 );
-
-    for( int ic = 0; ic < nAP; ++ic ) {
-        int col, row;
-        R->elShankColRow( col, row, ic );
-        if( row <= maxRow )
-            bitsAP.setBit( ic );
-    }
-
-    delete R;
-
-    // Create/modify AP chnexcl list
-
-    if( js_out == AP ) {
-
-        QBitArray   bexc = ~bitsAP;
-
-        if( bexc.count( true ) ) {
-
-            if( GBL.mexc.contains( ip ) ) {
-
-                Subset::rngStr2Vec( GBL.mexc[ip],
-                    Subset::vec2RngStr( GBL.mexc[ip] )
-                    + ","
-                    + Subset::bits2RngStr( bexc ) );
-            }
-            else
-                Subset::bits2Vec( GBL.mexc[ip], bexc );
-        }
-    }
-
-    // Add Save record if doesn't already exist.
-    // This is a simple save-all directive that
-    // will be edited later.
-
-    foreach( const Save &S, GBL.vS ) {
-        if( S.js == js_in && S.ip1 == ip )
-            return true;
-    }
-
-    QString sNU;
-    if( js_in == AP )
-        sNU = QString("0:%1").arg( nAP - 1 );
-    else
-        sNU = QString("%1:%2").arg( nAP ).arg( nAP + nLF - 1 );
-
-    QString sSY = QString("%1").arg( nAP + nLF );
-    if( nSY > 1 )
-        sSY += QString(":%1").arg( nAP + nLF + nSY - 1 );
-
-    QString arg = QString("%1,%2,%2,%3,%4")
-                    .arg( js_in ).arg( ip )
-                    .arg( sNU ).arg( sSY );
-
-    Save::parse( STR2CHR( arg ) );
-    std::sort( GBL.vS.begin(), GBL.vS.end() );
-
-    return true;
 }
 
 /* --------------------------------------------------------------- */
@@ -1702,7 +1705,7 @@ static void PrintUsage()
     Log() << "-gblcar                  ;apply ap global CAR filter over all channels";
     Log() << "-gbldmx                  ;apply ap global demuxed CAR filter over channel groups";
     Log() << "-gfix=0.40,0.10,0.02     ;rmv ap artifacts: ||amp(mV)||, ||slope(mV/sample)||, ||noise(mV)||";
-    Log() << "-chnexcl={prb;chans}     ;this probe, exclude listed chans from ap loccar, gblcar, gfix";
+    Log() << "-chnexcl={prb;chans}     ;this probe, exclude listed acq chans from ap loccar, gblcar, gfix";
     Log() << "-xa=0,0,2,3.0,4.5,25     ;extract pulse signal from analog chan (js,ip,word,thresh1(V),thresh2(V),millisec)";
     Log() << "-xd=2,0,384,6,500        ;extract pulse signal from digital chan (js,ip,word,bit,millisec)";
     Log() << "-xia=0,0,2,3.0,4.5,2     ;inverted version of xa";
@@ -1729,6 +1732,18 @@ static void PrintUsage()
 
 bool CGBL::SetCmdLine( int argc, char* argv[] )
 {
+// Echo original input
+
+    sCmd = "CatGT";
+    for( int i = 1; i < argc; ++i ) {
+        sCmd += " ";
+        sCmd += argv[i];
+    }
+    Log() << "++++++++++++++++++++++++";
+    Log() << "Command (raw):";
+    Log() << sCmd;
+    sCmd.clear();
+
 // Parse args
 
     QString     ssupercat;
@@ -1823,11 +1838,11 @@ bool CGBL::SetCmdLine( int argc, char* argv[] )
         else if( GetArg( &maxsecs, "-maxsecs=%lf", argv[i] ) )
             ;
         else if( GetArgStr( sarg, "-apfilter=", argv[i] ) ) {
-            if( !apflt.parse( sarg ) )
+            if( !apflt.parse( "-apfilter=", sarg ) )
                 return false;
         }
         else if( GetArgStr( sarg, "-lffilter=", argv[i] ) ) {
-            if( !lfflt.parse( sarg ) )
+            if( !lfflt.parse( "-lffilter=", sarg ) )
                 return false;
         }
         else if( GetArg( &ap2lf_dwnsmp, "-ap2lf_dwnsmp=%d", argv[i] ) )
@@ -1970,7 +1985,7 @@ bool CGBL::SetCmdLine( int argc, char* argv[] )
         else if( IsArg( "-no_auto_sync", argv[i] ) )
             auto_sync = false;
         else if( GetArgStr( sarg, "-save=", argv[i] ) ) {
-            if( !Save::parse( sarg ) )
+            if( !Save::parse( vS, sarg ) )
                 return false;
         }
         else if( GetArgStr( sarg, "-sepShanks=", argv[i] ) )
@@ -2025,6 +2040,7 @@ bad_param:
                 set_ip1.insert( it.value() );
         }
 
+        // explicitly ignore
         startsecs       = -1;
         maxsecs         = 0;
         locin_um        = 0;
@@ -2036,6 +2052,9 @@ bad_param:
         lfflt.clear();
         mexc.clear();
         gtlist.clear();
+        vS.clear();
+        vSK.clear();
+        vMZ.clear();
         gt_set_tcat();
         zfilmax         = -1;
         ap2lf_dwnsmp    = -1;
@@ -2048,6 +2067,7 @@ bad_param:
         gblcar          = false;
         gbldmx          = false;
         gfixdo          = false;
+        force_ni_ob     = false;
         no_catgt_fld    = false;
     }
     else {
@@ -2064,6 +2084,10 @@ bad_param:
 
         if( !gt_ok_indices() )
             goto error;
+
+        // explicitly ignore
+        sc_trim     = false;
+        sc_skipbin  = false;
     }
 
     if( !ni && !ob && !ap && !lf ) {
@@ -2275,7 +2299,8 @@ error:
         .arg( no_catgt_fld ? " -no_catgt_fld" : "" )
         .arg( out_prb_fld ? " -out_prb_fld" : "" );
 
-    Log() << QString("Cmdline: %1").arg( sCmd );
+    Log() << "Command (active):";
+    Log() << sCmd;
 
 // Probe count adjustment
 
@@ -2671,28 +2696,35 @@ bool CGBL::makeOutputProbeFolder( int g0, int ip1 )
 
     if( !dest.isEmpty() ) {
 
-        prb_obase = im_obase;
+        mprb_obase[ip1] = im_obase;
 
         if( out_prb_fld ) {
 
             // Create probe subfolder: dest/tag_run_g0/run_g0_imec0
 
-            prb_obase += QString("/%1_g%2_imec%3").arg( run ).arg( g0 ).arg( ip1 );
+            mprb_obase[ip1] += QString("/%1_g%2_imec%3")
+                                .arg( run ).arg( g0 ).arg( ip1 );
 
-            if( !QDir().exists( prb_obase ) && !QDir().mkdir( prb_obase ) ) {
-                Log() << QString("Error creating dir '%1'.").arg( prb_obase );
+            if( !QDir().exists( mprb_obase[ip1] ) &&
+                !QDir().mkdir( mprb_obase[ip1] ) ) {
+                Log() << QString("Error creating dir '%1'.").arg( mprb_obase[ip1] );
                 return false;
             }
 
-            fyi[fyikey] = prb_obase;
+            GBL.fyiMtx.lock();
+                fyi[fyikey] = mprb_obase[ip1];
+            GBL.fyiMtx.unlock();
 
             // Append run name up to _tcat
 
-            prb_obase += QString("/%1_g%2_tcat").arg( run ).arg( g0 );
+            mprb_obase[ip1] += QString("/%1_g%2_tcat").arg( run ).arg( g0 );
         }
     }
-    else if( prb_fld )
-        fyi[fyikey] = inPath( g0, AP, ip1 );
+    else if( prb_fld ) {
+        GBL.fyiMtx.lock();
+            fyi[fyikey] = inPath( g0, AP, ip1 );
+        GBL.fyiMtx.unlock();
+    }
 
     return true;
 }
@@ -2753,7 +2785,7 @@ QString CGBL::imOutFile( int g0, t_js js, int ip1, int ip2, t_ex ex, XTR *X )
     if( dest.isEmpty() )
         s = inPathUpTo_t( g0, js, ip1 ) + "cat";
     else
-        s = prb_obase;
+        s = mprb_obase[ip1];
 
     return s + suffix( js, ip2, ex, X );
 }
@@ -3318,9 +3350,18 @@ bool CGBL::makeTaggedDest()
         // Else defer until each im stream to:
         //  + create _imec%1 subfolders
         //  + append run_g0_tcat base
+        //  + update mprb_obase entry
 
         if( !out_prb_fld )
             im_obase = aux_obase;
+        else if( pass() == 1 ) {
+            foreach( int ip1, vprb )
+                mprb_obase[ip1] = "";
+        }
+        else {
+            foreach( int ip1, set_ip1 )
+                mprb_obase[ip1] = "";
+        }
     }
 
     return true;

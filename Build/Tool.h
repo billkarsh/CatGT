@@ -14,6 +14,31 @@ class Pass1;
 
 typedef long double  BTYPE;
 
+// With FFT-based filtering one must use a long enough FFT to adequately
+// sample low frequencies. A one second span is good down to 1 Hz (really,
+// 0.5 Hz not too bad), so handles LFP band data without much distortion.
+// 32768 is a little longer than one second.
+//
+// Freq domain filtering will cause some ringing in low freq components
+// so we process the data in overlapped 32768 sample chunks, throwing
+// away about 500 points from each chunk end (except at the file ends).
+//
+// - FFT is used for {tshift, filters}.
+// - FFT chunks are a power of 2 in size.
+// - FFT ops make edge artifacts so we trim margins and keep middles.
+// - FFT chunks are, therefore, overlapped.
+// - The middles are resulting OBUFs.
+// - The input buffer holds NMID output middles to reduce reload frequency.
+// - The input buffer holds a premargin for FFT overlap and gfix look-back.
+// - The input buffer holds a postmargin for FFT overlap and gfix look-ahead.
+
+#define SZFFT   32768
+#define SZMRG   500
+#define SZMID   (SZFFT - 2*SZMRG)
+#define SZOBUF  SZFFT
+#define NMID    1
+#define SZIBUF  (NMID*SZMID + 2*SZMRG)
+
 struct FFT {
     double              delT;
     QVector<double>     flt;
@@ -22,6 +47,7 @@ struct FFT {
     double              *real;
     fftw_plan           pfwd,
                         pbwd;
+    static QMutex       fftMtx;
     bool                tshift,
                         filter;
     FFT() : cplx(0), real(0), tshift(false), filter(false)  {}
@@ -64,7 +90,7 @@ struct Meta {
         t_js            js,
         int             ip1,
         int             ip2 );
-    void writeSave( int sv0, int svLim, int g0, int t0, t_js js_out );
+    void writeSave( const QVector<Save> &vSprb, int g0, int t0, t_js js_out );
     qint64 pass1_sizeRead( int &ntpts, qint64 xferBytes, qint64 bufBytes );
     bool pass1_zeroFill( Pass1 &H, qint64 gapBytes );
     void pass1_fileDone( int g, int t, t_js js, int ip );
@@ -79,6 +105,7 @@ struct FOffsets {
     QMap<QString,double>            mrate0;
     QMap<QString,QVector<qint64>>   moff;
     QMap<QString,QVector<double>>   mrate;
+    QMutex                          offMtx;
     void init( double rate, t_js js, int ip );
     void addOffset( qint64 off, t_js js, int ip );
     void addRate( double rate, t_js js, int ip );
@@ -93,6 +120,7 @@ extern FOffsets gFOff;
 
 struct P1LFCase {
 // For each lf-ip, classify {0=true LF, 1=AP->LF, 2=skip}
+// These data are written ONLY from pass1entrypoint.
     QMap<int,int>   ip2case;
     void init();
     int getCase( int ip ) const {return ip2case[ip];}
@@ -104,6 +132,7 @@ extern P1LFCase gP1LFCase;
 
 struct P1EOF {
 // For each {g,t} file set, its common (shortest) length
+// These data are written ONLY from pass1entrypoint.
     struct GTJSIP {
         int     g, t;
         t_js    js;
@@ -130,6 +159,25 @@ private:
 };
 
 extern P1EOF    gP1EOF;
+
+/* ---------------------------------------------------------------- */
+/* Pass-1 Helpers ------------------------------------------------- */
+/* ---------------------------------------------------------------- */
+
+struct P1Job;
+
+class P1Worker : public QObject
+{
+    Q_OBJECT
+private:
+    const P1Job &J;
+public:
+    P1Worker( const P1Job &J ) : QObject(0), J(J)   {}
+signals:
+    void finished();
+public slots:
+    void run();
+};
 
 /* ---------------------------------------------------------------- */
 /* Functions ------------------------------------------------------ */

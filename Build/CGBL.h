@@ -6,6 +6,7 @@
 
 #include <QBitArray>
 #include <QFileInfo>
+#include <QMutex>
 #include <QSet>
 #include <QVector>
 
@@ -86,7 +87,7 @@ struct Filter {
     bool hasbiquadhp()  {return isbiquad()  && Fhi != 0;}
     bool haslopass()    {return isenabled() && Flo != 0;}
     bool needsfft()     {return isenabled() && !isbiquad();}
-    bool parse( const QString &s );
+    bool parse( const QString &option, const QString &s );
     QString format()    {return QString("%1,%2,%3,%4")
                                     .arg( type ).arg( order )
                                     .arg( Fhi ).arg( Flo );}
@@ -97,6 +98,86 @@ struct LR {
     int L, R;
     LR()                            {}
     LR( int L, int R ) : L(L), R(R) {}
+};
+
+struct Save {
+// selective -save directive
+    QVector<uint>   iKeep;      // indices relative to infile samples
+    mutable QFile   *o_f;
+    QString         o_name,
+                    sUsr_out,   // only for snsSaveChanSubset
+                    sUsr;       // cmdline
+    t_js            js;         // cmdline
+    int             ip1,        // cmdline
+                    ip2,        // cmdline
+                    nC,         // iKeep.size
+                    nN,         // neurals within iKeep
+                    smpBytes;
+    Save() : o_f(0), js(AP), ip1(0), ip2(0), nN(0)              {}
+    Save( t_js js, int ip1, int ip2, const QString &s )
+        :   o_f(0), sUsr(s), js(js), ip1(ip1), ip2(ip2), nN(0)  {}
+    virtual ~Save()                                             {close();}
+    bool operator<( const Save &rhs ) const
+        {
+            if( js < rhs.js )
+                return true;
+            if( js > rhs.js )
+                return false;
+            if( ip1 < rhs.ip1 )
+                return true;
+            if( ip1 > rhs.ip1 )
+                return false;
+            return ip2 < rhs.ip2;
+        }
+    static bool parse( QVector<Save> &vSprb, const char *s );
+    QString sparam() const;
+    bool init( const KVParams &kvp, const QFileInfo &fim, int theZ );
+    bool o_open( int g0, t_js js );
+    void close() const;
+};
+
+struct SepShanks {
+// -sepShanks directive
+    QString     sUsr;
+    int         ip,
+                ipj[4];
+    SepShanks()                             {}
+    SepShanks( const QString &s ) : sUsr(s) {}
+    virtual ~SepShanks()                    {}
+    bool operator<( const SepShanks &rhs ) const
+        {
+            return (ip < rhs.ip);
+        }
+    bool parse( QSet<int> &seen );
+    QString sparam() const;
+    bool split(
+        QVector<Save>   &vSprb,
+        const KVParams  &kvp,
+        const QFileInfo &fim );
+};
+
+struct MaxZ {
+// -maxZ directive
+    double      z;
+    QBitArray   bitsAP;
+    QString     sUsr;
+    int         ip,
+                type;
+    MaxZ() : ip(0)  {}
+    MaxZ( const QString &s ) : sUsr(s)  {}
+    virtual ~MaxZ()                     {}
+    bool operator<( const MaxZ &rhs ) const
+        {
+            return (ip < rhs.ip);
+        }
+    bool parse( QSet<int> &seen );
+    QString sparam() const;
+    bool apply(
+        QVector<Save>   &vSprb,
+        const KVParams  &kvp,
+        const QFileInfo &fim,
+        int             js_in,
+        int             js_out );
 };
 
 struct XTR {
@@ -132,12 +213,12 @@ struct XTR {
     virtual QString sparam() const = 0;
     virtual QString suffix( const QString &stype ) const = 0;
     virtual void init( double rate, double rangeMax ) = 0;
-    virtual bool openOutFiles( int g0 );
+    virtual bool openOutFiles( const QVector<Save> &vSprb, int g0 );
     virtual void scan( const qint16 *data, qint64 t0, int ntpts, int nC ) = 0;
     virtual void close() const;
 protected:
-    bool openOutTimesFile( int g0, t_ex ex );
-    void remapped_ip( int k );
+    bool openOutTimesFile( const QVector<Save> &vSprb, int g0, t_ex ex );
+    void remapped_ip( const QVector<Save> &vSprb, int k );
 };
 
 struct Pulse : public XTR {
@@ -200,85 +281,9 @@ struct BitField : public XTR {
     virtual QString sparam() const;
     virtual QString suffix( const QString &stype ) const;
     virtual void init( double rate, double rangeMax );
-    virtual bool openOutFiles( int g0 );
+    virtual bool openOutFiles( const QVector<Save> &vSprb, int g0 );
     virtual void scan( const qint16 *data, qint64 t0, int ntpts, int nC );
     virtual void close() const;
-};
-
-struct Save {
-// selective -save directive
-    QVector<uint>   iKeep;      // indices relative to infile samples
-    QFile           *o_f;
-    QString         o_name,
-                    sUsr_out,   // only for snsSaveChanSubset
-                    sUsr;       // cmdline
-    t_js            js;         // cmdline
-    int             ip1,        // cmdline
-                    ip2,        // cmdline
-                    nC,         // iKeep.size
-                    nN,         // neurals within iKeep
-                    smpBytes;
-    Save() : o_f(0), js(AP), ip1(0), ip2(0), nN(0)              {}
-    Save( t_js js, int ip1, int ip2, const QString &s )
-        :   o_f(0), sUsr(s), js(js), ip1(ip1), ip2(ip2), nN(0)  {}
-    virtual ~Save()                                             {close();}
-    bool operator<( const Save &rhs ) const
-        {
-            if( js < rhs.js )
-                return true;
-            if( js > rhs.js )
-                return false;
-            if( ip1 < rhs.ip1 )
-                return true;
-            if( ip1 > rhs.ip1 )
-                return false;
-            return ip2 < rhs.ip2;
-        }
-    static bool parse( const char *s );
-    QString sparam() const;
-    bool init( const KVParams &kvp, const QFileInfo &fim, int theZ );
-    bool o_open( int g0, t_js js );
-    void close();
-};
-
-struct SepShanks {
-// -sepShanks directive
-    QString     sUsr;
-    int         ip,
-                ipj[4];
-    SepShanks()                             {}
-    SepShanks( const QString &s ) : sUsr(s) {}
-    virtual ~SepShanks()                    {}
-    bool operator<( const SepShanks &rhs ) const
-        {
-            return (ip < rhs.ip);
-        }
-    bool parse( QSet<int> &seen );
-    QString sparam() const;
-    bool split( const KVParams &kvp, const QFileInfo &fim );
-};
-
-struct MaxZ {
-// -maxZ directive
-    double      z;
-    QBitArray   bitsAP;
-    QString     sUsr;
-    int         ip,
-                type;
-    MaxZ() : ip(0)  {}
-    MaxZ( const QString &s ) : sUsr(s)  {}
-    virtual ~MaxZ()                     {}
-    bool operator<( const MaxZ &rhs ) const
-        {
-            return (ip < rhs.ip);
-        }
-    bool parse( QSet<int> &seen );
-    QString sparam() const;
-    bool apply(
-        const KVParams  &kvp,
-        const QFileInfo &fim,
-        int             js_in,
-        int             js_out );
 };
 
 struct Elem {
@@ -329,9 +334,10 @@ public:
                         inpar,          // derived
                         dest,
                         aux_obase,      // derived
-                        im_obase,       // derived
-                        prb_obase;      // derived
+                        im_obase;       // derived
+    QMap<int,QString>   mprb_obase;     // ip1 -> probe folder
     QMap<int,QVector<uint>> mexc;
+    QMutex              fyiMtx;
     QMap<JSIP,double>   mjsiprate;      // pass-1: ip1 only  -> fyi
     QMap<JSIP,int>      mjsipnchn;      // pass-1: ip1 only  -> fyi
     QMap<int,int>       mip2ip1;        // pass-1: ip1 & ip2 -> fyi
@@ -339,9 +345,9 @@ public:
     QVector<uint>       vobx,
                         vprb;
     QVector<XTR*>       vX;
-    QVector<Save>       vS;
-    QVector<SepShanks>  vSK;
-    QVector<MaxZ>       vMZ;
+    QVector<Save>       vS;             // pass-1 only -> vSprb
+    QVector<SepShanks>  vSK;            // edit vSprb
+    QVector<MaxZ>       vMZ;            // edit vSprb
     QVector<Elem>       velem;
     QSet<int>           set_ip1;        // unique ip1 for pass-2
     KVParams            fyi;            // generated

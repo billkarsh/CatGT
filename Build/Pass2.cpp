@@ -107,6 +107,8 @@ void Pass2::initDigitalFields()
 
 bool Pass2::openDigitalFiles( int g0 )
 {
+    QVector<Save>   vSdum;
+
     for( int i = ex0; i < exLim; ++i ) {
 
         XTR *X = GBL.vX[i];
@@ -116,7 +118,7 @@ bool Pass2::openDigitalFiles( int g0 )
             continue;
         }
 
-        if( !X->openOutFiles( g0 ) )
+        if( !X->openOutFiles( vSdum, g0 ) )
             return false;
     }
 
