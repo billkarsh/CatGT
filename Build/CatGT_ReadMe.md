@@ -15,12 +15,13 @@
 
 * [Install](#install)
 * [Usage Quick Ref](#usage-quick-ref)
-    * [Command Line Parameters](#command-line-parameters)
-    * [Parameter Ordering](#parameter-ordering)
+    * [Command line parameters](#command-line-parameters)
+    * [Parameter ordering](#parameter-ordering)
     * [Pass-1 and Pass-2](#pass-1-and-pass-2)
         * [Pass-1](#pass-1)
         * [Extraction pass](#extraction-pass)
         * [Pass-2](#pass-2)
+    * [Parallel processing](#parallel-processing)
     * [Sample scripts](#sample-scripts)
 * [Output](#output)
     * [Errors](#errors)
@@ -142,7 +143,7 @@ Notes:
 + File paths and names must not have spaces (a standard script file limitation).
 + Read CatGT.log. There is no interesting output in the command window.
 
-### Command Line Parameters:
+### Command line parameters:
 
 ```
 Which streams:
@@ -195,7 +196,7 @@ Options:
 -out_prb_fld             ;if using -dest, create output subfolder per probe
 ```
 
-### Parameter Ordering
+### Parameter ordering
 
 You can list parameters on the CatGT command line in any order. CatGT
 applies them in the logically necessary order. Of particular note, CatGT
@@ -241,6 +242,34 @@ runs**. It does this in a way that preserves temporal alignment across the
 streams within those runs. You might do this to find/apply a common set of
 spike templates from sessions that span days or months. Supercat can only
 be run on pass-1 output data.
+
+### Parallel processing
+
+#### Pass-1
+
+As of version 5.1, pass-1 executes all of the listed streams in parallel.
+For example, if you list four probes `-prb=0:3` for pass-1, they are each
+run in a separate thread and ought to take the same total time as running
+just one probe. This is realized in practice if the computer has the needed
+resources:
+
+* Number of threads >= number of streams
+* Fast RAM: higher DIMM channel count is better
+* Fast RAM: higher access speed (MT/s) is better
+* High sustained disk write rate
+
+If you don't have a pretty high-performance machine, the time to do four
+probes will fall somewhere between 1X and 4X the time for one probe.
+
+Note that you can manually make CatGT go faster by dividing the work onto
+several machines, for example, the several nodes of a cluster. All you have
+to do is make several scripts that differ only in which streams/probes are
+being handled on that machine.
+
+#### Pass-2
+
+Pass-2 runs require almost no CPU resource and are very quick compared to
+pass-1, so pass-2 is executed sequentially in a single thread.
 
 ### Sample scripts
 
@@ -1313,11 +1342,11 @@ a supercat element depending on how you did the CatGT pass-1 run:
     + run_ga: The run_name and g-index parts of the tcat output files.
     + *You must use -no_run_fld for the supercat run*.
 
-- (3) Saving to dest folders **with catgt_ folder** --
+- (3) Saved to dest folders **with catgt_ folder** --
     + dir:    The parent directory of the catgt_run_ga folder.
     + run_ga: 'catgt_' tagged folder name, e.g., **catgt_myrun_g7**.
 
-- (4) Saving to dest folders **without catgt_ folder (-no_catgt_fld option)** --
+- (4) Saved to dest folders **without catgt_ folder (-no_catgt_fld option)** --
     + dir:    The parent directory of the data files themselves.
     + run_ga: The run_name and g-index parts of the tcat output files.
     + *You must use -no_run_fld for the supercat run*.

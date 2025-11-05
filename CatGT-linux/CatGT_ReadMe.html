@@ -26,14 +26,15 @@
 <li><a href="#install">Install</a></li>
 <li><a href="#usage-quick-ref">Usage Quick Ref</a>
 <ul>
-<li><a href="#command-line-parameters">Command Line Parameters</a></li>
-<li><a href="#parameter-ordering">Parameter Ordering</a></li>
+<li><a href="#command-line-parameters">Command line parameters</a></li>
+<li><a href="#parameter-ordering">Parameter ordering</a></li>
 <li><a href="#pass-1-and-pass-2">Pass-1 and Pass-2</a>
 <ul>
 <li><a href="#pass-1">Pass-1</a></li>
 <li><a href="#extraction-pass">Extraction pass</a></li>
 <li><a href="#pass-2">Pass-2</a></li>
 </ul></li>
+<li><a href="#parallel-processing">Parallel processing</a></li>
 <li><a href="#sample-scripts">Sample scripts</a></li>
 </ul></li>
 <li><a href="#output">Output</a>
@@ -159,7 +160,7 @@
 <li>File paths and names must not have spaces (a standard script file limitation).</li>
 <li>Read CatGT.log. There is no interesting output in the command window.</li>
 </ul>
-<h3 id="command-line-parameters">Command Line Parameters:</h3>
+<h3 id="command-line-parameters">Command line parameters:</h3>
 <pre><code>Which streams:
 -ni                      ;required to process ni stream
 -ob                      ;required to process ob streams
@@ -208,7 +209,7 @@ Options:
 -dest=path               ;alternate path for output files (must exist)
 -no_catgt_fld            ;if using -dest, do not create catgt_run subfolder
 -out_prb_fld             ;if using -dest, create output subfolder per probe</code></pre>
-<h3 id="parameter-ordering">Parameter Ordering</h3>
+<h3 id="parameter-ordering">Parameter ordering</h3>
 <p>You can list parameters on the CatGT command line in any order. CatGT applies them in the logically necessary order. Of particular note, CatGT applies filter operations in this order:</p>
 <ul>
 <li>Load data</li>
@@ -230,6 +231,19 @@ Options:
 <p>This is covered more <a href="#using-catgt-output-files-as-input-for-an-extraction-pass">here</a> but briefly, you can operate the TTL edge extractors like {xd, xa, ...} in the same pass-1 command line with all other pass-1 operations, or you can do extraction as an afterthought in a lazy separate <code>extraction pass</code>.</p>
 <h4 id="pass-2">Pass-2</h4>
 <p>Pass-2 runs are <strong>supercat</strong> runs. In this case we do not alter the data. Rather, supercat joins (concatenates) data together from <strong>disparate SpikeGLX runs</strong>. It does this in a way that preserves temporal alignment across the streams within those runs. You might do this to find/apply a common set of spike templates from sessions that span days or months. Supercat can only be run on pass-1 output data.</p>
+<h3 id="parallel-processing">Parallel processing</h3>
+<h4 id="pass-1-1">Pass-1</h4>
+<p>As of version 5.1, pass-1 executes all of the listed streams in parallel. For example, if you list four probes <code>-prb=0:3</code> for pass-1, they are each run in a separate thread and ought to take the same total time as running just one probe. This is realized in practice if the computer has the needed resources:</p>
+<ul>
+<li>Number of threads &gt;= number of streams</li>
+<li>Fast RAM: higher DIMM channel count is better</li>
+<li>Fast RAM: higher access speed (MT/s) is better</li>
+<li>High sustained disk write rate</li>
+</ul>
+<p>If you don't have a pretty high-performance machine, the time to do four probes will fall somewhere between 1X and 4X the time for one probe.</p>
+<p>Note that you can manually make CatGT go faster by dividing the work onto several machines, for example, the several nodes of a cluster. All you have to do is make several scripts that differ only in which streams/probes are being handled on that machine.</p>
+<h4 id="pass-2-1">Pass-2</h4>
+<p>Pass-2 runs require almost no CPU resource and are very quick compared to pass-1, so pass-2 is executed sequentially in a single thread.</p>
 <h3 id="sample-scripts">Sample scripts</h3>
 <p>The Windows version of CatGT includes folder <code>CatGT_std_scripts</code> with examples of typical command-lines you might use for both pass-1 and pass-2 runs.</p>
 <hr />
@@ -815,14 +829,14 @@ times_imec5_0=path/extraction_output_file_3</code></pre>
 <li><em>You must use -no_run_fld for the supercat run</em>.</li>
 </ul></li>
 <li><ol start="3" style="list-style-type: decimal">
-<li>Saving to dest folders <strong>with catgt_ folder</strong> --</li>
+<li>Saved to dest folders <strong>with catgt_ folder</strong> --</li>
 </ol>
 <ul>
 <li>dir: The parent directory of the catgt_run_ga folder.</li>
 <li>run_ga: 'catgt_' tagged folder name, e.g., <strong>catgt_myrun_g7</strong>.</li>
 </ul></li>
 <li><ol start="4" style="list-style-type: decimal">
-<li>Saving to dest folders <strong>without catgt_ folder (-no_catgt_fld option)</strong> --</li>
+<li>Saved to dest folders <strong>without catgt_ folder (-no_catgt_fld option)</strong> --</li>
 </ol>
 <ul>
 <li>dir: The parent directory of the data files themselves.</li>
