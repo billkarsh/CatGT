@@ -65,10 +65,12 @@ struct JSIP {
 };
 
 struct GT3 {
+// pass-1
     int g, ta, tb;
 };
 
 struct GT_iterator {
+// pass-1
     int n, icur;
     GT3 ecur;
     GT_iterator();
@@ -76,6 +78,7 @@ struct GT_iterator {
 };
 
 struct Filter {
+// pass-1
     double  Fhi,
             Flo;
     QString type;
@@ -94,6 +97,7 @@ struct Filter {
 };
 
 struct LR {
+// pass-1
 // artifact left, right widths
     int L, R;
     LR()                            {}
@@ -101,6 +105,7 @@ struct LR {
 };
 
 struct Save {
+// pass-1
 // selective -save directive
     QVector<uint>   iKeep;      // indices relative to infile samples
     mutable QFile   *o_f;
@@ -137,6 +142,7 @@ struct Save {
 };
 
 struct SepShanks {
+// pass-1
 // -sepShanks directive
     QString     sUsr;
     int         ip,
@@ -157,6 +163,7 @@ struct SepShanks {
 };
 
 struct MaxZ {
+// pass-1
 // -maxZ directive
     double      z;
     QBitArray   bitsAP;
@@ -213,11 +220,11 @@ struct XTR {
     virtual QString sparam() const = 0;
     virtual QString suffix( const QString &stype ) const = 0;
     virtual void init( double rate, double rangeMax ) = 0;
-    virtual bool openOutFiles( const QVector<Save> &vSprb, int g0 );
+    virtual bool openOutFiles( const QVector<Save> &vSprb, int ie, int g0 );
     virtual void scan( const qint16 *data, qint64 t0, int ntpts, int nC ) = 0;
     virtual void close() const;
 protected:
-    bool openOutTimesFile( const QVector<Save> &vSprb, int g0, t_ex ex );
+    bool openOutTimesFile( const QVector<Save> &vSprb, int ie, int g0, t_ex ex );
     void remapped_ip( const QVector<Save> &vSprb, int k );
 };
 
@@ -281,12 +288,13 @@ struct BitField : public XTR {
     virtual QString sparam() const;
     virtual QString suffix( const QString &stype ) const;
     virtual void init( double rate, double rangeMax );
-    virtual bool openOutFiles( const QVector<Save> &vSprb, int g0 );
+    virtual bool openOutFiles( const QVector<Save> &vSprb, int ie, int g0 );
     virtual void scan( const qint16 *data, qint64 t0, int ntpts, int nC );
     virtual void close() const;
 };
 
 struct Elem {
+// pass-2
 // supercat element
     QMap<JSIP,double>   jsip2rate,  // ip1-indexed from fyi
                         jsip2head,  // ip1-indexed
@@ -313,7 +321,6 @@ struct Elem {
     double& tail( t_js js, int ip ) {return jsip2tail[JSIP(js,ip,true)];}
     int&    nC( t_js js, int ip )   {return jsip2nchn[JSIP(js,ip)];}
     bool read_fyi();
-    void unpack();
 };
 
 class CGBL
@@ -341,7 +348,7 @@ public:
     QMap<JSIP,double>   mjsiprate;      // pass-1: ip1 only  -> fyi
     QMap<JSIP,int>      mjsipnchn;      // pass-1: ip1 only  -> fyi
     QMap<int,int>       mip2ip1;        // pass-1: ip1 & ip2 -> fyi
-    QVector<GT3>        gtlist;
+    QVector<GT3>        gtlist;         // pass-1 only
     QVector<uint>       vobx,
                         vprb;
     QVector<XTR*>       vX;
@@ -418,14 +425,15 @@ public:
 
     bool makeOutputProbeFolder( int g0, int ip1 );
 
-    QString inFile( int g, int t, t_js js, int ip1, int ip2, t_ex ex, XTR *X = 0 );
-    QString niOutFile( int g0, t_ex ex, XTR *X = 0 );
-    QString obOutFile( int g0, int ip, t_ex ex, XTR *X = 0 );
-    QString imOutFile( int g0, t_js js, int ip1, int ip2, t_ex ex, XTR *X = 0 );
+    QString inFile( int ie, int g, int t, t_js js, int ip1, int ip2, t_ex ex, XTR *X = 0 );
+    QString niOutFile( int ie, int g0, t_ex ex, XTR *X = 0 );
+    QString obOutFile( int ie, int g0, int ip, t_ex ex, XTR *X = 0 );
+    QString imOutFile( int ie, int g0, t_js js, int ip1, int ip2, t_ex ex, XTR *X = 0 );
 
     bool openOutputBinary(
         QFile       &fout,
         QString     &outBin,
+        int         ie,
         int         g0,
         t_js        js,
         int         ip1,
@@ -434,6 +442,7 @@ public:
     int openInputFile(
         QFile       &fin,
         QFileInfo   &fib,
+        int         ie,
         int         g,
         int         t,
         t_js        js,
@@ -454,6 +463,7 @@ public:
     int openInputMeta(
         QFileInfo   &fim,
         KVParams    &kvp,
+        int         ie,
         int         g,
         int         t,
         t_js        js,
@@ -484,8 +494,8 @@ private:
         const KVParams  &kvp );
     bool addAutoExtractors();
     QString trim_adjust_slashes( const QString &dir );
-    QString inPath( int g, t_js js, int ip1 );
-    QString inPathUpTo_t( int g, t_js js, int ip1 );
+    QString inPath( int ie, int g, t_js js, int ip1 );
+    QString inPathUpTo_t( int ie, int g, t_js js, int ip1 );
     QString suffix( t_js js, int ip2, t_ex ex, XTR *X = 0 );
 };
 

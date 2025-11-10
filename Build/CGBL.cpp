@@ -110,7 +110,6 @@ bool Filter::parse( const QString &option, const QString &s )
     return true;
 }
 
-
 /* --------------------------------------------------------------- */
 /* Save ---------------------------------------------------------- */
 /* --------------------------------------------------------------- */
@@ -217,7 +216,7 @@ bool Save::o_open( int g0, t_js js )
     GBL.fyiMtx.unlock();
 
     o_f = new QFile;
-    return GBL.openOutputBinary( *o_f, o_name, g0, js, ip1, ip2 );
+    return GBL.openOutputBinary( *o_f, o_name, -1, g0, js, ip1, ip2 );
 }
 
 
@@ -531,9 +530,9 @@ bool MaxZ::apply(
 /* Extractors ---------------------------------------------------- */
 /* --------------------------------------------------------------- */
 
-bool XTR::openOutFiles( const QVector<Save> &vSprb, int g0 )
+bool XTR::openOutFiles( const QVector<Save> &vSprb, int ie, int g0 )
 {
-    return openOutTimesFile( vSprb, g0, ex );
+    return openOutTimesFile( vSprb, ie, g0, ex );
 }
 
 
@@ -556,7 +555,7 @@ void XTR::wordError( int nC )
 }
 
 
-bool XTR::openOutTimesFile( const QVector<Save> &vSprb, int g0, t_ex ex )
+bool XTR::openOutTimesFile( const QVector<Save> &vSprb, int ie, int g0, t_ex ex )
 {
     QMutexLocker    ml( &GBL.fyiMtx );
     QString         file,
@@ -564,16 +563,16 @@ bool XTR::openOutTimesFile( const QVector<Save> &vSprb, int g0, t_ex ex )
 
     switch( js ) {
         case NI:
-            file = GBL.niOutFile( g0, ex, this );
+            file = GBL.niOutFile( ie, g0, ex, this );
             strm = "ni";
             break;
         case OB:
-            file = GBL.obOutFile( g0, ip, ex, this );
+            file = GBL.obOutFile( ie, g0, ip, ex, this );
             strm = QString("obx%1").arg( ip );
             break;
         case AP:
         case LF:
-            file = GBL.imOutFile( g0, AP, ip, ip, ex, this );
+            file = GBL.imOutFile( ie, g0, AP, ip, ip, ex, this );
             strm = QString("imec%1").arg( ip );
             GBL.mip2ip1[ip] = ip;   // record source ip1
             break;
@@ -1436,18 +1435,18 @@ void BitField::init( double rate, double rangeMax )
 // on probe streams, so we don't bother with remapping
 // values to multiple ip2 as we do for times.
 //
-bool BitField::openOutFiles( const QVector<Save> &vSprb, int g0 )
+bool BitField::openOutFiles( const QVector<Save> &vSprb, int ie, int g0 )
 {
-    if( !openOutTimesFile( vSprb, g0, eBFT ) )
+    if( !openOutTimesFile( vSprb, ie, g0, eBFT ) )
         return false;
 
     QString file;
 
     switch( js ) {
-        case NI: file = GBL.niOutFile( g0, eBFV, this ); break;
-        case OB: file = GBL.obOutFile( g0, ip, eBFV, this ); break;
+        case NI: file = GBL.niOutFile( ie, g0, eBFV, this ); break;
+        case OB: file = GBL.obOutFile( ie, g0, ip, eBFV, this ); break;
         case AP:
-        case LF: file = GBL.imOutFile( g0, AP, ip, ip, eBFV, this ); break;
+        case LF: file = GBL.imOutFile( ie, g0, AP, ip, ip, eBFV, this ); break;
     }
 
     fv = new QFile( file );
@@ -1639,17 +1638,6 @@ bool Elem::read_fyi()
     }
 
     return true;
-}
-
-
-void Elem::unpack()
-{
-    GBL.inpar           = dir;
-    GBL.run             = run;
-    GBL.ga              = g;
-    GBL.gb              = g;
-    GBL.no_run_fld      = no_run_fld;
-    GBL.in_catgt_fld    = in_catgt_fld;
 }
 
 /* --------------------------------------------------------------- */
@@ -2032,12 +2020,14 @@ bad_param:
             goto error;
         }
 
-        // generate unique set_ip1
-        QMap<int,int>::const_iterator
-            it, end = GBL.velem[0].mip2ip1.end();
-        foreach( int ip2, GBL.vprb ) {
-            if( (it = GBL.velem[0].mip2ip1.find( ip2 )) != end )
-                set_ip1.insert( it.value() );
+        if( ap || lf ) {
+            // generate unique set_ip1
+            QMap<int,int>::const_iterator
+                it, end = GBL.velem[0].mip2ip1.end();
+            foreach( int ip2, GBL.vprb ) {
+                if( (it = GBL.velem[0].mip2ip1.find( ip2 )) != end )
+                    set_ip1.insert( it.value() );
+            }
         }
 
         // explicitly ignore
@@ -2095,17 +2085,27 @@ bad_param:
         goto error;
     }
 
-    if( ob && !vobx.size() ) {
-        Log() << "Error: Missing OneBox specifier -obx=???.";
-        goto error;
+    if( ob ) {
+        if( !vobx.size() ) {
+            Log() << "Error: Missing OneBox specifier -obx=???.";
+            goto error;
+        }
     }
+    else
+        vobx.clear();
 
-    if( (ap || lf) && (!prb_3A && !vprb.size()) ) {
+    if( ap || lf ) {
 
-        Log() << "Error: Missing probe specifier {-prb_3A or -prb=???}.";
+        if( !prb_3A && !vprb.size() ) {
+            Log() << "Error: Missing probe specifier {-prb_3A or -prb=???}.";
 error:
-        PrintUsage();
-        return false;
+            PrintUsage();
+            return false;
+        }
+    }
+    else {
+        prb_3A = false;
+        vprb.clear();
     }
 
 // ap2lf_dwnsmp valid
@@ -2320,13 +2320,8 @@ error:
 // Inpath adjustments
 
     if( pass() == 1 ) {
-        // Pass-1 specific
         if( !pass1FromCatGT() )
             return false;
-    }
-    else {
-        // Pass-2 specific
-        velem[0].unpack();
     }
 
 // Outpath adjustments
@@ -2623,6 +2618,8 @@ void CGBL::fyi_ct_write()
 
 void CGBL::fyi_sc_write()
 {
+    Elem    &E0 = velem[0];
+
 // --------
 // Remap ip
 // --------
@@ -2642,12 +2639,12 @@ void CGBL::fyi_sc_write()
 
             int ip1 = re.cap(1).toInt();
             QMap<int,int>::const_iterator
-                end_ip2 = GBL.velem[0].mip2ip1.end();
+                end_ip2 = E0.mip2ip1.end();
 
             // for each ip2 that derives from ip1...
             foreach( int ip2, GBL.vprb ) {
                 QMap<int,int>::const_iterator
-                    it_ip2 = GBL.velem[0].mip2ip1.find( ip2 );
+                    it_ip2 = E0.mip2ip1.find( ip2 );
                 if( it_ip2 != end_ip2 && it_ip2.value() == ip1 ) {
                     QString key = it_fyi.key();
                     key.replace(
@@ -2669,7 +2666,7 @@ void CGBL::fyi_sc_write()
 
 // outpath_top
 
-    QString srun = QString("%1_g%2").arg( velem[0].run ).arg( velem[0].g ),
+    QString srun = QString("%1_g%2").arg( E0.run ).arg( E0.g ),
             dir  = QString("%1/supercat_%2").arg( dest ).arg( srun );
 
     fyi["outpath_top"] = dir;
@@ -2679,8 +2676,8 @@ void CGBL::fyi_sc_write()
     {
         QString rhs;
         QMap<int,int>::const_iterator
-            it  = GBL.velem[0].mip2ip1.begin(),
-            end = GBL.velem[0].mip2ip1.end();
+            it  = E0.mip2ip1.begin(),
+            end = E0.mip2ip1.end();
         for( ; it != end; ++it )
             rhs += QString("(%1,%2)").arg( it.key() ).arg( it.value() );
         fyi["ip2_ip1"] = rhs;
@@ -2692,9 +2689,15 @@ void CGBL::fyi_sc_write()
 
 bool CGBL::makeOutputProbeFolder( int g0, int ip1 )
 {
-    QString fyikey = QString("outpath_parent_probe%1").arg( ip1 );
+    QString fyikey  = QString("outpath_parent_probe%1").arg( ip1 );
+    int     ie      = (pass() == 2 ? 0 : -1);
+
+    QMutexLocker    ml( &fyiMtx );
 
     if( !dest.isEmpty() ) {
+
+        if( mprb_obase[ip1] != "" )
+            return true;
 
         mprb_obase[ip1] = im_obase;
 
@@ -2702,8 +2705,10 @@ bool CGBL::makeOutputProbeFolder( int g0, int ip1 )
 
             // Create probe subfolder: dest/tag_run_g0/run_g0_imec0
 
+            const QString   &orun = (ie >= 0 ? velem[0].run : run);
+
             mprb_obase[ip1] += QString("/%1_g%2_imec%3")
-                                .arg( run ).arg( g0 ).arg( ip1 );
+                                .arg( orun ).arg( g0 ).arg( ip1 );
 
             if( !QDir().exists( mprb_obase[ip1] ) &&
                 !QDir().mkdir( mprb_obase[ip1] ) ) {
@@ -2711,28 +2716,23 @@ bool CGBL::makeOutputProbeFolder( int g0, int ip1 )
                 return false;
             }
 
-            GBL.fyiMtx.lock();
-                fyi[fyikey] = mprb_obase[ip1];
-            GBL.fyiMtx.unlock();
+            fyi[fyikey] = mprb_obase[ip1];
 
             // Append run name up to _tcat
 
-            mprb_obase[ip1] += QString("/%1_g%2_tcat").arg( run ).arg( g0 );
+            mprb_obase[ip1] += QString("/%1_g%2_tcat").arg( orun ).arg( g0 );
         }
     }
-    else if( prb_fld ) {
-        GBL.fyiMtx.lock();
-            fyi[fyikey] = inPath( g0, AP, ip1 );
-        GBL.fyiMtx.unlock();
-    }
+    else if( prb_fld )
+        fyi[fyikey] = inPath( ie, g0, AP, ip1 );
 
     return true;
 }
 
 
-QString CGBL::inFile( int g, int t, t_js js, int ip1, int ip2, t_ex ex, XTR *X )
+QString CGBL::inFile( int ie, int g, int t, t_js js, int ip1, int ip2, t_ex ex, XTR *X )
 {
-    QString s = inPathUpTo_t( g, js, ip1 );
+    QString s = inPathUpTo_t( ie, g, js, ip1 );
 
 // t-index
 
@@ -2747,12 +2747,12 @@ QString CGBL::inFile( int g, int t, t_js js, int ip1, int ip2, t_ex ex, XTR *X )
 }
 
 
-QString CGBL::niOutFile( int g0, t_ex ex, XTR *X )
+QString CGBL::niOutFile( int ie, int g0, t_ex ex, XTR *X )
 {
     QString s;
 
     if( dest.isEmpty() )
-        s = inPathUpTo_t( g0, NI, 0 ) + "cat";
+        s = inPathUpTo_t( ie, g0, NI, 0 ) + "cat";
     else
         s = aux_obase;
 
@@ -2760,12 +2760,12 @@ QString CGBL::niOutFile( int g0, t_ex ex, XTR *X )
 }
 
 
-QString CGBL::obOutFile( int g0, int ip, t_ex ex, XTR *X )
+QString CGBL::obOutFile( int ie, int g0, int ip, t_ex ex, XTR *X )
 {
     QString s;
 
     if( dest.isEmpty() )
-        s = inPathUpTo_t( g0, OB, ip ) + "cat";
+        s = inPathUpTo_t( ie, g0, OB, ip ) + "cat";
     else
         s = aux_obase;
 
@@ -2778,12 +2778,12 @@ QString CGBL::obOutFile( int g0, int ip, t_ex ex, XTR *X )
 // names the file. So all files derived from ip1 are
 // stored together.
 //
-QString CGBL::imOutFile( int g0, t_js js, int ip1, int ip2, t_ex ex, XTR *X )
+QString CGBL::imOutFile( int ie, int g0, t_js js, int ip1, int ip2, t_ex ex, XTR *X )
 {
     QString s;
 
     if( dest.isEmpty() )
-        s = inPathUpTo_t( g0, js, ip1 ) + "cat";
+        s = inPathUpTo_t( ie, g0, js, ip1 ) + "cat";
     else
         s = mprb_obase[ip1];
 
@@ -2794,6 +2794,7 @@ QString CGBL::imOutFile( int g0, t_js js, int ip1, int ip2, t_ex ex, XTR *X )
 bool CGBL::openOutputBinary(
     QFile       &fout,
     QString     &outBin,
+    int         ie,
     int         g0,
     t_js        js,
     int         ip1,
@@ -2807,10 +2808,10 @@ bool CGBL::openOutputBinary(
     }
 
     switch( js ) {
-        case NI: outBin = niOutFile( g0, eBIN ); break;
-        case OB: outBin = obOutFile( g0, ip1, eBIN ); break;
+        case NI: outBin = niOutFile( ie, g0, eBIN ); break;
+        case OB: outBin = obOutFile( ie, g0, ip1, eBIN ); break;
         case AP:
-        case LF: outBin = imOutFile( g0, js, ip1, ip2, eBIN ); break;
+        case LF: outBin = imOutFile( ie, g0, js, ip1, ip2, eBIN ); break;
     }
 
     fout.setFileName( outBin );
@@ -2834,6 +2835,7 @@ bool CGBL::openOutputBinary(
 int CGBL::openInputFile(
     QFile       &fin,
     QFileInfo   &fib,
+    int         ie,
     int         g,
     int         t,
     t_js        js,
@@ -2842,7 +2844,10 @@ int CGBL::openInputFile(
     t_ex        ex,
     XTR         *X )
 {
-    QString inBin = inFile( g, t, js, ip1, ip2, ex, X );
+    if( ie >= 0 )
+        g = velem[ie].g;
+
+    QString inBin = inFile( ie, g, t, js, ip1, ip2, ex, X );
 
     fib.setFile( inBin );
 
@@ -2883,7 +2888,7 @@ int CGBL::openInputBinary(
     int         ip1,
     int         ip2 )
 {
-    return openInputFile( fin, fib, g, t, js, ip1, ip2, eBIN );
+    return openInputFile( fin, fib, -1, g, t, js, ip1, ip2, eBIN );
 }
 
 
@@ -2895,6 +2900,7 @@ int CGBL::openInputBinary(
 int CGBL::openInputMeta(
     QFileInfo   &fim,
     KVParams    &kvp,
+    int         ie,
     int         g,
     int         t,
     t_js        js,
@@ -2902,7 +2908,7 @@ int CGBL::openInputMeta(
     int         ip2,
     bool        canSkip )
 {
-    QString inMeta = inFile( g, t, js, ip1, ip2, eMETA );
+    QString inMeta = inFile( ie, g, t, js, ip1, ip2, eMETA );
 
     fim.setFile( inMeta );
 
@@ -3315,7 +3321,8 @@ bool CGBL::makeTaggedDest()
 {
     if( !dest.isEmpty() ) {
 
-        int g0  = gt_get_first( 0 );
+        QString &orun   = (pass() == 2 ? velem[0].run : run);
+        int     g0      = (pass() == 2 ? velem[0].g : gt_get_first( 0 ));
 
         im_obase = dest;
 
@@ -3325,10 +3332,10 @@ bool CGBL::makeTaggedDest()
 
         if( pass() == 1 ) {
             if( !no_catgt_fld )
-                im_obase += QString("/catgt_%1_g%2").arg( run ).arg( g0 );
+                im_obase += QString("/catgt_%1_g%2").arg( orun ).arg( g0 );
         }
         else
-            im_obase += QString("/supercat_%1_g%2").arg( run ).arg( g0 );
+            im_obase += QString("/supercat_%1_g%2").arg( orun ).arg( g0 );
 
         if( !QDir().exists( im_obase ) && !QDir().mkdir( im_obase ) ) {
             Log() << QString("Error creating dir '%1'.").arg( im_obase );
@@ -3340,7 +3347,7 @@ bool CGBL::makeTaggedDest()
         // --------------------------------------------
 
         aux_obase = QString("%1/%2_g%3_tcat")
-                        .arg( im_obase ).arg( run ).arg( g0 );
+                        .arg( im_obase ).arg( orun ).arg( g0 );
 
         // ---------------
         // IM file base...
@@ -3407,12 +3414,21 @@ bool CGBL::addAutoExtractors()
 
         QFileInfo   fim;
         KVParams    kvp;
-        int         t0, g0 = gt_get_first( &t0 );
+        int         ie, g0, t0;
 
-        if( in_catgt_fld || pass() == 2 )
+        if( pass() == 2 ) {
+            ie = 0;
+            g0 = velem[0].g;
             t0 = -1;
+        }
+        else {
+            ie = -1;
+            g0 = gt_get_first( &t0 );
+            if( in_catgt_fld )
+                t0 = -1;
+        }
 
-        if( openInputMeta( fim, kvp, g0, t0, NI, 0, 0, false ) )
+        if( openInputMeta( fim, kvp, ie, g0, t0, NI, 0, 0, false ) )
             return false;
 
         QVector<uint>   snsFileChans;
@@ -3516,25 +3532,42 @@ QString CGBL::trim_adjust_slashes( const QString &dir )
 }
 
 
-QString CGBL::inPath( int g, t_js js, int ip1 )
+QString CGBL::inPath( int ie, int g, t_js js, int ip1 )
 {
-    QString srun = QString("%1_g%2").arg( run ).arg( g ),
+    QString srun,
             s;
 
-// parent dir
+    if( ie >= 0 ) {
 
-    s = inpar;
+        Elem    &E = velem[ie];
 
-// run subfolder?
+        srun = QString("%1_g%2").arg( E.run ).arg( E.g );
 
-    if( !no_run_fld ) {
+        // parent dir
+        s = E.dir;
 
-        s += "/";
+        // run subfolder?
+        if( !E.no_run_fld ) {
+            s += "/";
+            if( E.in_catgt_fld )
+                s += "catgt_";
+            s += QString("%1").arg( srun );
+        }
+    }
+    else {
 
-        if( in_catgt_fld )
-            s += "catgt_";
+        srun = QString("%1_g%2").arg( run ).arg( g );
 
-        s += QString("%1").arg( srun );
+        // parent dir
+        s = inpar;
+
+        // run subfolder?
+        if( !no_run_fld ) {
+            s += "/";
+            if( in_catgt_fld )
+                s += "catgt_";
+            s += QString("%1").arg( srun );
+        }
     }
 
 // probe subfolder?
@@ -3546,9 +3579,14 @@ QString CGBL::inPath( int g, t_js js, int ip1 )
 }
 
 
-QString CGBL::inPathUpTo_t( int g, t_js js, int ip1 )
+QString CGBL::inPathUpTo_t( int ie, int g, t_js js, int ip1 )
 {
-    return inPath( g, js, ip1 ) + QString("/%1_g%2_t").arg( run ).arg( g );
+    if( ie >= 0 ) {
+        Elem    &E = velem[ie];
+        return inPath( ie, g, js, ip1 ) + QString("/%1_g%2_t").arg( E.run ).arg( E.g );
+    }
+    else
+        return inPath( -1, g, js, ip1 ) + QString("/%1_g%2_t").arg( run ).arg( g );
 }
 
 

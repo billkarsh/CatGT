@@ -34,6 +34,7 @@
     * [dir](#dir)
     * [run_name](#run_name)
     * [Stream identifiers `{-ni, -ob, -ap, -lf}`](#stream-identifiers--ni--ob--ap--lf)
+    * [js and ip indices](#js-and-ip-indices)
     * [Converting AP to LF files](#converting-ap-to-lf-files)
     * [obx (which OneBox(es))](#obx-which-oneboxes)
     * [prb_3A](#prb_3a)
@@ -245,10 +246,8 @@ be run on pass-1 output data.
 
 ### Parallel processing
 
-#### Pass-1
-
-As of version 5.1, pass-1 executes all of the listed streams in parallel.
-For example, if you list four probes `-prb=0:3` for pass-1, they are each
+As of version 5.1, pass-1 and pass-2 (supercat) each execute listed streams
+in parallel. For example, if you list four probes `-prb=0:3` they are each
 run in a separate thread and ought to take the same total time as running
 just one probe. This is realized in practice if the computer has the needed
 resources:
@@ -258,18 +257,13 @@ resources:
 * Fast RAM: higher access speed (MT/s) is better
 * High sustained disk write rate
 
-If you don't have a pretty high-performance machine, the time to do four
-probes will fall somewhere between 1X and 4X the time for one probe.
+If you don't have a pretty high-performance machine, the time to do (N)
+probes will fall somewhere between 1X and NX the time for one probe.
 
 Note that you can manually make CatGT go faster by dividing the work onto
 several machines, for example, the several nodes of a cluster. All you have
 to do is make several scripts that differ only in which streams/probes are
 being handled on that machine.
-
-#### Pass-2
-
-Pass-2 runs require almost no CPU resource and are very quick compared to
-pass-1, so pass-2 is executed sequentially in a single thread.
 
 ### Sample scripts
 
@@ -408,6 +402,23 @@ The input run_name is a base (undecorated) name without g- or t-indices.
 In a given run you might have saved a variety of stream/file types
 {nidq.bin, obx.bin, ap.bin, lf.bin}. Use the `{-ni, -ob, -ap, -lf}`
 flags to indicate which streams within this run you wish to process.
+
+### js and ip indices
+
+Several commands {extractors, -save, -sepShanks, -maxZ} target a given
+stream according to its {js, ip} parameters.
+
+**js**:
+
+(0=NI), (1=OB), (2=AP), (3=LF).
+
+**ip**:
+
+- NI: There is at most one NI stream in a run, and its ip-value is zero.
+- OB: You can run several OnBoxes at once, each OneBox XIO stream gets its
+own zero-based ip-index.
+- AP, LF: You can run several probes at once, each probe stream gets its
+own zero-based ip-index.
 
 ### Converting AP to LF files
 
@@ -1231,10 +1242,10 @@ giving each a new stream number. The original imro selected the lowest
 
 ### sepShanks option
 
-This is a convenient way to split a multishank probe (js=2) into its
-respective shanks.
+This is a convenient way to split a multishank probe's AP (js=2) output
+into its respective shanks.
 
--sepShanks=ip,ip0,ip1,ip2,ip3
+-sepShanks=ip,ip0,ip1,ip2,ip3  (assumes js=2)
 
 * **ip**: Identifies the input probe stream.
 * **ip0:ip3**: User-provided output stream numbers, one for each of up to
@@ -1269,13 +1280,14 @@ electrodes that remain outside the brain see primarily environment noise.
 These channels pollute CAR operations unless they are excluded. Also,
 you can trim these channels out of your files to make them smaller.
 
-Use maxZ to specify an insertion depth for an imec probe (js=2). This
-will automatically create/adjust the -chnexcl option for the probe, and
-it will create a -save option (if you don't already have one) listing only
-the inserted channels. Existing -save options are also edited (see note below).
-Include no more than one -maxZ option for a given probe index.
+Use maxZ to specify an insertion depth for an imec probe. This currently
+operates only on AP files (js=2). This will automatically create/adjust the
+-chnexcl option for the probe, and it will create a -save option (if you
+don't already have one) listing only the inserted channels. Existing
+-save options are also edited (see note below). Include no more than one
+-maxZ option for a given probe index.
 
-The parameters are -maxZ=ip,depth-type,depth-value.
+The parameters are -maxZ=ip,depth-type,depth-value  (assumes js=2).
 
 There are three convenient ways to specify the insertion depth:
 
@@ -1558,7 +1570,7 @@ command lines for TPrime.
 Version 5.1
 
 - Updated command line logging.
-- Pass-1 streams execute in parallel.
+- Streams execute in parallel.
 
 Version 5.0
 

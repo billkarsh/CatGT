@@ -12,8 +12,6 @@ class Pass1;
 /* Types ---------------------------------------------------------- */
 /* ---------------------------------------------------------------- */
 
-typedef long double  BTYPE;
-
 // With FFT-based filtering one must use a long enough FFT to adequately
 // sample low frequencies. A one second span is good down to 1 Hz (really,
 // 0.5 Hz not too bad), so handles LFP band data without much distortion.
@@ -79,12 +77,14 @@ struct Meta {
     int         nC,
                 nN,
                 smpBytes,
-                gLast,
-                tLast,
+                gLast,      // pass-1 tracking
+                tLast,      // pass-1 tracking
                 nFiles;
+    Meta() : smpToBeWritten(0), smpWritten(0), nC(0), nFiles(0) {}
     void read( const QFileInfo &fim, t_js js, int ip );
     void write(
         const QString   &outBin,
+        int             ie,
         int             g0,
         int             t0,
         t_js            js,
@@ -161,18 +161,18 @@ private:
 extern P1EOF    gP1EOF;
 
 /* ---------------------------------------------------------------- */
-/* Pass-1 Helpers ------------------------------------------------- */
+/* Helpers -------------------------------------------------------- */
 /* ---------------------------------------------------------------- */
 
-struct P1Job;
+struct Job;
 
-class P1Worker : public QObject
+class JobWorker : public QObject
 {
     Q_OBJECT
 private:
-    const P1Job &J;
+    const Job &J;
 public:
-    P1Worker( const P1Job &J ) : QObject(0), J(J)   {}
+    JobWorker( const Job &J ) : QObject(0), J(J)    {}
 signals:
     void finished();
 public slots:

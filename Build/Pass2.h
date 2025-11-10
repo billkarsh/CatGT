@@ -7,33 +7,37 @@
 /* Types ---------------------------------------------------------- */
 /* ---------------------------------------------------------------- */
 
+typedef long double  BTYPE;
+
 class Pass2
 {
 private:
-    qint64              samps;
-    QString             outBin;
-    QFile               fout;
-    Meta                meta;
-    std::vector<BTYPE>  &buf;
-    QSet<int>           ip1_seen;
-    int                 ip1,
-                        ip2,
-                        closedIP,
-                        ex0,
-                        exLim;
-    t_js                js;
-    bool                miss_ok,
-                        do_bin;
+    qint64                  samps;
+    QString                 outBin;
+    QFile                   fout;
+    Meta                    meta;
+    std::vector<BTYPE>      buf;
+    static QMap<int,int>    ip1rep; // ip1 -> which ip2 is handling
+    static QMutex           ip1Mtx;
+    int                     ip1,
+                            ip2,
+                            ex0,
+                            exLim;
+    t_js                    js;
+    bool                    miss_ok,
+                            do_bin;
 
 public:
-    Pass2( std::vector<BTYPE> &buf, t_js js );
+    Pass2( t_js js, int ip2 );
     virtual ~Pass2()    {}
 
-    int first( int ip2 );
+    int first();
     bool next( int ie );
     void close();
 
 private:
+    void set_ip1rep();
+    bool is_ip1rep();
     void initDigitalFields();
     bool openDigitalFiles( int g0 );
     bool copyDigitalFiles( int ie );

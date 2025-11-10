@@ -11,7 +11,7 @@ bool Pass1OB::run()
 
     doWrite = GBL.force_ni_ob || GBL.gt_nIndices() > 1 || GBL.startsecs >= 0;
 
-    if( GBL.openInputMeta( fim, meta.kvp, g0, t0, OB, ip, ip, false ) )
+    if( GBL.openInputMeta( fim, meta.kvp, -1, g0, t0, OB, ip, ip, false ) )
         return false;
 
     if( !o_open( g0 ) )
@@ -33,7 +33,7 @@ bool Pass1OB::run()
     if( GBL.startsecs >= 0 )
         meta.kvp["firstSample"] = meta.smp1st;
 
-    meta.write( o_name, g0, t0, OB, ip, ip );
+    meta.write( o_name, -1, g0, t0, OB, ip, ip );
 
     return true;
 }

@@ -2,12 +2,15 @@
 #include "Pass2.h"
 #include "Util.h"
 
+QMap<int,int>   Pass2::ip1rep;
+QMutex          Pass2::ip1Mtx;
 
 
-
-Pass2::Pass2( std::vector<BTYPE> &buf, t_js js )
-    :   buf(buf), closedIP(-9), js(js), miss_ok(false), do_bin(true)
+Pass2::Pass2( t_js js, int ip2 )
+    :   js(js), ip2(ip2), miss_ok(false), do_bin(true)
 {
+    buf.resize( 32 * 1024 * 1024 / sizeof(BTYPE) );
+
     if( js >= AP )
         miss_ok = GBL.prb_miss_ok;
     else
@@ -20,28 +23,29 @@ Pass2::Pass2( std::vector<BTYPE> &buf, t_js js )
 // 1 - skip.
 // 2 - fail.
 //
-int Pass2::first( int ip2 )
+int Pass2::first()
 {
-    int g0 = GBL.gt_get_first( 0 );
+    int g0 = GBL.velem[0].g;
 
-    samps       = 0;
-    this->ip2   = ip2;
-    ip1         = (js >= AP ? GBL.velem[0].mip2ip1[ip2] : ip2);
+    samps   = 0;
+    ip1     = (js >= AP ? GBL.velem[0].mip2ip1[ip2] : ip2);
+
+    set_ip1rep();
 
     QFileInfo   fim;
-    int         ret = GBL.openInputMeta( fim, meta.kvp, g0, -1, js, ip1, ip2, miss_ok );
+    int         ret = GBL.openInputMeta( fim, meta.kvp, 0, g0, -1, js, ip1, ip2, miss_ok );
     if( ret )
         return ret;
 
-    if( js >= AP && !ip1_seen.contains( ip1 ) && !GBL.makeOutputProbeFolder( g0, ip1 ) )
+    if( is_ip1rep() && !GBL.makeOutputProbeFolder( g0, ip1 ) )
         return 2;
 
-    if( do_bin && !GBL.openOutputBinary( fout, outBin, g0, js, ip1, ip2 ) )
+    if( do_bin && !GBL.openOutputBinary( fout, outBin, 0, g0, js, ip1, ip2 ) )
         return 2;
 
     meta.read( fim, js, -1 );
 
-    if( js != LF && !ip1_seen.contains( ip1 ) ) {
+    if( js != LF && is_ip1rep() ) {
 
         initDigitalFields();
 
@@ -68,15 +72,13 @@ bool Pass2::next( int ie )
     if( do_bin && !copyFile( fout, ie, eBIN ) )
         return false;
 
-    if( js != LF && !ip1_seen.contains( ip1 ) && !copyDigitalFiles( ie ) )
+    if( js != LF && is_ip1rep() && !copyDigitalFiles( ie ) )
         return false;
 
     samps += ieSamps;
 
     if( ie < GBL.velem.size() - 1 )
         gFOff.addOffset( samps, js, ip2 );
-    else
-        ip1_seen.insert( ip1 );
 
     meta.pass2_runDone();
 
@@ -86,13 +88,37 @@ bool Pass2::next( int ie )
 
 void Pass2::close()
 {
-    if( closedIP != ip2 ) {
-        int g0 = GBL.gt_get_first( 0 );
-        fout.close();
+    fout.close();
+
+    if( meta.nC ) {
         meta.smpWritten = samps;
-        meta.write( outBin, g0, -1, js, ip1, ip2 );
-        closedIP = ip2;
+        meta.write( outBin, 0, -1, -1, js, ip1, ip2 );
     }
+}
+
+
+void Pass2::set_ip1rep()
+{
+    if( js >= AP ) {
+        QMutexLocker    ml( &ip1Mtx );
+        if( !ip1rep.contains( ip1 ) )
+            ip1rep[ip1] = ip2;
+    }
+}
+
+
+bool Pass2::is_ip1rep()
+{
+    if( js >= AP ) {
+        QMutexLocker    ml( &ip1Mtx );
+        QMap<int,int>::const_iterator
+            it  = ip1rep.find( ip1 ),
+            end = ip1rep.end();
+        if( it == end || it.value() != ip2 )
+            return false;
+    }
+
+    return true;
 }
 
 
@@ -111,14 +137,15 @@ bool Pass2::openDigitalFiles( int g0 )
 
     for( int i = ex0; i < exLim; ++i ) {
 
-        XTR *X = GBL.vX[i];
+        XTR *X  = GBL.vX[i];
+        int nC  = GBL.velem[0].nC( js, ip1 );
 
-        if( X->word >= GBL.velem[0].nC( js, ip1 ) ) {
-            X->wordError( GBL.velem[0].nC( js, ip1 ) );
+        if( X->word >= nC ) {
+            X->wordError( nC );
             continue;
         }
 
-        if( !X->openOutFiles( vSdum, g0 ) )
+        if( !X->openOutFiles( vSdum, 0, g0 ) )
             return false;
     }
 
@@ -155,11 +182,12 @@ bool Pass2::copyDigitalFiles( int ie )
 //
 qint64 Pass2::checkCounts( int ie )
 {
+    Elem        &E = GBL.velem[ie];
     QFileInfo   fim;
     KVParams    kvpn;
     int         chans;
 
-    if( GBL.openInputMeta( fim, kvpn, GBL.ga, -1, js, ip1, ip2, false ) )
+    if( GBL.openInputMeta( fim, kvpn, ie, E.g, -1, js, ip1, ip2, false ) )
         return 0;
 
     chans = kvpn["nSavedChans"].toInt();
@@ -172,7 +200,7 @@ qint64 Pass2::checkCounts( int ie )
         return 0;
     }
 
-    double  rate = GBL.velem[ie].rate( js, ip1 );
+    double  rate = E.rate( js, ip1 );
 
     gFOff.addRate( rate, js, ip2 );
 
@@ -181,7 +209,6 @@ qint64 Pass2::checkCounts( int ie )
         // But each edge should be included just once, so if later
         // than the first file (ie > 0), we don't include the head,
         // so subtract 1 for that: - (ie ? 1 : 0).
-        Elem    &E = GBL.velem[ie];
         return  qint64(E.tail( js, ip1 ) * rate + 1)
                 - qint64(E.head( js, ip1 ) * rate)
                 - (ie ? 1 : 0);
@@ -203,11 +230,12 @@ static bool copyBinary(
     t_js                js,
     int                 ip1 )
 {
-    double  rate     = GBL.velem[ie].rate( js, ip1 );
-    qint64  head     = GBL.velem[ie].head( js, ip1 ) * rate,
-            tail     = GBL.velem[ie].tail( js, ip1 ) * rate + 1,
-            bufBytes = sizeof(BTYPE) * buf.size(),
-            finBytes = fin.size();
+    Elem    &E          = GBL.velem[ie];
+    double  rate        = E.rate( js, ip1 );
+    qint64  head        = E.head( js, ip1 ) * rate,
+            tail        = E.tail( js, ip1 ) * rate + 1,
+            bufBytes    = sizeof(BTYPE) * buf.size(),
+            finBytes    = fin.size();
 
     if( finBytes % meta.smpBytes ) {
 
@@ -306,12 +334,13 @@ static void copyOffsetTimesTrim(
     int     ip,
     XTR     *X )
 {
+    Elem    &E      = GBL.velem[ie];
     double  t,
-            rate0 = GBL.velem[0].rate( js, ip ),
-            secs  = samps / rate0,
-            conv  = GBL.velem[ie].rate( js, ip ) / rate0,
-            head  = GBL.velem[ie].head( js, ip ),
-            tail  = GBL.velem[ie].tail( js, ip );
+            rate0   = GBL.velem[0].rate( js, ip ),
+            secs    = samps / rate0,
+            conv    = E.rate( js, ip ) / rate0,
+            head    = E.head( js, ip ),
+            tail    = E.tail( js, ip );
     QString line;
     bool    ok;
 
@@ -366,7 +395,7 @@ bool Pass2::copyFile( QFile &fout, int ie, t_ex ex, XTR *X )
     QFile       fin;
     QFileInfo   fib;
 
-    if( GBL.openInputFile( fin, fib, GBL.ga, -1, js, ip1, (X ? ip1 : ip2), ex, X ) )
+    if( GBL.openInputFile( fin, fib, ie, -1, -1, js, ip1, (X ? ip1 : ip2), ex, X ) )
         return false;
 
     if( !X ) {
@@ -390,13 +419,14 @@ bool Pass2::copyFile( QFile &fout, int ie, t_ex ex, XTR *X )
 
 bool Pass2::copyFilesBF( int ie, BitField *B )
 {
+    Elem        &E = GBL.velem[ie];
     QFile       ftin, fvin;
     QFileInfo   ftib, fvib;
 
-    if( GBL.openInputFile( ftin, ftib, GBL.ga, -1, js, ip1, ip1, eBFT, B ) )
+    if( GBL.openInputFile( ftin, ftib, ie, E.g, -1, js, ip1, ip1, eBFT, B ) )
         return false;
 
-    if( GBL.openInputFile( fvin, fvib, GBL.ga, -1, js, ip1, ip1, eBFV, B ) )
+    if( GBL.openInputFile( fvin, fvib, ie, E.g, -1, js, ip1, ip1, eBFV, B ) )
         return false;
 
     if( GBL.sc_trim ) { // tandem trim and copy
@@ -404,9 +434,9 @@ bool Pass2::copyFilesBF( int ie, BitField *B )
         double  t,
                 rate0 = GBL.velem[0].rate( js, ip1 ),
                 secs  = samps / rate0,
-                conv  = GBL.velem[ie].rate( js, ip1 ) / rate0,
-                head  = GBL.velem[ie].head( js, ip1 ),
-                tail  = GBL.velem[ie].tail( js, ip1 );
+                conv  = E.rate( js, ip1 ) / rate0,
+                head  = E.head( js, ip1 ),
+                tail  = E.tail( js, ip1 );
         QString LT, LV;
         bool    ok;
 

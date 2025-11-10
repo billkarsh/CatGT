@@ -366,13 +366,10 @@ void Meta::read( const QFileInfo &fim, t_js js, int ip )
 
     smp1st          = kvp["firstSample"].toLongLong()
                         + qint64(GBL.startsecs * srate);
-    smpToBeWritten  = 0;
-    smpWritten      = 0;
     maxOutEOF       = (GBL.maxsecs > 0 ? qint64(GBL.maxsecs * srate) : UNSET64);
     nC              = kvp["nSavedChans"].toInt();
     smpBytes        = nC*sizeof(qint16);
     gLast           = GBL.gt_get_first( &tLast );
-    nFiles          = 0;
 
     if( ip >= 0 ) {
         GBL.fyiMtx.lock();
@@ -403,6 +400,7 @@ void Meta::read( const QFileInfo &fim, t_js js, int ip )
 
 void Meta::write(
     const QString   &outBin,
+    int             ie,
     int             g0,
     int             t0,
     t_js            js,
@@ -411,9 +409,10 @@ void Meta::write(
 {
     QDateTime   tCreate( QDateTime::currentDateTime() );
     qint64      smpFLen = smpWritten;
-    int         ne      = GBL.velem.size();
 
-    if( !ne && !smpFLen ) {
+    if( ie >= 0 )
+        g0 = GBL.velem[0].g;
+    else if( !smpFLen ) {
         // Pass1:
         // If no bin written, set size that would have been written.
         // Note doWrite (hence EOF tracking) always true if trials...
@@ -429,7 +428,7 @@ void Meta::write(
     kvp["fileSizeBytes"]            = smpBytes * smpFLen;
     kvp["fileTimeSecs"]             = smpFLen / srate;
 
-    if( ne ) {
+    if( ie >= 0 ) {
         delPass1Tags();
         kvp["catNRuns"]     = QString("%1").arg( nFiles );
         kvp["catGTCmdline"] = QString("<%1>").arg( GBL.sCmd );
@@ -442,10 +441,10 @@ void Meta::write(
     }
 
     switch( js ) {
-        case NI: kvp.toMetaFile( GBL.niOutFile( g0, eMETA ) ); break;
-        case OB: kvp.toMetaFile( GBL.obOutFile( g0, ip1, eMETA ) ); break;
+        case NI: kvp.toMetaFile( GBL.niOutFile( ie, g0, eMETA ) ); break;
+        case OB: kvp.toMetaFile( GBL.obOutFile( ie, g0, ip1, eMETA ) ); break;
         case AP:
-        case LF: kvp.toMetaFile( GBL.imOutFile( g0, js, ip1, ip2, eMETA ) ); break;
+        case LF: kvp.toMetaFile( GBL.imOutFile( ie, g0, js, ip1, ip2, eMETA ) ); break;
     }
 }
 
@@ -509,7 +508,7 @@ void Meta::writeSave( const QVector<Save> &vSprb, int g0, int t0, t_js js_out )
         if( shankMap )
             kvp["~snsShankMap"] = shankMap->toString( bits, 0 );
 
-        write( S.o_name, g0, t0, js_out, S.ip1, S.ip2 );
+        write( S.o_name, -1, g0, t0, js_out, S.ip1, S.ip2 );
     }
 
     if( chanMap )
@@ -797,7 +796,6 @@ void FOffsets::writeEntries( QString file )
     f.close();
 }
 
-
 /* ---------------------------------------------------------------- */
 /* P1LFCase ------------------------------------------------------- */
 /* ---------------------------------------------------------------- */
@@ -826,7 +824,7 @@ int P1LFCase::lfCaseCalc( int g0, int t0, int ip )
 {
 // seek 1.0 lf meta
 
-    QString     inMeta = GBL.inFile( g0, t0, LF, ip, ip, eMETA );
+    QString     inMeta = GBL.inFile( -1, g0, t0, LF, ip, ip, eMETA );
     QFileInfo   fim( inMeta );
 
     if( fim.exists() )
@@ -834,7 +832,7 @@ int P1LFCase::lfCaseCalc( int g0, int t0, int ip )
 
 // seek ap meta
 
-    inMeta = GBL.inFile( g0, t0, AP, ip, ip, eMETA );
+    inMeta = GBL.inFile( -1, g0, t0, AP, ip, ip, eMETA );
     fim.setFile( inMeta );
 
     if( !fim.exists() )
@@ -1017,7 +1015,7 @@ bool P1EOF::getMeta( int g, int t, t_js js, int ip, bool t_miss_ok )
 {
     QFileInfo   fim;
     KVParams    kvp;
-    int         ret = GBL.openInputMeta( fim, kvp, g, t, js, ip, ip, t_miss_ok );
+    int         ret = GBL.openInputMeta( fim, kvp, -1, g, t, js, ip, ip, t_miss_ok );
 
     switch( ret ) {
         case 0: break;
@@ -1050,17 +1048,18 @@ bool P1EOF::getMeta( int g, int t, t_js js, int ip, bool t_miss_ok )
 }
 
 /* ---------------------------------------------------------------- */
-/* Pass-1 Functions ----------------------------------------------- */
+/* Helpers -------------------------------------------------------- */
 /* ---------------------------------------------------------------- */
 
-struct P1Job {
+struct Job {
     int ip, type;   // type: 0=AUX, 1=LF, 2=AP2LF, 3=AP
-    P1Job()
+    Job()
     :   ip(0), type(0)      {}
-    P1Job( int ip, int type )
+    Job( int ip, int type )
     :   ip(ip), type(type)  {}
-    bool run() const;
-    bool operator<( const P1Job &rhs ) const
+    virtual ~Job()          {}
+    virtual bool run() const = 0;
+    bool operator<( const Job &rhs ) const
     {
         if( type < rhs.type )
             return true;
@@ -1068,6 +1067,58 @@ struct P1Job {
             return false;
         return ip < rhs.ip;
     }
+};
+
+
+void JobWorker::run()
+{
+    J.run();
+    emit finished();
+}
+
+
+class JobThread
+{
+public:
+    QThread     *thread;
+    JobWorker   *worker;
+public:
+    JobThread( const Job &J );
+    virtual ~JobThread();
+};
+
+JobThread::JobThread( const Job &J )
+{
+    thread  = new QThread;
+    worker  = new JobWorker( J );
+
+    worker->moveToThread( thread );
+
+    QObject::connect( thread, SIGNAL(started()), worker, SLOT(run()) );
+    QObject::connect( worker, SIGNAL(finished()), worker, SLOT(deleteLater()) );
+    QObject::connect( worker, SIGNAL(destroyed()), thread, SLOT(quit()), Qt::DirectConnection );
+
+    thread->start();
+}
+
+JobThread::~JobThread()
+{
+// worker object auto-deleted asynchronously
+// thread object manually deleted synchronously (so we can call wait())
+
+    if( thread->isRunning() )
+        thread->wait();
+
+    delete thread;
+}
+
+/* ---------------------------------------------------------------- */
+/* Pass-1 Functions ----------------------------------------------- */
+/* ---------------------------------------------------------------- */
+
+struct P1Job : public Job {
+    P1Job( int ip, int type ) : Job(ip, type)   {}
+    virtual bool run() const;
 };
 
 bool P1Job::run() const
@@ -1090,49 +1141,6 @@ bool P1Job::run() const
     delete P;
 
     return ok;
-}
-
-
-void P1Worker::run()
-{
-    J.run();
-    emit finished();
-}
-
-
-class P1Thread
-{
-public:
-    QThread     *thread;
-    P1Worker    *worker;
-public:
-    P1Thread( const P1Job &J );
-    virtual ~P1Thread();
-};
-
-P1Thread::P1Thread( const P1Job &J )
-{
-    thread  = new QThread;
-    worker  = new P1Worker( J );
-
-    worker->moveToThread( thread );
-
-    QObject::connect( thread, SIGNAL(started()), worker, SLOT(run()) );
-    QObject::connect( worker, SIGNAL(finished()), worker, SLOT(deleteLater()) );
-    QObject::connect( worker, SIGNAL(destroyed()), thread, SLOT(quit()), Qt::DirectConnection );
-
-    thread->start();
-}
-
-P1Thread::~P1Thread()
-{
-// worker object auto-deleted asynchronously
-// thread object manually deleted synchronously (so we can call wait())
-
-    if( thread->isRunning() )
-        thread->wait();
-
-    delete thread;
 }
 
 
@@ -1182,11 +1190,11 @@ void pass1entrypoint()
 #else
 // Execute in parallel
 
-    std::vector<P1Thread*>  T;
+    std::vector<JobThread*> T;
     int                     j_local = vJ.size() - 1;
 
     for( int j = 0; j < j_local; ++j )
-        T.push_back( new P1Thread( vJ[j] ) );
+        T.push_back( new JobThread( vJ[j] ) );
 
     vJ[j_local].run();
 
@@ -1208,15 +1216,16 @@ done:
 //
 static bool _supercat_checkLF( double &tlast, int ie, int ip1 )
 {
-    double      apsrate = GBL.velem[ie].rate( AP, ip1 );
+    Elem        &E      = GBL.velem[ie];
+    double      apsrate = E.rate( AP, ip1 );
     qint64      lfsamp  = 0;
     QSet<int>   sip2;   // unique ip2 from this ip1
 
     QMap<int,int>::const_iterator
         it,
-        end = GBL.velem[ie].mip2ip1.end();
+        end = E.mip2ip1.end();
     foreach( int ip2, GBL.vprb ) {
-        it = GBL.velem[ie].mip2ip1.find( ip2 );
+        it = E.mip2ip1.find( ip2 );
         if( it != end && it.value() == ip1 )
             sip2.insert( ip2 );
     }
@@ -1226,7 +1235,7 @@ static bool _supercat_checkLF( double &tlast, int ie, int ip1 )
         QFileInfo   fim;
         KVParams    kvp;
 
-        switch( GBL.openInputMeta( fim, kvp, GBL.ga, -1, LF, ip1, ip2, GBL.prb_miss_ok ) ) {
+        switch( GBL.openInputMeta( fim, kvp, ie, E.g, -1, LF, ip1, ip2, GBL.prb_miss_ok ) ) {
             case 0: lfsamp = kvp["fileSizeBytes"].toLongLong()
                             * (apsrate / kvp["imSampRate"].toDouble())
                             / (sizeof(qint16) * kvp["nSavedChans"].toInt());
@@ -1254,6 +1263,8 @@ static bool _supercat_checkLF( double &tlast, int ie, int ip1 )
 //
 static bool _supercat_streamSelectEdges( int ie, t_js js, int ip1 )
 {
+    Elem    &E = GBL.velem[ie];
+
 // -------------------
 // Find sync extractor
 // -------------------
@@ -1261,7 +1272,7 @@ static bool _supercat_streamSelectEdges( int ie, t_js js, int ip1 )
     XTR *X  = 0;
     int exLim,
         ex0 = GBL.myXrange( exLim, js, ip1 ),
-        nC  = GBL.velem[ie].nC( js, ip1 );
+        nC  = E.nC( js, ip1 );
 
     for( int i = ex0; i < exLim; ++i ) {
 
@@ -1288,7 +1299,7 @@ static bool _supercat_streamSelectEdges( int ie, t_js js, int ip1 )
     QFileInfo   fib;
     QFile       fin;
 
-    if( GBL.openInputFile( fin, fib, GBL.ga, -1, js, ip1, ip1, X->ex, X ) )
+    if( GBL.openInputFile( fin, fib, ie, E.g, -1, js, ip1, ip1, X->ex, X ) )
         return false;
 
 // ---------
@@ -1309,7 +1320,7 @@ static bool _supercat_streamSelectEdges( int ie, t_js js, int ip1 )
         if( ok ) {
             head    = (ie ? t : 0);
             tlast   = t;
-            GBL.velem[ie].head( js, ip1 ) = head;
+            E.head( js, ip1 ) = head;
             break;
         }
     }
@@ -1362,7 +1373,7 @@ static bool _supercat_streamSelectEdges( int ie, t_js js, int ip1 )
 // Store
 // -----
 
-    GBL.velem[ie].tail( js, ip1 ) = tlast;
+    E.tail( js, ip1 ) = tlast;
 
     return true;
 }
@@ -1370,11 +1381,11 @@ static bool _supercat_streamSelectEdges( int ie, t_js js, int ip1 )
 
 static bool _supercat_runSelectEdges( int ie )
 {
+    Elem    &E = GBL.velem[ie];
+
 // ----------------
 // Get stream edges
 // ----------------
-
-    GBL.velem[ie].unpack();
 
     if( GBL.ni && !_supercat_streamSelectEdges( ie, NI, 0 ) )
         return false;
@@ -1402,24 +1413,24 @@ static bool _supercat_runSelectEdges( int ie )
 
     double  shortest = 1e99;
     QMap<JSIP,double>::const_iterator
-        it  = GBL.velem[ie].jsip2tail.begin(),
-        end = GBL.velem[ie].jsip2tail.end();
+        it  = E.jsip2tail.begin(),
+        end = E.jsip2tail.end();
     for( ; it != end; ++it ) {
         if( it.value() < shortest )
             shortest = it.value();
     }
 
-    QList<JSIP> keys = GBL.velem[ie].jsip2tail.keys();
+    QList<JSIP> keys = E.jsip2tail.keys();
     foreach( JSIP iq, keys ) {
 
-        double  tail = GBL.velem[ie].jsip2tail[iq];
+        double  tail = E.jsip2tail[iq];
 
         while( tail - shortest > GBL.syncper/2 )
             tail -= GBL.syncper;
 
         // At least two edges left?
 
-        if( tail - GBL.velem[ie].jsip2head[iq] < GBL.syncper ) {
+        if( tail - E.jsip2head[iq] < GBL.syncper ) {
 
             Log() <<
             QString("-supercat_trim_edges found fewer than 2 common edges in stream(js,ip=%1,%2).")
@@ -1427,33 +1438,53 @@ static bool _supercat_runSelectEdges( int ie )
             return false;
         }
 
-        GBL.velem[ie].jsip2tail[iq] = tail;
+        E.jsip2tail[iq] = tail;
     }
 
     return true;
 }
 
 
-static bool _supercat( Pass2 *H, int ip2 )
-{
-    GBL.velem[0].unpack();
+struct P2Job : public Job {
+    P2Job( int ip, int type ) : Job(ip, type)   {}
+    virtual bool run() const;
+};
 
-    switch( H->first( ip2 ) ) {
+bool P2Job::run() const
+{
+    Pass2   *P;
+    bool    ok = false;
+
+    if( type == 3 )
+        P = new Pass2( AP, ip );
+    else if( type == 2 )
+        return false;
+    else if( type == 1 )
+        P = new Pass2( LF, ip );
+    else if( ip >= 0 )
+        P = new Pass2( OB, ip );
+    else
+        P = new Pass2( NI, 0 );
+
+    switch( P->first() ) {
         case 0: break;
-        case 1: return true;
-        case 2: return false;
+        case 1: ok = true; goto exit;
+        case 2: goto close;
     }
 
     for( int ie = 1, ne = GBL.velem.size(); ie < ne; ++ie ) {
 
-        GBL.velem[ie].unpack();
-
-        if( !H->next( ie ) )
-            return false;
+        if( !P->next( ie ) )
+            goto close;
     }
 
-    H->close();
-    return true;
+    ok = true;
+
+close:
+    P->close();
+exit:
+    delete P;
+    return ok;
 }
 
 
@@ -1468,58 +1499,57 @@ void supercatentrypoint()
         }
     }
 
-// supercat each stream
+// List jobs, assigning: type=effort
 
-    std::vector<BTYPE>  buf( 32*1024*1024 / sizeof(BTYPE) );
+    std::vector<P2Job>  vJ;
 
-    Pass2 *hNI = (GBL.ni ? new Pass2( buf, NI ) : 0);
-    Pass2 *hOB = (GBL.ob ? new Pass2( buf, OB ) : 0);
-    Pass2 *hAP = (GBL.ap ? new Pass2( buf, AP ) : 0);
-    Pass2 *hLF = (GBL.lf ? new Pass2( buf, LF ) : 0);
+    if( GBL.ni )
+        vJ.push_back( P2Job( -1, 0 ) );
+
+    foreach( uint ip2, GBL.vobx )
+        vJ.push_back( P2Job( ip2, 0 ) );
 
     QMap<int,int>::const_iterator it, end = GBL.velem[0].mip2ip1.end();
 
-    if( GBL.ni && !_supercat( hNI, 0 ) )
-        goto done;
-
-    foreach( int ip2, GBL.vobx ) {
-        if( !_supercat( hOB, ip2 ) )
-            goto done;
-    }
-
-    foreach( int ip2, GBL.vprb ) {
+    foreach( uint ip2, GBL.vprb ) {
         it = GBL.velem[0].mip2ip1.find( ip2 );
         if( it != end ) {
-            if( GBL.ap && !_supercat( hAP, ip2 ) )
-                goto done;
-            if( GBL.lf && !_supercat( hLF, ip2 ) )
-                goto done;
+            if( GBL.ap )
+                vJ.push_back( P2Job( ip2, 3 ) );
+            if( GBL.lf )
+                vJ.push_back( P2Job( ip2, 1 ) );
         }
     }
+
+// Sort jobs by type=effort
+
+    std::sort( vJ.begin(), vJ.end() );
+
+#if 0
+// Execute serially, stop on first failure
+
+    foreach( const P2Job &J, vJ ) {
+        if( !J.run() )
+            goto done;
+    }
+#else
+// Execute in parallel
+
+    std::vector<JobThread*> T;
+    int                     j_local = vJ.size() - 1;
+
+    for( int j = 0; j < j_local; ++j )
+        T.push_back( new JobThread( vJ[j] ) );
+
+    vJ[j_local].run();
+
+    for( int it = 0, nT = T.size(); it < nT; ++it )
+        delete T[it];
+#endif
 
 done:
     gFOff.sc_write();
     GBL.fyi_sc_write();
-
-    if( hLF ) {
-        hLF->close();
-        delete hLF;
-    }
-
-    if( hAP ) {
-        hAP->close();
-        delete hAP;
-    }
-
-    if( hOB ) {
-        hOB->close();
-        delete hOB;
-    }
-
-    if( hNI ) {
-        hNI->close();
-        delete hNI;
-    }
 }
 
 

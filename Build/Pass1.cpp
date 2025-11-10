@@ -105,7 +105,7 @@ bool Pass1::o_open( int g0 )
         GBL.fyiMtx.unlock();
     }
 
-    return GBL.openOutputBinary( o_f, o_name, g0, js_out, ip, ip );
+    return GBL.openOutputBinary( o_f, o_name, -1, g0, js_out, ip, ip );
 }
 
 
@@ -136,7 +136,7 @@ bool Pass1::openDigitalFiles( int g0 )
         if( X->word >= meta.nC )
             continue;
 
-        if( !X->openOutFiles( vSprb, g0 ) )
+        if( !X->openOutFiles( vSprb, -1, g0 ) )
             return false;
     }
 

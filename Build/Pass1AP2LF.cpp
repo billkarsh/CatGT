@@ -12,7 +12,7 @@ bool Pass1AP2LF::run()
     int t0, g0 = GBL.gt_get_first( &t0 ),
         theZ;
 
-    switch( GBL.openInputMeta( fim, meta.kvp, g0, t0, AP, ip, ip, GBL.prb_miss_ok ) ) {
+    switch( GBL.openInputMeta( fim, meta.kvp, -1, g0, t0, AP, ip, ip, GBL.prb_miss_ok ) ) {
         case 0: break;
         case 1: return true;
         case 2: return false;
@@ -61,7 +61,7 @@ bool Pass1AP2LF::run()
     if( vSprb.size() )
         meta.writeSave( vSprb, g0, t0, LF );
     else
-        meta.write( o_name, g0, t0, LF, ip, ip );
+        meta.write( o_name, -1, g0, t0, LF, ip, ip );
 
     gFOff.dwnSmp( ip );
 
