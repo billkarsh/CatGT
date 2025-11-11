@@ -296,7 +296,7 @@ bool SepShanks::parse( QSet<int> &seen )
     }
 
     if( seen.contains( ip ) ) {
-        Log() << QString("Error: -sepShanks names probe %1 twice.").arg( ip );
+        Log() << QString("Error: Multiple -sepShanks name ip1 = %1.").arg( ip );
         return false;
     }
 
@@ -317,11 +317,6 @@ bool SepShanks::split(
     const KVParams  &kvp,
     const QFileInfo &fim )
 {
-// already used?
-
-    if( ip < 0 )
-        return true;
-
 // Prep imro
 
     IMROTbl *R = GBL.getProbe( kvp );
@@ -332,7 +327,6 @@ bool SepShanks::split(
     }
 
     if( R->nShank() == 1 ) {
-        ip = -1;
         delete R;
         return true;
     }
@@ -396,7 +390,6 @@ bool SepShanks::split(
         std::sort( vSprb.begin(), vSprb.end() );
     }
 
-    ip = -1;
     delete R;
     return true;
 }

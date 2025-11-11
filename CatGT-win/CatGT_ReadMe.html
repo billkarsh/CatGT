@@ -753,8 +753,8 @@ times_imec5_0=path/extraction_output_file_3</code></pre>
 <p>Split NP 2.0 4-shank stream imec0.ap (all channels saved) into four shanks, giving each a new stream number. The original imro selected the lowest (384/4 = 96) electrodes from each shank.</p>
 <p>-save=2,0,10,0:47,96:143,384 -save=2,0,11,48:95,144:191,384 -save=2,0,12,192:239,288:335,384 -save=2,0,13,240:287,336:384</p>
 <h3 id="sepshanks-option">sepShanks option</h3>
-<p>This is a convenient way to split a multishank probe's AP (js=2) output into its respective shanks.</p>
-<p>-sepShanks=ip,ip0,ip1,ip2,ip3 (assumes js=2)</p>
+<p>This is a convenient way to split a multishank probe's output (both AP- and LF-band) into its respective shanks.</p>
+<p>-sepShanks=ip,ip0,ip1,ip2,ip3 (implicitly js=2)</p>
 <ul>
 <li><strong>ip</strong>: Identifies the input probe stream.</li>
 <li><strong>ip0:ip3</strong>: User-provided output stream numbers, one for each of up to 4 shanks. Each ipj maps shank-j to a file index that you assign.</li>
@@ -775,8 +775,8 @@ times_imec5_0=path/extraction_output_file_3</code></pre>
 <p>-sepShanks=5,-1,5,-1,-1</p>
 <h3 id="maxz-option">maxZ option</h3>
 <p>It's very common to insert a probe only partially into the brain. The electrodes that remain outside the brain see primarily environment noise. These channels pollute CAR operations unless they are excluded. Also, you can trim these channels out of your files to make them smaller.</p>
-<p>Use maxZ to specify an insertion depth for an imec probe. This operation applies to all output from the specified probe (ip). It will automatically create/adjust the -chnexcl option for the probe's AP-band, and it will create a -save option (if you don't already have one) listing only the inserted channels. Existing -save options are also edited (see note below). Include no more than one -maxZ option for a given probe ip-index.</p>
-<p>The parameters are -maxZ=ip,depth-type,depth-value.</p>
+<p>Use maxZ to specify an insertion depth for an imec probe. This operation affects both AP- and LF-band output from the specified probe (ip). For the AP-band, it automatically creates/adjusts the -chnexcl option. For both bands it creates a -save option (if you don't already have one) listing only the implanted channels. Existing -save options are also edited (see note below). Include no more than one -maxZ option for a given probe ip-index.</p>
+<p>The parameters are -maxZ=ip,depth-type,depth-value (implicitly js=2).</p>
 <p>There are three convenient ways to specify the insertion depth:</p>
 <table>
 <thead>
@@ -995,6 +995,7 @@ Options:
 <p>Version 5.1</p>
 <ul>
 <li>Updated command line logging.</li>
+<li>Option -sepShanks splits both AP &amp; LF.</li>
 <li>Option -maxZ preserves SY channels.</li>
 <li>Streams execute in parallel.</li>
 </ul>

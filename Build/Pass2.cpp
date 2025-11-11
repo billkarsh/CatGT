@@ -400,6 +400,9 @@ bool Pass2::copyFile( QFile &fout, int ie, t_ex ex, XTR *X )
 
     if( !X ) {
 
+        if( !meta.smpBytes )
+            return true;
+
         if( GBL.sc_trim ) {
 
             if( !copyBinary( fout, fin, fib, meta, buf, ie, js, ip1 ) )

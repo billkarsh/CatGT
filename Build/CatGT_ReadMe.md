@@ -1242,10 +1242,10 @@ giving each a new stream number. The original imro selected the lowest
 
 ### sepShanks option
 
-This is a convenient way to split a multishank probe's AP (js=2) output
-into its respective shanks.
+This is a convenient way to split a multishank probe's output (both AP-
+and LF-band) into its respective shanks.
 
--sepShanks=ip,ip0,ip1,ip2,ip3  (assumes js=2)
+-sepShanks=ip,ip0,ip1,ip2,ip3  (implicitly js=2)
 
 * **ip**: Identifies the input probe stream.
 * **ip0:ip3**: User-provided output stream numbers, one for each of up to
@@ -1281,13 +1281,14 @@ These channels pollute CAR operations unless they are excluded. Also,
 you can trim these channels out of your files to make them smaller.
 
 Use maxZ to specify an insertion depth for an imec probe. This operation
-applies to all output from the specified probe (ip). It will automatically
-create/adjust the -chnexcl option for the probe's AP-band, and it will
-create a -save option (if you don't already have one) listing only the
-inserted channels. Existing -save options are also edited (see note below).
-Include no more than one -maxZ option for a given probe ip-index.
+affects both AP- and LF-band output from the specified probe (ip). For
+the AP-band, it automatically creates/adjusts the -chnexcl option. For
+both bands it creates a -save option (if you don't already have one)
+listing only the implanted channels. Existing -save options are also edited
+(see note below). Include no more than one -maxZ option for a given probe
+ip-index.
 
-The parameters are -maxZ=ip,depth-type,depth-value.
+The parameters are -maxZ=ip,depth-type,depth-value  (implicitly js=2).
 
 There are three convenient ways to specify the insertion depth:
 
@@ -1570,6 +1571,7 @@ command lines for TPrime.
 Version 5.1
 
 - Updated command line logging.
+- Option -sepShanks splits both AP & LF.
 - Option -maxZ preserves SY channels.
 - Streams execute in parallel.
 
