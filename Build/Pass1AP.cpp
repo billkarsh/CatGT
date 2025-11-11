@@ -387,8 +387,10 @@ void Pass1AP::gfixEdits()
 void Pass1AP::gfixZeros( qint64 L, int N )
 {
     if( vSprb.size() ) {
-        foreach( const Save &S, vSprb )
-            gfixZero1( S.o_f, L, N, S.smpBytes, S.nC, S.nN );
+        foreach( const Save &S, vSprb ) {
+            if( S.smpBytes )
+                gfixZero1( S.o_f, L, N, S.smpBytes, S.nC, S.nN );
+        }
     }
     else
         gfixZero1( &o_f, L, N, meta.smpBytes, meta.nC, meta.nN );
@@ -619,14 +621,14 @@ void Pass1AP::gFixDetect(
 
             // report
 
-//            if( nBad >= 0.25 * nMbr ) {
+//            if( nMbr && nBad >= 0.25 * nMbr ) {
 //                Log() << QString("%1  %2  %3")
 //                            .arg( double(t0+it)/30000, 0, 'f', 5 )
 //                            .arg( nMbr ).arg( nBad );
 //                break;
 //            }
 
-            if( nBad >= 0.25 * nMbr ) {
+            if( nMbr && nBad >= 0.25 * nMbr ) {
 
                 if( !loaded ) {
 

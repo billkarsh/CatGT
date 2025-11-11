@@ -189,18 +189,34 @@ bool Save::init( const KVParams &kvp, const QFileInfo &fim, int theZ )
         int cU  = cUsr[ic],
             idx = snsFileChans.indexOf( cU );
 
-        if( idx >= 0 && (theZ < 0 || GBL.vMZ[theZ].bitsAP.testBit( cU - nAP ))  ) {
-            cUsr2.push_back( cU );
-            iKeep.push_back( idx );
-            nN += (cU < cSY);
+        if( idx >= 0 ) {
+
+            if( cU < cSY ) {
+                if( theZ < 0 || GBL.vMZ[theZ].bitsAP.testBit( cU - nAP ) ) {
+                    cUsr2.push_back( cU );
+                    iKeep.push_back( idx );
+                    ++nN;
+                }
+            }
+            else {
+                cUsr2.push_back( cU );
+                iKeep.push_back( idx );
+            }
         }
     }
 
     nC = iKeep.size();
 
     if( !nC ) {
-        Log() << QString("Specified channels not in file '%1'").arg( sparam() );
-        return false;
+        if( theZ < 0 ) {
+            Log() << QString("Specified channels not in file '%1'")
+                        .arg( sparam() );
+            return false;
+        }
+        else {
+            Log() << QString("Empty intersection of -maxZ with '%1'.")
+                        .arg( sparam() );
+        }
     }
 
     sUsr_out    = Subset::vec2RngStr( cUsr2 );
@@ -3320,6 +3336,11 @@ bool CGBL::pass1FromCatGT()
 bool CGBL::makeTaggedDest()
 {
     if( !dest.isEmpty() ) {
+
+        if( !QDir().exists( dest ) ) {
+            Log() << QString("Error: -dest dir does not exist '%1'.").arg( dest );
+            return false;
+        }
 
         QString &orun   = (pass() == 2 ? velem[0].run : run);
         int     g0      = (pass() == 2 ? velem[0].g : gt_get_first( 0 ));

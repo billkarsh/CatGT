@@ -309,7 +309,7 @@ Options:
 <h3 id="stream-identifiers--ni--ob--ap--lf">Stream identifiers <code>{-ni, -ob, -ap, -lf}</code></h3>
 <p>In a given run you might have saved a variety of stream/file types {nidq.bin, obx.bin, ap.bin, lf.bin}. Use the <code>{-ni, -ob, -ap, -lf}</code> flags to indicate which streams within this run you wish to process.</p>
 <h3 id="js-and-ip-indices">js and ip indices</h3>
-<p>Several commands {extractors, -save, -sepShanks, -maxZ} target a given stream according to its {js, ip} parameters.</p>
+<p>Several commands {extractors, -save, -sepShanks} target a given stream according to its {js, ip} parameters.</p>
 <p><strong>js</strong>:</p>
 <p>(0=NI), (1=OB), (2=AP), (3=LF).</p>
 <p><strong>ip</strong>:</p>
@@ -775,8 +775,8 @@ times_imec5_0=path/extraction_output_file_3</code></pre>
 <p>-sepShanks=5,-1,5,-1,-1</p>
 <h3 id="maxz-option">maxZ option</h3>
 <p>It's very common to insert a probe only partially into the brain. The electrodes that remain outside the brain see primarily environment noise. These channels pollute CAR operations unless they are excluded. Also, you can trim these channels out of your files to make them smaller.</p>
-<p>Use maxZ to specify an insertion depth for an imec probe. This currently operates only on AP files (js=2). This will automatically create/adjust the -chnexcl option for the probe, and it will create a -save option (if you don't already have one) listing only the inserted channels. Existing -save options are also edited (see note below). Include no more than one -maxZ option for a given probe index.</p>
-<p>The parameters are -maxZ=ip,depth-type,depth-value (assumes js=2).</p>
+<p>Use maxZ to specify an insertion depth for an imec probe. This operation applies to all output from the specified probe (ip). It will automatically create/adjust the -chnexcl option for the probe's AP-band, and it will create a -save option (if you don't already have one) listing only the inserted channels. Existing -save options are also edited (see note below). Include no more than one -maxZ option for a given probe ip-index.</p>
+<p>The parameters are -maxZ=ip,depth-type,depth-value.</p>
 <p>There are three convenient ways to specify the insertion depth:</p>
 <table>
 <thead>
@@ -995,6 +995,7 @@ Options:
 <p>Version 5.1</p>
 <ul>
 <li>Updated command line logging.</li>
+<li>Option -maxZ preserves SY channels.</li>
 <li>Streams execute in parallel.</li>
 </ul>
 <p>Version 5.0</p>

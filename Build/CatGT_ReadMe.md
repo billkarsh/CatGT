@@ -405,8 +405,8 @@ flags to indicate which streams within this run you wish to process.
 
 ### js and ip indices
 
-Several commands {extractors, -save, -sepShanks, -maxZ} target a given
-stream according to its {js, ip} parameters.
+Several commands {extractors, -save, -sepShanks} target a given stream
+according to its {js, ip} parameters.
 
 **js**:
 
@@ -1280,14 +1280,14 @@ electrodes that remain outside the brain see primarily environment noise.
 These channels pollute CAR operations unless they are excluded. Also,
 you can trim these channels out of your files to make them smaller.
 
-Use maxZ to specify an insertion depth for an imec probe. This currently
-operates only on AP files (js=2). This will automatically create/adjust the
--chnexcl option for the probe, and it will create a -save option (if you
-don't already have one) listing only the inserted channels. Existing
--save options are also edited (see note below). Include no more than one
--maxZ option for a given probe index.
+Use maxZ to specify an insertion depth for an imec probe. This operation
+applies to all output from the specified probe (ip). It will automatically
+create/adjust the -chnexcl option for the probe's AP-band, and it will
+create a -save option (if you don't already have one) listing only the
+inserted channels. Existing -save options are also edited (see note below).
+Include no more than one -maxZ option for a given probe ip-index.
 
-The parameters are -maxZ=ip,depth-type,depth-value  (assumes js=2).
+The parameters are -maxZ=ip,depth-type,depth-value.
 
 There are three convenient ways to specify the insertion depth:
 
@@ -1570,6 +1570,7 @@ command lines for TPrime.
 Version 5.1
 
 - Updated command line logging.
+- Option -maxZ preserves SY channels.
 - Streams execute in parallel.
 
 Version 5.0

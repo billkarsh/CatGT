@@ -211,7 +211,7 @@ void Pass1AP2LF::adjustMeta()
     if( vSprb.size() ) {
         // EOF (units of samples) same for all vS[]
         const Save &S = vSprb[0];
-        meta.smpWritten = S.o_f->size() / S.smpBytes;
+        meta.smpWritten = (S.smpBytes > 0 ? S.o_f->size()/S.smpBytes : 0);
     }
     else
         meta.smpWritten = o_f.size() / meta.smpBytes;

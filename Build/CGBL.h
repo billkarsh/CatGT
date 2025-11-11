@@ -170,7 +170,7 @@ struct MaxZ {
     QString     sUsr;
     int         ip,
                 type;
-    MaxZ() : ip(0)  {}
+    MaxZ() : ip(0)                      {}
     MaxZ( const QString &s ) : sUsr(s)  {}
     virtual ~MaxZ()                     {}
     bool operator<( const MaxZ &rhs ) const

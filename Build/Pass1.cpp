@@ -298,6 +298,9 @@ bool Pass1::_write( qint64 bytes )
 
         foreach( const Save &S, vSprb ) {
 
+            if( S.smpBytes <= 0 )
+                continue;
+
             vec_i16 sub;
             Subset::subset( sub, o_buf, S.iKeep, meta.nC );
             bytes = smp * S.smpBytes;
@@ -661,8 +664,10 @@ void Pass1::lineFill()
     vec_i16 Ya, Yb;
 
     if( vSprb.size() ) {
-        foreach( const Save &S, vSprb )
-            lineFill1( S.o_f, Ya, Yb, S.smpBytes, S.nC, S.nN );
+        foreach( const Save &S, vSprb ) {
+            if( S.smpBytes )
+                lineFill1( S.o_f, Ya, Yb, S.smpBytes, S.nC, S.nN );
+        }
     }
     else
         lineFill1( &o_f, Ya, Yb, meta.smpBytes, meta.nC, meta.nN );
