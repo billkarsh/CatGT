@@ -155,7 +155,7 @@ struct P1EOF {
     bool init();
     EOFDAT getEOFDAT( int g, int t, t_js js, int ip ) const;
 private:
-    bool getMeta( int g, int t, t_js js, int ip, bool t_miss_ok );
+    bool getMeta( bool &isSeg, int g, int t, t_js js, int ip, bool t_miss_ok );
 };
 
 extern P1EOF    gP1EOF;

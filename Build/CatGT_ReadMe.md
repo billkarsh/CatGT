@@ -1568,6 +1568,10 @@ command lines for TPrime.
 
 ## Change Log
 
+Version 5.2
+
+- Suppress span-trimming in exported survey runs.
+
 Version 5.1
 
 - Updated command line logging.

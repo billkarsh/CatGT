@@ -918,16 +918,17 @@ bool P1EOF::init()
 
     GT_iterator I;
     int         g, t;
+    bool        isSeg = false;
 
     while( I.next( g, t ) ) {
 
         if( GBL.ni ) {
-            if( !getMeta( g, t, NI, 0, GBL.t_miss_ok ) )
+            if( !getMeta( isSeg, g, t, NI, 0, GBL.t_miss_ok ) )
                 return false;
         }
 
         foreach( uint ip, GBL.vobx ) {
-            if( !getMeta( g, t, OB, ip, GBL.t_miss_ok ) )
+            if( !getMeta( isSeg, g, t, OB, ip, GBL.t_miss_ok ) )
                 return false;
         }
 
@@ -936,18 +937,18 @@ bool P1EOF::init()
             bool    miss_ok = GBL.t_miss_ok || GBL.prb_miss_ok;
 
             if( GBL.ap ) {
-                if( !getMeta( g, t, AP, ip, miss_ok ) )
+                if( !getMeta( isSeg, g, t, AP, ip, miss_ok ) )
                     return false;
             }
 
             if( GBL.lf ) {
                 switch( gP1LFCase.getCase( ip ) ) {
                     case 0:
-                        if( !getMeta( g, t, LF, ip, miss_ok ) )
+                        if( !getMeta( isSeg, g, t, LF, ip, miss_ok ) )
                             return false;
                     break;
                     case 1:
-                        if( !getMeta( g, t, AP, ip, miss_ok ) )
+                        if( !getMeta( isSeg, g, t, AP, ip, miss_ok ) )
                             return false;
                     break;
                     default:
@@ -959,6 +960,9 @@ bool P1EOF::init()
 
 // Trim each {g,t} set to shortest
 
+    if( isSeg )
+        return true;
+
     QMap<GTJSIP,EOFDAT>::iterator
         it      = id2dat.begin(),
         end     = id2dat.end(),
@@ -966,7 +970,7 @@ bool P1EOF::init()
         last    = it + 1,
         best    = it;
 
-    for( ; ; ++it ) {
+    for( ; ; last = ++it ) {
 
         if( it == end ||
             it.key().g != start.key().g ||
@@ -990,15 +994,10 @@ bool P1EOF::init()
                 break;
 
             start = it;
-            last  = it + 1;
             best  = it;
         }
-        else {
-            if( it.value().span < best.value().span )
-                 best = it;
-
-            last = it + 1;
-        }
+        else if( it.value().span < best.value().span )
+            best = it;
     }
 
     return true;
@@ -1011,7 +1010,11 @@ P1EOF::EOFDAT P1EOF::getEOFDAT( int g, int t, t_js js, int ip ) const
 }
 
 
-bool P1EOF::getMeta( int g, int t, t_js js, int ip, bool t_miss_ok )
+// isSeg marks presence of meta item svySegStartSecs.
+// If true for any file {g, t}-sets should not be trimmed
+// because the run is not composed by time-aligned files.
+//
+bool P1EOF::getMeta( bool &isSeg, int g, int t, t_js js, int ip, bool t_miss_ok )
 {
     QFileInfo   fim;
     KVParams    kvp;
@@ -1034,6 +1037,8 @@ bool P1EOF::getMeta( int g, int t, t_js js, int ip, bool t_miss_ok )
             break;
         case AP:
         case LF:
+            if( kvp.contains( "svySegStartSecs" ) )
+                isSeg = true;
             D.srate = kvp["imSampRate"].toDouble();
             break;
     }
