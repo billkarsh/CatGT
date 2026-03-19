@@ -26,7 +26,7 @@ struct IMRODesc_T3010base
     bool operator==( const IMRODesc_T3010base &rhs ) const
         {return bank==rhs.bank && refid==rhs.refid;}
     QString toString( int chn ) const;
-    bool fromString( QString *msg, const QString &s );
+    int fromString( QString *msg, const QString &s );
 };
 
 
@@ -79,7 +79,7 @@ struct IMROTbl_T3010base : public IMROTbl
     virtual int maxInt() const          {return 2048;}
     virtual double maxVolts() const     {return 0.67;}
     virtual bool needADCCal() const     {return false;}
-    virtual int probeTech() const       {return t_tech_nxt;}
+    virtual int probeTech() const       {return t_tech_nxt_ppa;}
     virtual int apiFetchType() const    {return t_fetch_np2;}
 
     virtual bool operator==( const IMROTbl &rhs ) const
@@ -114,8 +114,8 @@ struct IMROTbl_T3010base : public IMROTbl
 
 // Hardware
 
-    virtual int selectGains( int, int, int ) const  {return 0;}
-    virtual int selectAPFlts( int, int, int ) const {return 0;}
+    virtual int selectGains4( int, int, int ) const  {return 0;}
+    virtual int selectAPFlts4( int, int, int ) const {return 0;}
 
 // Edit
 

@@ -18,6 +18,8 @@
 #include "IMROTbl_T2020.h"
 #include "IMROTbl_T3010.h"
 #include "IMROTbl_T3020.h"
+#include "IMROTbl_T3022.h"
+#include "IMROTbl_T3023.h"
 #include "IMROTbl_T3A.h"
 #include "GeomMap.h"
 #include "ShankMap.h"
@@ -242,6 +244,11 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
                 break;
             case 1032:  // NHP phase 2 (active) 45 mm, SOI115 / 125 linear, cap
             case 1033:  // NHP phase 2 (active) 45 mm, SOI115 / 125 linear sterilized, cap
+            case 1040:  // Neuropixels 1.0 NHP MAX long, tube underneath shank, linear, probe with silicon cap, 35 um shank thickness
+            case 1041:  // Neuropixels 1.0 NHP MAX long, tube underneath shank, linear, probe with 1.0 metal cap, 35 um shank thickness
+            case 1042:  // Neuropixels 1.0 NHP MAX long, tube underneath shank, linear, probe with 2.0 metal cap, 35 um shank thickness
+            case 1050:  // Neuropixels 1.0 NHP MAX long, tube around shank, linear, probe with 1.0 metal cap
+            case 1051:  // Neuropixels 1.0 NHP MAX long, tube around shank, linear, probe with 2.0 metal cap
                 _ncolhwr    = 2;
                 _ncolvis    = 2;
                 _col2vis_ev = {0,1};
@@ -447,7 +454,9 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
                 break;
             case 3020:  // NXT multishank (Ph 1B)
             case 3021:  // NXT multishank (Ph 1B) with cap
-            case 3022:  // NXT multishank (Pre A) with cap
+            case 3022:  // Neuropixels NXT pre-alpha multishank silicon cap
+            case 3023:  // Neuropixels 3.0 alpha version B multishank silicon cap
+            case 3024:  // Neuropixels 3.0 alpha version B multishank metal cap
                 _ncolhwr    = 2;
                 _ncolvis    = 2;
                 _col2vis_ev = {0,1};
@@ -765,7 +774,12 @@ QString IMROTbl::muxTable_toString() const
 
 // This method connects one electrode per channel.
 //
-int IMROTbl::selectSites( int slot, int port, int dock, bool write ) const
+int IMROTbl::selectSites4(
+    int     slot,
+    int     port,
+    int     dock,
+    bool    write,
+    bool    check ) const
 {
 #ifdef HAVE_IMEC
 // ------------------------------------
@@ -793,13 +807,13 @@ int IMROTbl::selectSites( int slot, int port, int dock, bool write ) const
 
         for( int itry = 1; itry <= 10; ++itry ) {
 
-            err = np_writeProbeConfiguration( slot, port, dock, true );
+            err = np_writeProbeConfiguration( slot, port, dock, check );
 
             if( err == SUCCESS ) {
                 if( itry > 1 ) {
                     Warning() <<
                     QString("Probe (slot %1, port %2, dock %3): writeConfig() took %4 tries.")
-                    .arg( slot ).arg( port ).arg( dock).arg( itry );
+                    .arg( slot ).arg( port ).arg( dock ).arg( itry );
                 }
                 break;
             }
@@ -813,7 +827,7 @@ int IMROTbl::selectSites( int slot, int port, int dock, bool write ) const
 }
 
 
-int IMROTbl::selectRefs( int slot, int port, int dock ) const
+int IMROTbl::selectRefs4( int slot, int port, int dock ) const
 {
 #ifdef HAVE_IMEC
 // -------------------------------
@@ -855,7 +869,7 @@ int IMROTbl::selectRefs( int slot, int port, int dock ) const
 }
 
 
-int IMROTbl::selectGains( int slot, int port, int dock ) const
+int IMROTbl::selectGains4( int slot, int port, int dock ) const
 {
 #ifdef HAVE_IMEC
 // --------------------------------
@@ -900,7 +914,7 @@ int IMROTbl::selectGains( int slot, int port, int dock ) const
 }
 
 
-int IMROTbl::selectAPFlts( int slot, int port, int dock ) const
+int IMROTbl::selectAPFlts4( int slot, int port, int dock ) const
 {
 #ifdef HAVE_IMEC
 // ----------------------------------
@@ -1162,6 +1176,11 @@ bool IMROTbl::pnToType( int &type, const QString &pn )
             case 1031:  // NHP phase 2 (active) 45 mm, SOI125 el 4416
             case 1032:  // NHP phase 2 (active) 45 mm, SOI115 / 125 linear, cap
             case 1033:  // NHP phase 2 (active) 45 mm, SOI115 / 125 linear sterilized, cap
+            case 1040:  // Neuropixels 1.0 NHP MAX long, tube underneath shank, linear, probe with silicon cap, 35 um shank thickness
+            case 1041:  // Neuropixels 1.0 NHP MAX long, tube underneath shank, linear, probe with 1.0 metal cap, 35 um shank thickness
+            case 1042:  // Neuropixels 1.0 NHP MAX long, tube underneath shank, linear, probe with 2.0 metal cap, 35 um shank thickness
+            case 1050:  // Neuropixels 1.0 NHP MAX long, tube around shank, linear, probe with 1.0 metal cap
+            case 1051:  // Neuropixels 1.0 NHP MAX long, tube around shank, linear, probe with 2.0 metal cap
                 type = 1030;
                 supp = true;
                 break;
@@ -1235,8 +1254,14 @@ bool IMROTbl::pnToType( int &type, const QString &pn )
                 break;
             case 3020:  // NXT multishank (Ph 1B)
             case 3021:  // NXT multishank (Ph 1B) with cap
-            case 3022:  // NXT multishank (Pre A) with cap
                 type = 3020;
+                supp = true;
+            case 3022:  // Neuropixels NXT pre-alpha multishank silicon cap
+                type = 3022;
+                supp = true;
+            case 3023:  // Neuropixels 3.0 alpha version B multishank silicon cap
+            case 3024:  // Neuropixels 3.0 alpha version B multishank metal cap
+                type = 3023;
                 supp = true;
                 break;
         }
@@ -1289,6 +1314,11 @@ IMROTbl* IMROTbl::alloc( const QString &pn )
             case 1031:  // NHP phase 2 (active) 45 mm, SOI125 el 4416
             case 1032:  // NHP phase 2 (active) 45 mm, SOI115 / 125 linear, cap
             case 1033:  // NHP phase 2 (active) 45 mm, SOI115 / 125 linear sterilized, cap
+            case 1040:  // Neuropixels 1.0 NHP MAX long, tube underneath shank, linear, probe with silicon cap, 35 um shank thickness
+            case 1041:  // Neuropixels 1.0 NHP MAX long, tube underneath shank, linear, probe with 1.0 metal cap, 35 um shank thickness
+            case 1042:  // Neuropixels 1.0 NHP MAX long, tube underneath shank, linear, probe with 2.0 metal cap, 35 um shank thickness
+            case 1050:  // Neuropixels 1.0 NHP MAX long, tube around shank, linear, probe with 1.0 metal cap
+            case 1051:  // Neuropixels 1.0 NHP MAX long, tube around shank, linear, probe with 2.0 metal cap
                 return new IMROTbl_T1030( pn );
             case 1100:  // UHD phase 1 el 384
                 return new IMROTbl_T1100( pn );
@@ -1330,8 +1360,12 @@ IMROTbl* IMROTbl::alloc( const QString &pn )
                 return new IMROTbl_T3010( pn );
             case 3020:  // NXT multishank (Ph 1B)
             case 3021:  // NXT multishank (Ph 1B) with cap
-            case 3022:  // NXT multishank (Pre A) with cap
                 return new IMROTbl_T3020( pn );
+            case 3022:  // Neuropixels NXT pre-alpha multishank silicon cap
+                return new IMROTbl_T3022( pn );
+            case 3023:  // Neuropixels 3.0 alpha version B multishank silicon cap
+            case 3024:  // Neuropixels 3.0 alpha version B multishank metal cap
+                return new IMROTbl_T3023( pn );
             default:
                 return 0;
         }
@@ -1349,13 +1383,265 @@ QString IMROTbl::default_imroLE( int type )
         case 21:
         case 2003:
         case 2020:
-        case 3010: return "*Default (bank 0, ref ext)";
+        case 3010:  return "*Default (bank 0, ref ext)";
         case 24:
-        case 2013: return "*Default (shnk 0, bank 0, ref ext)";
-        case 3020: return "*Default (shnk 0+1, bank 0, ref ext)";
-        case -3: return "*Default (bank 0, ref ext, gain 500/250)";
-        default: return "*Default (bank 0, ref ext, gain 500/250, flt on)";
+        case 2013:  return "*Default (shnk 0, bank 0, ref ext)";
+        case 3020:
+        case 3022:
+        case 3023:  return "*Default (shnk 0+1, bank 0, ref ext)";
+        case -3:    return "*Default (bank 0, ref ext, gain 500/250)";
+        default:    return "*Default (bank 0, ref ext, gain 500/250, flt on)";
     }
+}
+
+
+int IMROTbl::bscpnToTech( const QString &pn )
+{
+    if( pn.isEmpty() || pn == "" || pn == "<empty>" )
+        return t_tech_opto;
+    else if( pn == "NPNXT_QBSC_01" )
+        return t_tech_nxt_pa;
+    else if( pn == "NPP_QBSC03_00" )
+        return t_tech_nxt_a1b;
+
+    return t_tech_std;  // "NP2_QBSC_00", OneBox
+}
+
+
+// Headstages: phase 3B2 and later
+//
+// NP2_HS_30        // 1.0
+// NPNH_HS_30       // 128-channel
+// NPNH_HS_31       // 128-channel
+//
+// NPM_HS_01        // precommercial 2.0
+// NPM_HS_30        // precommercial 2.0
+// NPM_HS_31        //    commercial 2.0
+// NPM_HS_32        // quad-base primary
+// NPM_HS_32_ext    // quad-base extension
+// NPM_HSTC_ext     // quad-base extension (deprecated)
+//
+// OPTO_HS_00       // OPTO-1
+//
+// NPNXT_HS_03      // NXT pre-pre-alpha (2-dock, OBX-only)
+// NPNXT_HS_04      // NXT pre-alpha (1-dock, PXI-only)
+// NPNXT_HS03E      // NXT alpha-B
+//
+int IMROTbl::hspnToTech( const QString &pn )
+{
+    if( pn == "NPM_HS_32" || pn == "NPM_HS_32_ext" || pn == "NPM_HSTC_ext" )
+        return t_tech_qb;
+    else if( pn == "OPTO_HS_00" )
+        return t_tech_opto;
+    else if( pn == "NPNXT_HS_03" )
+        return t_tech_nxt_ppa;
+    else if( pn == "NPNXT_HS_04" )
+        return t_tech_nxt_pa;
+    else if( pn == "NPNXT_HS03E" )
+        return t_tech_nxt_a1b;
+
+    return t_tech_std;
+}
+
+
+int IMROTbl::prbpnToTech( const QString &pn )
+{
+    IMROTbl *R      = alloc( pn );
+    int     tech    = t_tech_std;
+
+    if( R ) {
+        tech = R->probeTech();
+        delete R;
+    }
+
+    return tech;
+}
+
+
+QString IMROTbl::strTech( int tech )
+{
+    switch( tech ) {
+        case t_tech_sim:        return "sim";
+        case t_tech_std:        return "std";
+        case t_tech_qb:         return "qb";
+        case t_tech_opto:       return "opto";
+        case t_tech_nxt_ppa:
+        case t_tech_nxt_pa:
+        case t_tech_nxt_a1b:    return "nxt";
+    }
+}
+
+
+void IMROTbl::bscReqVers( QString &bsreq, QString &bscreq, int bsctech )
+{
+#if 0
+    switch( bsctech ) {
+        case t_tech_std:
+            bsreq  = VERS_PXI_STD_BS;
+            bscreq = VERS_PXI_STD_BSC;
+            break;
+        case t_tech_opto:
+            bsreq  = VERS_PXI_OPTO_BS;
+            bscreq = VERS_PXI_OPTO_BSC;
+            break;
+        case t_tech_nxt_pa:
+            bsreq  = VERS_PXI_NXT_PA_BS;
+            bscreq = VERS_PXI_NXT_PA_BSC;
+            break;
+        case t_tech_nxt_a1b:
+            bsreq  = VERS_PXI_NXT_A1B_BS;
+            bscreq = VERS_PXI_NXT_A1B_BSC;
+            break;
+        default:
+            return;
+    }
+#endif
+}
+
+
+void IMROTbl::bscCheckTech(
+    QStringList     &bs_bsc,
+    const QString   &bsfw,
+    const QString   &bscfw,
+    int             bsctech,
+    int             slot )
+{
+#ifdef HAVE_IMEC
+    if( bsctech == t_tech_sim )
+        return;
+
+    QString bsreq,
+            bscreq;
+
+    bscReqVers( bsreq, bscreq, bsctech );
+
+    if( bsfw != bsreq ) {
+        bs_bsc.append(
+            QString("   - BS(slot %1) Has: %2 Requires: %3")
+            .arg( slot ).arg( bsfw ).arg( bsreq ) );
+    }
+
+    if( bscfw != bscreq ) {
+        bs_bsc.append(
+            QString("   - BSC(slot %1) Has: %2 Requires: %3")
+            .arg( slot ).arg( bscfw ).arg( bscreq ) );
+    }
+
+#else
+    Q_UNUSED( bs_bsc )
+    Q_UNUSED( bsfw )
+    Q_UNUSED( bscfw )
+    Q_UNUSED( bsctech )
+#endif
+}
+
+
+QString IMROTbl::hsCompatTech(
+    int     hstech,
+    int     bsctech,
+    int     slot,
+    int     port )
+{
+    QString msg;
+
+    if( bsctech == t_tech_sim )
+        ;
+    else if( hstech == t_tech_std )
+        ;
+    else if( hstech != bsctech ) {
+
+        if( hstech == t_tech_qb ) {
+            if( bsctech != t_tech_std ) {
+                msg = QString(
+                "Quad headstage(slot %1, port %2)"
+                " can only run in a STD PXI module.")
+                .arg( slot ).arg( port );
+            }
+        }
+        else if( hstech == t_tech_opto ) {
+            msg = QString(
+            "OPTO headstage(slot %1, port %2)"
+            " can only run in an OPTO PXI module.")
+            .arg( slot ).arg( port );
+        }
+        else if( hstech == t_tech_nxt_ppa ) {
+            if( bsctech != t_tech_std ) {
+                msg = QString(
+                "NXT-PPA headstage(slot %1, port %2)"
+                " can only run in OneBox.")
+                .arg( slot ).arg( port );
+            }
+        }
+        else if( hstech == t_tech_nxt_pa ) {
+            msg = QString(
+            "NXT-PA headstage(slot %1, port %2)"
+            " can only run in NXT-PA PXI module.")
+            .arg( slot ).arg( port );
+        }
+        else {  // t_tech_nxt_a1b
+            msg = QString(
+            "NXT-A1B headstage(slot %1, port %2)"
+            " can only run in NXT-A1B PXI module.")
+            .arg( slot ).arg( port );
+        }
+    }
+
+    return msg;
+}
+
+
+QString IMROTbl::prbCompatTech(
+    int     prbtech,
+    int     bsctech,
+    int     slot,
+    int     port,
+    int     dock )
+{
+    QString msg;
+
+    if( prbtech == t_tech_sim || bsctech == t_tech_sim )
+        ;
+    else if( prbtech == t_tech_std )
+        ;
+    else if( prbtech != bsctech ) {
+
+        if( prbtech == t_tech_qb ) {
+            if( bsctech != t_tech_std ) {
+                msg = QString(
+                "Quad probe(slot %1, port %2, dock %3)"
+                " can only run in a STD PXI module.")
+                .arg( slot ).arg( port ).arg( dock );
+            }
+        }
+        else if( prbtech == t_tech_opto ) {
+            msg = QString(
+            "OPTO probe(slot %1, port %2, dock %3)"
+            " can only run in an OPTO PXI module.")
+            .arg( slot ).arg( port ).arg( dock );
+        }
+        else if( prbtech == t_tech_nxt_ppa ) {
+            if( bsctech != t_tech_std ) {
+                msg = QString(
+                "NXT-PPA probe(slot %1, port %2, dock %3)"
+                " can only run in OneBox.")
+                .arg( slot ).arg( port ).arg( dock );
+            }
+        }
+        else if( prbtech == t_tech_nxt_pa ) {
+            msg = QString(
+            "NXT-PA probe(slot %1, port %2, dock %3)"
+            " can only run in NXT-PA PXI module.")
+            .arg( slot ).arg( port ).arg( dock );
+        }
+        else {  // t_tech_nxt_a1b
+            msg = QString(
+            "NXT-A1B probe(slot %1, port %2, dock %3)"
+            " can only run in an NXT-A1B PXI module.")
+            .arg( slot ).arg( port ).arg( dock );
+        }
+    }
+
+    return msg;
 }
 
 

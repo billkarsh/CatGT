@@ -50,6 +50,8 @@ HEADERS += \
     IMROTbl_T3010base.h \
     IMROTbl_T3020.h \
     IMROTbl_T3020base.h \
+    IMROTbl_T3022.h \
+    IMROTbl_T3023.h \
     IMROTbl_T3A.h \
     KVParams.h \
     Pass1.h \

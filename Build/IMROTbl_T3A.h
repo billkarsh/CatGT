@@ -24,7 +24,7 @@ struct IMRODesc_T3A
         {return bank==rhs.bank && refid==rhs.refid
             &&  apgn==rhs.apgn &&  lfgn==rhs.lfgn;}
     QString toString( int chn ) const;
-    bool fromString( QString *msg, const QString &s );
+    int fromString( QString *msg, const QString &s );
 };
 
 
@@ -138,7 +138,7 @@ struct IMROTbl_T3A : public IMROTbl
 
 // Hardware
 
-    virtual int selectAPFlts( int, int, int ) const {return 0;}
+    virtual int selectAPFlts4( int, int, int ) const {return 0;}
 
 // Edit
 

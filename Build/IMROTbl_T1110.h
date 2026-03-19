@@ -42,7 +42,7 @@ struct IMRODesc_T1110
     bool operator==( const IMRODesc_T1110 &rhs ) const
         {return bankA==rhs.bankA && bankB==rhs.bankB;}
     QString toString( int grp ) const;
-    static IMRODesc_T1110 fromString( const QString &s );
+    int fromString( QString *msg, const QString &s );
 };
 
 
@@ -139,10 +139,15 @@ struct IMROTbl_T1110 : public IMROTbl
 
 // Hardware
 
-    virtual int selectSites( int slot, int port, int dock, bool write ) const;
-    virtual int selectRefs( int slot, int port, int dock ) const;
-    virtual int selectGains( int slot, int port, int dock ) const;
-    virtual int selectAPFlts( int slot, int port, int dock ) const;
+    virtual int selectSites4(
+        int     slot,
+        int     port,
+        int     dock,
+        bool    write,
+        bool    check ) const;
+    virtual int selectRefs4( int slot, int port, int dock ) const;
+    virtual int selectGains4( int slot, int port, int dock ) const;
+    virtual int selectAPFlts4( int slot, int port, int dock ) const;
 
 // Edit
 

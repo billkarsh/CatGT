@@ -1100,12 +1100,15 @@ You can override the count giving any value >= 1.
 Starting with version 3.0, CatGT automatically extracts sync edges
 from all streams unless you turn that off using `-no_auto_sync`.
 
+In the following autonaming examples, `span` is 1/2 the sync period in ms,
+so span = 500 for the default case of 1 second sync.
+
 For an NI stream, CatGT reads the metadata to see which analog or digital
 word contains the sync waveform and builds the corresponding extractor for
-you, either `-xa=0,0,word,thresh,0,500` or `-xd=0,0,word,bit,500`.
+you, either `-xa=0,0,word,thresh,0,span` or `-xd=0,0,word,bit,span`.
 
 For OB and AP streams, CatGT seeks edges in bit #6 of the SY word, as if
-you had specified `-xd=1,ip,-1,6,500` and/or `-xd=2,ip,-1,6,500`.
+you had specified `-xd=1,ip,-1,6,span` and/or `-xd=2,ip,-1,6,span`.
 
 ### -t=cat defer extraction to a later pass
 
@@ -1567,6 +1570,11 @@ command lines for TPrime.
 ------
 
 ## Change Log
+
+Version 5.3
+
+- Auto sync extractors decode period.
+- Support NP1040, 1041, 1042, 1050, 1051, 3023, 3024.
 
 Version 5.2
 
