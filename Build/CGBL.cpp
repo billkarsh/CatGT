@@ -3422,25 +3422,27 @@ bool CGBL::addAutoExtractors()
     if( !auto_sync )
         return true;
 
+// Metafile common
+
+    QFileInfo   fim;
+    KVParams    kvp;
+    int         ie, g0, t0, span = 0;
+
+    if( pass() == 2 ) {
+        ie = 0;
+        g0 = velem[0].g;
+        t0 = -1;
+    }
+    else {
+        ie = -1;
+        g0 = gt_get_first( &t0 );
+        if( in_catgt_fld )
+            t0 = -1;
+    }
+
 // NI
 
     if( ni ) {
-
-        QFileInfo   fim;
-        KVParams    kvp;
-        int         ie, g0, t0;
-
-        if( pass() == 2 ) {
-            ie = 0;
-            g0 = velem[0].g;
-            t0 = -1;
-        }
-        else {
-            ie = -1;
-            g0 = gt_get_first( &t0 );
-            if( in_catgt_fld )
-                t0 = -1;
-        }
 
         if( openInputMeta( fim, kvp, ie, g0, t0, NI, 0, 0, false ) )
             return false;
@@ -3452,6 +3454,8 @@ bool CGBL::addAutoExtractors()
         if( !getSavedChannels( snsFileChans, kvp, fim ) )
             return false;
 
+        span = 500 * kvp["syncSourcePeriod"].toInt();
+
         if( kvp["syncNiChanType"].toInt() == 1 ) {  // Analog
 
             A_Pulse *X = new A_Pulse;
@@ -3462,7 +3466,7 @@ bool CGBL::addAutoExtractors()
             X->word     = snsFileChans.indexOf( iword );
             X->thresh   = kvp["syncNiThresh"].toDouble();
             X->thrsh2   = 0;
-            X->span     = 500;
+            X->span     = span;
             vX.push_back( X );
         }
         else {  // Digital
@@ -3481,7 +3485,7 @@ bool CGBL::addAutoExtractors()
             X->ip       = 0;
             X->word     = iword;
             X->bit      = bit;
-            X->span     = 500;
+            X->span     = span;
             vX.push_back( X );
         }
     }
@@ -3489,6 +3493,13 @@ bool CGBL::addAutoExtractors()
 // OB
 
     foreach( uint ip, vobx ) {
+
+        if( !span ) {
+            if( openInputMeta( fim, kvp, ie, g0, t0, OB, ip, ip, false ) )
+                return false;
+            span = 500 * kvp["syncSourcePeriod"].toInt();
+        }
+
         D_Pulse *X = new D_Pulse;
         X->ex       = eXD;
         X->usrord   = -1;
@@ -3496,7 +3507,7 @@ bool CGBL::addAutoExtractors()
         X->ip       = ip;
         X->word     = -1;
         X->bit      = 6;
-        X->span     = 500;
+        X->span     = span;
         vX.push_back( X );
     }
 
@@ -3504,6 +3515,13 @@ bool CGBL::addAutoExtractors()
 
     if( pass() == 1 ) {
         foreach( uint ip, vprb ) {
+
+            if( !span ) {
+                if( openInputMeta( fim, kvp, ie, g0, t0, AP, ip, ip, false ) )
+                    return false;
+                span = 500 * kvp["syncSourcePeriod"].toInt();
+            }
+
             D_Pulse *X = new D_Pulse;
             X->ex       = eXD;
             X->usrord   = -1;
@@ -3511,12 +3529,19 @@ bool CGBL::addAutoExtractors()
             X->ip       = ip;
             X->word     = -1;
             X->bit      = 6;
-            X->span     = 500;
+            X->span     = span;
             vX.push_back( X );
         }
     }
     else {
         foreach( int ip, set_ip1 ) {
+
+            if( !span ) {
+                if( openInputMeta( fim, kvp, ie, g0, t0, AP, ip, ip, false ) )
+                    return false;
+                span = 500 * kvp["syncSourcePeriod"].toInt();
+            }
+
             D_Pulse *X = new D_Pulse;
             X->ex       = eXD;
             X->usrord   = -1;
@@ -3524,7 +3549,7 @@ bool CGBL::addAutoExtractors()
             X->ip       = ip;
             X->word     = -1;
             X->bit      = 6;
-            X->span     = 500;
+            X->span     = span;
             vX.push_back( X );
         }
     }
