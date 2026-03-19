@@ -123,6 +123,6 @@ unix {
 QMAKE_TARGET_COMPANY = Bill Karsh
 QMAKE_TARGET_PRODUCT = CatGT
 QMAKE_TARGET_DESCRIPTION = Joins, filters, edits, extracts events
-QMAKE_TARGET_COPYRIGHT = (c) 2024, Bill Karsh, All rights reserved
-VERSION = 5.2
+QMAKE_TARGET_COPYRIGHT = (c) 2026, Bill Karsh, All rights reserved
+VERSION = 5.3
 
