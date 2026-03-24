@@ -558,7 +558,8 @@ bool IMROTbl::loadFile( QString &msg, const QString &path )
         }
     }
     else {
-        msg = QString("Error opening '%1'").arg( fi.fileName() );
+        msg = QString("File error <%1> opening(read) '%2'")
+        .arg( f.errorString() ).arg( fi.fileName() );
         return false;
     }
 }
@@ -586,7 +587,8 @@ bool IMROTbl::saveFile( QString &msg, const QString &path ) const
         }
     }
     else {
-        msg = QString("Error opening '%1'").arg( fi.fileName() );
+        msg = QString("File error <%1> opening(write) '%2'")
+        .arg( f.errorString() ).arg( fi.fileName() );
         return false;
     }
 }
@@ -774,12 +776,7 @@ QString IMROTbl::muxTable_toString() const
 
 // This method connects one electrode per channel.
 //
-int IMROTbl::selectSites4(
-    int     slot,
-    int     port,
-    int     dock,
-    bool    write,
-    bool    check ) const
+int IMROTbl::selectSites4( const PAddr& adr, bool write, bool check ) const
 {
 #ifdef HAVE_IMEC
 // ------------------------------------
@@ -797,7 +794,8 @@ int IMROTbl::selectSites4(
 
         shank = elShankAndBank( bank, ic );
 
-        err = np_selectElectrode( slot, port, dock, ic, shank, bank );
+        err = np_selectElectrode(
+                adr.slot, adr.port, adr.dock, ic, shank, bank );
 
         if( err != SUCCESS )
             return err;
@@ -807,13 +805,14 @@ int IMROTbl::selectSites4(
 
         for( int itry = 1; itry <= 10; ++itry ) {
 
-            err = np_writeProbeConfiguration( slot, port, dock, check );
+            err = np_writeProbeConfiguration(
+                    adr.slot, adr.port, adr.dock, check );
 
             if( err == SUCCESS ) {
                 if( itry > 1 ) {
                     Warning() <<
-                    QString("Probe (slot %1, port %2, dock %3): writeConfig() took %4 tries.")
-                    .arg( slot ).arg( port ).arg( dock ).arg( itry );
+                    QString("Probe(%1): writeConfig() took %2 tries.")
+                    .arg( adr.tx_spd() ).arg( itry );
                 }
                 break;
             }
@@ -821,13 +820,17 @@ int IMROTbl::selectSites4(
             QThread::msleep( 100 );
         }
     }
+#else
+    Q_UNUSED( adr )
+    Q_UNUSED( write )
+    Q_UNUSED( check )
 #endif
 
     return 0;
 }
 
 
-int IMROTbl::selectRefs4( int slot, int port, int dock ) const
+int IMROTbl::selectRefs4( const PAddr& adr ) const
 {
 #ifdef HAVE_IMEC
 // -------------------------------
@@ -839,7 +842,8 @@ int IMROTbl::selectRefs4( int slot, int port, int dock ) const
         for( int ic = 0; ic < 4; ++ic ) {
 
             NP_ErrorCode    err =
-            np_setReference( slot, port, dock, ic, ic, NONE_REF, 0 );
+            np_setReference(
+                adr.slot, adr.port, adr.dock, ic, ic, NONE_REF, 0 );
 
             if( err != SUCCESS )
                 return err;
@@ -857,19 +861,21 @@ int IMROTbl::selectRefs4( int slot, int port, int dock ) const
 
         type = refTypeAndFields( shank, bank, ic );
 
-        err = np_setReference( slot, port, dock, ic,
+        err = np_setReference( adr.slot, adr.port, adr.dock, ic,
                 shank, channelreference_t(type), bank );
 
         if( err != SUCCESS )
             return err;
     }
+#else
+    Q_UNUSED( adr )
 #endif
 
     return 0;
 }
 
 
-int IMROTbl::selectGains4( int slot, int port, int dock ) const
+int IMROTbl::selectGains4( const PAddr& adr ) const
 {
 #ifdef HAVE_IMEC
 // --------------------------------
@@ -880,7 +886,7 @@ int IMROTbl::selectGains4( int slot, int port, int dock ) const
 
         NP_ErrorCode    err;
 
-        err = np_setGain( slot, port, dock, ic,
+        err = np_setGain( adr.slot, adr.port, adr.dock, ic,
                 gainToIdx( apGain( ic ) ),
                 gainToIdx( lfGain( ic ) ) );
 
@@ -899,7 +905,7 @@ int IMROTbl::selectGains4( int slot, int port, int dock ) const
             lfidx = R->gainToIdx( 50 );
         }
 
-        err = np_setGain( P.slot, P.port, P.dock, ic,
+        err = np_setGain( P.adr.slot, P.adr.port, P.adr.dock, ic,
                 apidx,
                 lfidx );
 #endif
@@ -908,13 +914,15 @@ int IMROTbl::selectGains4( int slot, int port, int dock ) const
         if( err != SUCCESS )
             return err;
     }
+#else
+    Q_UNUSED( adr )
 #endif
 
     return 0;
 }
 
 
-int IMROTbl::selectAPFlts4( int slot, int port, int dock ) const
+int IMROTbl::selectAPFlts4( const PAddr& adr ) const
 {
 #ifdef HAVE_IMEC
 // ----------------------------------
@@ -925,11 +933,14 @@ int IMROTbl::selectAPFlts4( int slot, int port, int dock ) const
 
         NP_ErrorCode    err;
 
-        err = np_setAPCornerFrequency( slot, port, dock, ic, !apFlt( ic ) );
+        err = np_setAPCornerFrequency(
+                adr.slot, adr.port, adr.dock, ic, !apFlt( ic ) );
 
         if( err != SUCCESS )
             return err;
     }
+#else
+    Q_UNUSED( adr )
 #endif
 
     return 0;
@@ -956,7 +967,7 @@ bool IMROTbl::edit_isCanonical( tImroROIs vR ) const
 
     int ne = 0;
 
-    for( int ib = 0; ib < vR.size(); ++ib ) {
+    for( int ib = 0; ib < (int)vR.size(); ++ib ) {
 
         const IMRO_ROI  &B = vR[ib];
         int             w  = B.width( _ncolhwr );
@@ -983,7 +994,7 @@ void IMROTbl::edit_tbl2ROI( tImroROIs vR ) const
     toShankMap_hwr( M );
     std::sort( M.e.begin(), M.e.end() );    // s->r->c
 
-    for( int ie = 0, ne = M.e.size(); ie < ne; ) {
+    for( int ie = 0, ne = (int)M.e.size(); ie < ne; ) {
 
         // Start pat0 and box row-range
         ShankMapDesc    &B0     = M.e[ie++];
@@ -1066,7 +1077,7 @@ void IMROTbl::edit_exclude( tImroSites vX, tconstImroROIs vR ) const
 {
     vX.clear();
 
-    for( int ib = 0, nb = vR.size(); ib < nb; ++ib ) {
+    for( int ib = 0, nb = (int)vR.size(); ib < nb; ++ib ) {
 
         const IMRO_ROI  &B = vR[ib];
 
@@ -1089,7 +1100,7 @@ void IMROTbl::edit_ROI2Bits( QBitArray &b, tconstImroROIs vR ) const
     b.clear();
     b.resize( nAP() );
 
-    for( int ib = 0, nb = vR.size(); ib < nb; ++ib ) {
+    for( int ib = 0, nb = (int)vR.size(); ib < nb; ++ib ) {
 
         const IMRO_ROI  &B = vR[ib];
 
@@ -1256,13 +1267,17 @@ bool IMROTbl::pnToType( int &type, const QString &pn )
             case 3021:  // NXT multishank (Ph 1B) with cap
                 type = 3020;
                 supp = true;
+                break;
             case 3022:  // Neuropixels NXT pre-alpha multishank silicon cap
                 type = 3022;
                 supp = true;
+                break;
             case 3023:  // Neuropixels 3.0 alpha version B multishank silicon cap
             case 3024:  // Neuropixels 3.0 alpha version B multishank metal cap
                 type = 3023;
                 supp = true;
+                break;
+            default:
                 break;
         }
     }
@@ -1468,6 +1483,7 @@ QString IMROTbl::strTech( int tech )
         case t_tech_nxt_ppa:
         case t_tech_nxt_pa:
         case t_tech_nxt_a1b:    return "nxt";
+        default:                return "unknown";
     }
 }
 
@@ -1495,6 +1511,10 @@ void IMROTbl::bscReqVers( QString &bsreq, QString &bscreq, int bsctech )
         default:
             return;
     }
+#else
+    Q_UNUSED( bsreq )
+    Q_UNUSED( bscreq )
+    Q_UNUSED( bsctech )
 #endif
 }
 
@@ -1532,15 +1552,15 @@ void IMROTbl::bscCheckTech(
     Q_UNUSED( bsfw )
     Q_UNUSED( bscfw )
     Q_UNUSED( bsctech )
+    Q_UNUSED( slot )
 #endif
 }
 
 
 QString IMROTbl::hsCompatTech(
-    int     hstech,
-    int     bsctech,
-    int     slot,
-    int     port )
+    int             hstech,
+    int             bsctech,
+    const PAddr&    adr )
 {
     QString msg;
 
@@ -1553,36 +1573,31 @@ QString IMROTbl::hsCompatTech(
         if( hstech == t_tech_qb ) {
             if( bsctech != t_tech_std ) {
                 msg = QString(
-                "Quad headstage(slot %1, port %2)"
-                " can only run in a STD PXI module.")
-                .arg( slot ).arg( port );
+                "Quad headstage(%1) can only run in a STD PXI module.")
+                .arg( adr.tx_sp() );
             }
         }
         else if( hstech == t_tech_opto ) {
             msg = QString(
-            "OPTO headstage(slot %1, port %2)"
-            " can only run in an OPTO PXI module.")
-            .arg( slot ).arg( port );
+            "OPTO headstage(%1) can only run in an OPTO PXI module.")
+            .arg( adr.tx_sp() );
         }
         else if( hstech == t_tech_nxt_ppa ) {
             if( bsctech != t_tech_std ) {
                 msg = QString(
-                "NXT-PPA headstage(slot %1, port %2)"
-                " can only run in OneBox.")
-                .arg( slot ).arg( port );
+                "NXT-PPA headstage(%1) can only run in OneBox.")
+                .arg( adr.tx_sp() );
             }
         }
         else if( hstech == t_tech_nxt_pa ) {
             msg = QString(
-            "NXT-PA headstage(slot %1, port %2)"
-            " can only run in NXT-PA PXI module.")
-            .arg( slot ).arg( port );
+            "NXT-PA headstage(%1) can only run in NXT-PA PXI module.")
+            .arg( adr.tx_sp() );
         }
         else {  // t_tech_nxt_a1b
             msg = QString(
-            "NXT-A1B headstage(slot %1, port %2)"
-            " can only run in NXT-A1B PXI module.")
-            .arg( slot ).arg( port );
+            "NXT-A1B headstage(%1) can only run in NXT-A1B PXI module.")
+            .arg( adr.tx_sp() );
         }
     }
 
@@ -1591,11 +1606,9 @@ QString IMROTbl::hsCompatTech(
 
 
 QString IMROTbl::prbCompatTech(
-    int     prbtech,
-    int     bsctech,
-    int     slot,
-    int     port,
-    int     dock )
+    int             prbtech,
+    int             bsctech,
+    const PAddr&    adr )
 {
     QString msg;
 
@@ -1608,36 +1621,31 @@ QString IMROTbl::prbCompatTech(
         if( prbtech == t_tech_qb ) {
             if( bsctech != t_tech_std ) {
                 msg = QString(
-                "Quad probe(slot %1, port %2, dock %3)"
-                " can only run in a STD PXI module.")
-                .arg( slot ).arg( port ).arg( dock );
+                "Quad probe(%1) can only run in a STD PXI module.")
+                .arg( adr.tx_spd() );
             }
         }
         else if( prbtech == t_tech_opto ) {
             msg = QString(
-            "OPTO probe(slot %1, port %2, dock %3)"
-            " can only run in an OPTO PXI module.")
-            .arg( slot ).arg( port ).arg( dock );
+            "OPTO probe(%1) can only run in an OPTO PXI module.")
+            .arg( adr.tx_spd() );
         }
         else if( prbtech == t_tech_nxt_ppa ) {
             if( bsctech != t_tech_std ) {
                 msg = QString(
-                "NXT-PPA probe(slot %1, port %2, dock %3)"
-                " can only run in OneBox.")
-                .arg( slot ).arg( port ).arg( dock );
+                "NXT-PPA probe(%1) can only run in OneBox.")
+                .arg( adr.tx_spd() );
             }
         }
         else if( prbtech == t_tech_nxt_pa ) {
             msg = QString(
-            "NXT-PA probe(slot %1, port %2, dock %3)"
-            " can only run in NXT-PA PXI module.")
-            .arg( slot ).arg( port ).arg( dock );
+            "NXT-PA probe(%1) can only run in NXT-PA PXI module.")
+            .arg( adr.tx_spd() );
         }
         else {  // t_tech_nxt_a1b
             msg = QString(
-            "NXT-A1B probe(slot %1, port %2, dock %3)"
-            " can only run in an NXT-A1B PXI module.")
-            .arg( slot ).arg( port ).arg( dock );
+            "NXT-A1B probe(%1) can only run in an NXT-A1B PXI module.")
+            .arg( adr.tx_spd() );
         }
     }
 

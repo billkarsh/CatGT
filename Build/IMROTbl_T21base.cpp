@@ -329,12 +329,7 @@ void IMROTbl_T21base::muxTable( int &nADC, int &nGrp, std::vector<int> &T ) cons
 
 // This method connects multiple electrodes per channel.
 //
-int IMROTbl_T21base::selectSites4(
-    int     slot,
-    int     port,
-    int     dock,
-    bool    write,
-    bool    check ) const
+int IMROTbl_T21base::selectSites4( const PAddr& adr, bool write, bool check ) const
 {
 #ifdef HAVE_IMEC
 // ------------------------------------
@@ -351,7 +346,7 @@ int IMROTbl_T21base::selectSites4(
 
         shank = elShankAndBank( bank, ic );
 
-        err = np_selectElectrodeMask( slot, port, dock, ic,
+        err = np_selectElectrodeMask( adr.slot, adr.port, adr.dock, ic,
                 shank, electrodebanks_t(bank) );
 
         if( err != SUCCESS )
@@ -359,7 +354,11 @@ int IMROTbl_T21base::selectSites4(
     }
 
     if( write )
-        np_writeProbeConfiguration( slot, port, dock, check );
+        np_writeProbeConfiguration( adr.slot, adr.port, adr.dock, check );
+#else
+    Q_UNUSED( adr )
+    Q_UNUSED( write )
+    Q_UNUSED( check )
 #endif
 
     return 0;
@@ -470,7 +469,7 @@ void IMROTbl_T21base::edit_ROI2tbl( tconstImroROIs vR, const IMRO_Attr &A )
     e.clear();
     e.resize( imType21baseChan );
 
-    for( int ib = 0, nb = vR.size(); ib < nb; ++ib ) {
+    for( int ib = 0, nb = (int)vR.size(); ib < nb; ++ib ) {
 
         const IMRO_ROI  &B = vR[ib];
 

@@ -438,7 +438,7 @@ void IMROTbl_T2020::edit_ROI2tbl( tconstImroROIs vR, const IMRO_Attr &A )
     e.clear();
     e.resize( imType2020Chan );
 
-    for( int ib = 0, nb = vR.size(); ib < nb; ++ib ) {
+    for( int ib = 0, nb = (int)vR.size(); ib < nb; ++ib ) {
 
         const IMRO_ROI  &B = vR[ib];
 
@@ -484,7 +484,7 @@ bool IMROTbl_T2020::edit_isCanonical( tImroROIs vR ) const
 
     int ne[4] = {0,0,0,0};
 
-    for( int ib = 0; ib < vR.size(); ++ib ) {
+    for( int ib = 0; ib < (int)vR.size(); ++ib ) {
 
         const IMRO_ROI  &B = vR[ib];
         int             w  = B.width( _ncolhwr );

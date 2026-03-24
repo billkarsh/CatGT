@@ -1,12 +1,17 @@
 #ifndef IMROTBL_H
 #define IMROTBL_H
 
+#include "qhashfunctions.h"
 #include <QString>
 
 #include <vector>
 
 struct GeomMap;
 struct ShankMap;
+
+namespace NeuropixAPI {
+struct IProbe;
+}
 
 class QBitArray;
 
@@ -40,6 +45,47 @@ enum T_probe_fetch {
 };
 
 #define IMRO_ROI_MAX    16
+
+// Hardware helper
+//
+struct PAddr {
+    qint8   slot,
+            port,
+            dock;
+    PAddr() : slot(0), port(0), dock(0)         {}
+    PAddr( int slot, int port, int dock )
+        : slot(slot), port(port), dock(dock)    {}
+    QString tx_s() const
+        {return QString("slot %1")
+                .arg( slot );
+        }
+    QString tx_sp() const
+        {return QString("slot %1 port %2")
+                .arg( slot ).arg( port );
+        }
+    QString tx_spd() const
+        {return QString("slot %1 port %2 dock %3")
+                .arg( slot ).arg( port ).arg( dock );
+        }
+    bool eq_sp( const PAddr& rhs ) const
+        {return slot==rhs.slot && port==rhs.port;}
+    bool operator==( const PAddr& rhs ) const
+        {return eq_sp( rhs ) && dock==rhs.dock;}
+    bool operator<( const PAddr& rhs ) const
+        {
+            if( slot < rhs.slot )
+                return true;
+            if( slot > rhs.slot )
+                return false;
+            if( port < rhs.port )
+                return true;
+            if( port > rhs.port )
+                return false;
+            return dock < rhs.dock;
+        }
+};
+//inline size_t qHash( const PAddr& key, size_t seed = 0 )
+//    {return qHashMulti( seed, key.slot, key.port, key.dock );}
 
 // Editing helper - columns in hwr coords
 //
@@ -211,15 +257,26 @@ public:
 
 // Hardware
 
-    virtual int selectSites4(
-        int     slot,
-        int     port,
-        int     dock,
-        bool    write,
-        bool    check ) const;
-    virtual int selectRefs4( int slot, int port, int dock ) const;
-    virtual int selectGains4( int slot, int port, int dock ) const;
-    virtual int selectAPFlts4( int slot, int port, int dock ) const;
+    virtual int selectSites4( const PAddr& adr, bool write, bool check ) const;
+    virtual int selectRefs4( const PAddr& adr ) const;
+    virtual int selectGains4( const PAddr& adr ) const;
+    virtual int selectAPFlts4( const PAddr& adr ) const;
+
+    virtual QString selectSites5(
+        NeuropixAPI::IProbe*    pr,
+        const PAddr&            adr,
+        bool                    write,
+        bool                    check ) const
+        {Q_UNUSED(pr) Q_UNUSED(adr)
+         Q_UNUSED(write) Q_UNUSED(check)
+         return QString();
+        }
+    virtual QString selectRefs5(
+        NeuropixAPI::IProbe*    pr,
+        const PAddr&            adr ) const
+        {Q_UNUSED(pr) Q_UNUSED(adr)
+         return QString();
+        }
 
 // Edit
 
@@ -230,11 +287,11 @@ public:
     virtual IMRO_Attr edit_Attr_cur() const     {return IMRO_Attr();}
     virtual bool edit_Attr_canonical() const    {return false;}
     virtual void edit_exclude_1( tImroSites vX, const IMRO_Site &s ) const
-        {vX.clear(); Q_UNUSED( s )}
+        {vX.clear(); Q_UNUSED(s)}
     virtual int edit_site2Chan( const IMRO_Site &s ) const
-        {Q_UNUSED( s ) return 0;}
+        {Q_UNUSED(s) return 0;}
     virtual void edit_ROI2tbl( tconstImroROIs vR, const IMRO_Attr &A )
-        {Q_UNUSED( vR ) Q_UNUSED( A )}
+        {Q_UNUSED(vR) Q_UNUSED(A)}
     virtual void edit_defaultROI( tImroROIs vR ) const;
     virtual bool edit_isCanonical( tImroROIs vR ) const;
     void edit_tbl2ROI( tImroROIs vR ) const;
@@ -261,16 +318,13 @@ public:
         int             bsctech,
         int             slot );
     static QString hsCompatTech(
-        int     hstech,
-        int     bsctech,
-        int     slot,
-        int     port );
+        int             hstech,
+        int             bsctech,
+        const PAddr&    adr );
     static QString prbCompatTech(
-        int     prbtech,
-        int     bsctech,
-        int     slot,
-        int     port,
-        int     dock );
+        int             prbtech,
+        int             bsctech,
+        const PAddr&    adr );
 };
 
 #endif  // IMROTBL_H

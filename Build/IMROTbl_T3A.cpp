@@ -199,7 +199,8 @@ bool IMROTbl_T3A::loadFile( QString &msg, const QString &path )
         }
     }
     else {
-        msg = QString("Error opening '%1'").arg( fi.fileName() );
+        msg = QString("File error <%1> opening(read) '%2'")
+        .arg( f.errorString() ).arg( fi.fileName() );
         return false;
     }
 }
@@ -228,7 +229,8 @@ bool IMROTbl_T3A::saveFile( QString &msg, const QString &path ) const
         }
     }
     else {
-        msg = QString("Error opening '%1'").arg( fi.fileName() );
+        msg = QString("File error <%1> opening(write) '%2'")
+        .arg( f.errorString() ).arg( fi.fileName() );
         return false;
     }
 }
