@@ -130,7 +130,7 @@ void ShankMap::fillDefaultNiSaved( int nChan, const QVector<uint> &saved )
 
             int chan = 2*ir + ic;
 
-            if( chan < nChan && saved.contains( chan ) )
+            if( chan < nChan && saved.contains( (uint)chan ) )
                 e.push_back( ShankMapDesc( 0, ic, ir, 1 ) );
         }
     }
@@ -169,7 +169,7 @@ void ShankMap::chanOrderFromMapIm( QString &s, int nLF ) const
     QString     s2;
     QTextStream tsAP( &s,  QIODevice::WriteOnly );
     QTextStream tsLF( &s2, QIODevice::WriteOnly );
-    int         nC = e.size(),
+    int         nC = (int)e.size(),
                 v;
 
 // first item
@@ -240,7 +240,7 @@ void ShankMap::revChanOrderFromMapIm( QString &s, int nLF ) const
     QString     s2;
     QTextStream tsAP( &s,  QIODevice::WriteOnly );
     QTextStream tsLF( &s2, QIODevice::WriteOnly );
-    int         nC = e.size(),
+    int         nC = (int)e.size(),
                 v;
 
 // first item
@@ -303,9 +303,7 @@ void ShankMap::inverseMap( QMap<ShankMapDesc,uint> &inv ) const
 {
     inv.clear();
 
-    int n = e.size();
-
-    for( int i = 0; i < n; ++i )
+    for( int i = 0, n = (int)e.size(); i < n; ++i )
         inv[e[i]] = i;
 }
 
@@ -328,7 +326,7 @@ QString ShankMap::toString() const
 {
     QString     s;
     QTextStream ts( &s, QIODevice::WriteOnly );
-    int         n = e.size();
+    int         n = (int)e.size();
 
     ts << "(" << ns << "," << nc << "," << nr << ")";
 
@@ -365,7 +363,7 @@ QString ShankMap::toWhSpcSepString() const
 {
     QString     s;
     QTextStream ts( &s, QIODevice::WriteOnly );
-    int         n = e.size();
+    int         n = (int)e.size();
 
     ts << ns << "," << nc << "," << nr << "\n";
 

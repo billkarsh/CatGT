@@ -61,7 +61,7 @@ ChanMapDesc ChanMapDesc::fromWhSpcSepString( const QString &s_in )
 //
 void ChanMap::defaultOrder( QVector<int> &v ) const
 {
-    int n = e.size();
+    int n = (int)e.size();
 
     v.resize( n );
 
@@ -80,7 +80,7 @@ void ChanMap::defaultOrder( QVector<int> &v ) const
 void ChanMap::userOrder( QVector<int> &v ) const
 {
     QMap<int,int>   order2entry;
-    int             n = e.size(),
+    int             n = (int)e.size(),
                     k = 0;
 
     for( int i = 0; i < n; ++i )
@@ -129,7 +129,8 @@ bool ChanMap::loadFile( QString &msg, const QString &path )
         }
     }
     else {
-        msg = QString("Error opening '%1'").arg( fi.fileName() );
+        msg = QString("File error <%1> opening(read) '%2'")
+        .arg( f.errorString() ).arg( fi.fileName() );
         return false;
     }
 }
@@ -155,7 +156,8 @@ bool ChanMap::saveFile( QString &msg, const QString &path ) const
         }
     }
     else {
-        msg = QString("Error opening '%1'").arg( fi.fileName() );
+        msg = QString("File error <%1> opening(write) '%2'")
+        .arg( f.errorString() ).arg( fi.fileName() );
         return false;
     }
 }
@@ -221,7 +223,7 @@ QString ChanMapNI::toString() const
 {
     QString     s;
     QTextStream ts( &s, QIODevice::WriteOnly );
-    int         n = e.size();
+    int         n = (int)e.size();
 
     ts << "(" << MN << "," << MA << ","
               << C  << "," << XA << "," << XD << ")";
@@ -260,7 +262,7 @@ QString ChanMapNI::toWhSpcSepString() const
 {
     QString     s;
     QTextStream ts( &s, QIODevice::WriteOnly );
-    int         n = e.size();
+    int         n = (int)e.size();
 
     ts << MN << "," << MA << ","
        << C  << "," << XA << "," << XD << "\n";
@@ -377,7 +379,7 @@ QString ChanMapOB::toString() const
 {
     QString     s;
     QTextStream ts( &s, QIODevice::WriteOnly );
-    int         n = e.size();
+    int         n = (int)e.size();
 
     ts << "(" << XA << "," << XD << "," << SY << ")";
 
@@ -414,7 +416,7 @@ QString ChanMapOB::toWhSpcSepString() const
 {
     QString     s;
     QTextStream ts( &s, QIODevice::WriteOnly );
-    int         n = e.size();
+    int         n = (int)e.size();
 
     ts << XA << "," << XD << "," << SY << "\n";
 
@@ -497,7 +499,7 @@ void ChanMapIM::setImroOrder( const IMROTbl *R )
     QVector<int>    v;
     R->eaChansOrder( v );
 
-    for( int i = 0, n = e.size(); i < n; ++i )
+    for( int i = 0, n = (int)e.size(); i < n; ++i )
         e[i].order = v[i];
 }
 
@@ -542,7 +544,7 @@ QString ChanMapIM::toString() const
 {
     QString     s;
     QTextStream ts( &s, QIODevice::WriteOnly );
-    int         n = e.size();
+    int         n = (int)e.size();
 
     ts << "(" << AP << "," << LF << "," << SY << ")";
 
@@ -579,7 +581,7 @@ QString ChanMapIM::toWhSpcSepString() const
 {
     QString     s;
     QTextStream ts( &s, QIODevice::WriteOnly );
-    int         n = e.size();
+    int         n = (int)e.size();
 
     ts << AP << "," << LF << "," << SY << "\n";
 
