@@ -7,7 +7,7 @@ QMutex          Pass2::ip1Mtx;
 
 
 Pass2::Pass2( t_js js, int ip2 )
-    :   js(js), ip2(ip2), miss_ok(false), do_bin(true)
+    :   ip2(ip2), js(js), miss_ok(false), do_bin(true)
 {
     buf.resize( 32 * 1024 * 1024 / sizeof(BTYPE) );
 
@@ -256,7 +256,7 @@ static bool copyBinary(
     while( finBytes > 0 ) {
 
         int cpySamps,
-            cpyBytes = qMin( bufBytes, finBytes );
+            cpyBytes = (int)qMin( bufBytes, finBytes );
 
         cpySamps = cpyBytes / meta.smpBytes;
         cpyBytes = cpySamps * meta.smpBytes;

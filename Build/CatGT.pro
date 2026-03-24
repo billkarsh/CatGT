@@ -93,6 +93,7 @@ SOURCES += \
     IMROTbl_T24base.cpp \
     IMROTbl_T3010base.cpp \
     IMROTbl_T3020base.cpp \
+    IMROTbl_T3023.cpp \
     IMROTbl_T3A.cpp \
     KVParams.cpp \
     main.cpp \

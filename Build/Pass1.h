@@ -80,7 +80,8 @@ protected:
         bool            zeroSY );
 
     virtual void digital( const qint16 *data, int ntpts );
-    virtual void neural( qint16 *data, int ntpts )  {}
+    virtual void neural( qint16 *data, int ntpts )
+        {Q_UNUSED(data) Q_UNUSED(ntpts)}
     virtual bool _write( qint64 bytes );
     virtual bool zero( qint64 gapBytes, qint64 zfBytes );
 

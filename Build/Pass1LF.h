@@ -15,7 +15,8 @@ public:
 
     virtual bool run();
 
-    virtual void digital( const qint16 *data, int ntpts )   {}
+    virtual void digital( const qint16 *data, int ntpts )
+        {Q_UNUSED(data) Q_UNUSED(ntpts)}
 
 private:
     bool filtersAndScaling();

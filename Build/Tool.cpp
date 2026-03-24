@@ -125,7 +125,7 @@ void FFT::init(
 
             flt.resize( SZFFT/2 + 1 );
 
-            flt[0] = (GBL.apflt.Fhi ? 0 : 1);
+            flt[0] = (GBL.apflt.Fhi != 0.0 ? 0 : 1);
 
             double  f = meta.srate / SZFFT;
             int     x = 2 * GBL.apflt.order;
@@ -134,10 +134,10 @@ void FFT::init(
 
                 double  G = 1;
 
-                if( GBL.apflt.Fhi )
+                if( GBL.apflt.Fhi != 0.0 )
                     G /= sqrt( 1 + pow( GBL.apflt.Fhi / (i * f), x ) );
 
-                if( GBL.apflt.Flo )
+                if( GBL.apflt.Flo != 0.0 )
                     G /= sqrt( 1 + pow( (i * f) / GBL.apflt.Flo, x ) );
 
                 flt[i] = G;
@@ -158,7 +158,7 @@ void FFT::init(
 
             flt.resize( SZFFT/2 + 1 );
 
-            flt[0] = (GBL.lfflt.Fhi ? 0 : 1);
+            flt[0] = (GBL.lfflt.Fhi != 0.0 ? 0 : 1);
 
             double  f = meta.srate / SZFFT;
             int     x = 2 * GBL.lfflt.order;
@@ -167,10 +167,10 @@ void FFT::init(
 
                 double  G = 1;
 
-                if( GBL.lfflt.Fhi )
+                if( GBL.lfflt.Fhi != 0.0 )
                     G /= sqrt( 1 + pow( GBL.lfflt.Fhi / (i * f), x ) );
 
-                if( GBL.lfflt.Flo )
+                if( GBL.lfflt.Flo != 0.0 )
                     G /= sqrt( 1 + pow( (i * f) / GBL.lfflt.Flo, x ) );
 
                 flt[i] = G;
@@ -529,7 +529,7 @@ qint64 Meta::pass1_sizeRead( int &ntpts, qint64 xferBytes, qint64 bufBytes )
 {
     qint64  bytes = qMin( xferBytes, bufBytes );
 
-    ntpts = bytes / smpBytes;
+    ntpts = int(bytes / smpBytes);
 
     if( smpToBeWritten + ntpts >= maxOutEOF ) {
 
@@ -737,10 +737,10 @@ void FOffsets::sc_write()
 QString FOffsets::stream( t_js js, int ip )
 {
     switch( js ) {
-        case NI: return "nidq";
-        case OB: return QString("obx%1").arg( ip );
-        case AP: return QString("imap%1").arg( ip );
-        case LF: return QString("imlf%1").arg( ip );
+        case NI:        return "nidq";
+        case OB:        return QString("obx%1").arg( ip );
+        case AP:        return QString("imap%1").arg( ip );
+        default /*LF*/: return QString("imlf%1").arg( ip );
     }
 }
 
@@ -1190,7 +1190,7 @@ void pass1entrypoint()
 
     foreach( const P1Job &J, vJ ) {
         if( !J.run() )
-            goto done;
+            break;
     }
 #else
 // Execute in parallel
@@ -1207,7 +1207,6 @@ void pass1entrypoint()
         delete T[it];
 #endif
 
-done:
     gFOff.ct_write();
     GBL.fyi_ct_write();
 }
@@ -1535,7 +1534,7 @@ void supercatentrypoint()
 
     foreach( const P2Job &J, vJ ) {
         if( !J.run() )
-            goto done;
+            break;
     }
 #else
 // Execute in parallel
@@ -1552,7 +1551,6 @@ void supercatentrypoint()
         delete T[it];
 #endif
 
-done:
     gFOff.sc_write();
     GBL.fyi_sc_write();
 }
