@@ -2719,7 +2719,7 @@ bool CGBL::makeOutputProbeFolder( int g0, int ip1 )
             mprb_obase[ip1] += QString("/%1_g%2_imec%3")
                                 .arg( orun ).arg( g0 ).arg( ip1 );
 
-            if( !QDir().exists( mprb_obase[ip1] ) &&
+            if( !QDir( mprb_obase[ip1] ).exists() &&
                 !QDir().mkdir( mprb_obase[ip1] ) ) {
                 Log() << QString("Error creating dir '%1'.").arg( mprb_obase[ip1] );
                 return false;
@@ -3330,7 +3330,7 @@ bool CGBL::makeTaggedDest()
 {
     if( !dest.isEmpty() ) {
 
-        if( !QDir().exists( dest ) ) {
+        if( !QDir( dest ).exists() ) {
             Log() << QString("Error: -dest dir does not exist '%1'.").arg( dest );
             return false;
         }
@@ -3351,7 +3351,7 @@ bool CGBL::makeTaggedDest()
         else
             im_obase += QString("/supercat_%1_g%2").arg( orun ).arg( g0 );
 
-        if( !QDir().exists( im_obase ) && !QDir().mkdir( im_obase ) ) {
+        if( !QDir( im_obase ).exists() && !QDir().mkdir( im_obase ) ) {
             Log() << QString("Error creating dir '%1'.").arg( im_obase );
             return false;
         }

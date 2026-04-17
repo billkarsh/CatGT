@@ -1574,6 +1574,7 @@ command lines for TPrime.
 Version 5.3
 
 - Auto sync extractors decode period.
+- Allow -dir/dest = root.
 - Support NP1040, 1041, 1042, 1050, 1051, 3023, 3024.
 
 Version 5.2
