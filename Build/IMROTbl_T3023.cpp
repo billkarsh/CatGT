@@ -34,7 +34,7 @@ QString IMROTbl_T3023::selectSites5(
 
         try {
             pr->SelectElectrode(
-                ic, NeuropixAPI::ElectrodeBank(bank), shank );
+                ic, NeuropixAPI::ElectrodeBank(bank + 1), shank );
         }
         catch( NeuropixAPI::NeuropixException& e ) {
             err =

@@ -1442,7 +1442,12 @@ int IMROTbl::bscpnToTech( const QString &pn )
 //
 // NPNXT_HS_03      // NXT pre-pre-alpha (2-dock, OBX-only)
 // NPNXT_HS_04      // NXT pre-alpha (1-dock, PXI-only)
-// NPNXT_HS03E      // NXT alpha-B
+// NPNXT_HS03E      // NXT alpha-A (A1A*)
+// NPNXT_HS03_00    // NXT alpha-B
+//
+// *Note: The first ever NXT HS and BS were alpha-A (A1A) and these ran
+// the first alpha probes which are alpha-B (A1B) probes. There was just
+// a single A1A HS and a single A1A BS, so these are not supported anymore.
 //
 int IMROTbl::hspnToTech( const QString &pn )
 {
@@ -1456,7 +1461,7 @@ int IMROTbl::hspnToTech( const QString &pn )
         return t_tech_nxt_ppa;
     else if( pn == "NPNXT_HS_04" )
         return t_tech_nxt_pa;
-    else if( pn == "NPNXT_HS03E" )
+    else if( pn == "NPNXT_HS03_00" )
         return t_tech_nxt_a1b;
 
     return t_tech_std;
