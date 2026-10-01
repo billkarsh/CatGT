@@ -722,6 +722,11 @@ Butterworth (as per MATLAB filter()), specify order 6 here. To match
 forward-backward time-domain filtering with an order-3 (as per MATLAB
 filtfilt()), which doubles the effective order, specify order 12 here.
 
+Our FFT batch size is 32768 samples which is close to 1 second. This places
+a limit on accuracy for low frequencies. 1.0 Hz is fine, and 0.5 Hz is pretty
+good, but lower than that may introduce artifacts. We recommend keeping the
+Fhi cutoff >= 0.5 Hz. The probe hardware itself applies a cutoff of 0.5 Hz.
+
 ### no_tshift option
 
 Imec probes digitize the voltages on all of their channels during each
@@ -835,7 +840,7 @@ transitions which will be smaller if the DC-component is removed.*
 
 Use the SpikeGLX FileViewer to select appropriate amplitude and slope
 values for a given run. Be sure to turn high-pass filtering ON and spatial
-`<S>` filters OFF to match the conditions the CatGT artifact detector will
+CAR filters OFF to match the conditions the CatGT artifact detector will
 use. Zoom the time scale (ctrl + click&drag) to see the individual sample
 points and their connecting segments. Set the slope this way: Zoom in on
 the artifact initial peak, the points with greatest amplitude.
@@ -1570,6 +1575,8 @@ command lines for TPrime.
 ------
 
 ## Change Log
+
+Version 5.4
 
 Version 5.3
 
