@@ -421,19 +421,19 @@ void Meta::write(
         smpFLen = qMin( smpFLen, maxOutEOF );
     }
 
-    kvp["fileName"]                 = outBin;
-    kvp["fileCreateTime_original"]  = kvp["fileCreateTime"];
-    kvp["fileCreateTime"]           = dateTime2Str( tCreate, Qt::ISODate );
-    kvp["fileSHA1"]                 = 0;
-    kvp["fileSizeBytes"]            = smpBytes * smpFLen;
-    kvp["fileTimeSecs"]             = smpFLen / srate;
+    kvp["fileName"]         = outBin;
+    kvp["fileSHA1"]         = 0;
+    kvp["fileSizeBytes"]    = smpBytes * smpFLen;
+    kvp["fileTimeSecs"]     = smpFLen / srate;
 
     if( ie >= 0 ) {
         delPass1Tags();
+        kvp["fileCreateTime_CatGT_Pass2"] = dateTime2Str( tCreate, Qt::ISODate );
         kvp["catNRuns"]     = QString("%1").arg( nFiles );
         kvp["catGTCmdline"] = QString("<%1>").arg( GBL.sCmd );
     }
     else {
+        kvp["fileCreateTime_CatGT_Pass1"] = dateTime2Str( tCreate, Qt::ISODate );
         kvp["catNFiles"]    = QString("%1").arg( nFiles );
         kvp["catGVals"]     = QString("%1,%2").arg( g0 ).arg( gLast );
         kvp["catTVals"]     = QString("%1,%2").arg( t0 ).arg( tLast );
