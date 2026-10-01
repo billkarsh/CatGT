@@ -4,10 +4,10 @@ TARGET   = CatGT
 
 win32 {
     CONFIG(debug, debug|release) {
-        DESTDIR = C:/Users/labadmin/Desktop/SGLBUILD/FIXU/CatGT/Debug
+        DESTDIR = C:/Users/billk/Desktop/SGLBUILD/FIXU/CatGT/Debug
     }
     else {
-        DESTDIR = C:/Users/labadmin/Desktop/SGLBUILD/FIXU/CatGT/CatGT-win
+        DESTDIR = C:/Users/billk/Desktop/SGLBUILD/FIXU/CatGT/CatGT-win
     }
 }
 
@@ -127,5 +127,5 @@ QMAKE_TARGET_COMPANY = Bill Karsh
 QMAKE_TARGET_PRODUCT = CatGT
 QMAKE_TARGET_DESCRIPTION = Joins, filters, edits, extracts events
 QMAKE_TARGET_COPYRIGHT = (c) 2026, Bill Karsh, All rights reserved
-VERSION = 5.3
+VERSION = 5.4
 
