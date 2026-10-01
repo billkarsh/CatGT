@@ -1,5 +1,6 @@
 
 #include "IMROTbl_T1110.h"
+#include "Util.h"
 
 #ifdef HAVE_IMEC
 #include "IMEC/NeuropixAPI.h"
@@ -7,6 +8,7 @@ using namespace Neuropixels;
 #endif
 
 #include <QTextStream>
+#include <QThread>
 
 /* ---------------------------------------------------------------- */
 /* struct IMROHdr ------------------------------------------------- */
@@ -448,7 +450,7 @@ void IMROTbl_T1110::muxTable( int &nADC, int &nGrp, std::vector<int> &T ) const
 /* Hardware ------------------------------------------------------- */
 /* ---------------------------------------------------------------- */
 
-int IMROTbl_T1110::selectSites4( const PAddr& adr, bool write, bool check ) const
+int IMROTbl_T1110::selectSites4( const PAddr& adr, int writeMode ) const
 {
 #ifdef HAVE_IMEC
 
@@ -486,12 +488,30 @@ int IMROTbl_T1110::selectSites4( const PAddr& adr, bool write, bool check ) cons
             return err;
     }
 
-    if( write )
-        np_writeProbeConfiguration( adr.slot, adr.port, adr.dock, check );
+    if( writeMode ) {
+
+        for( int itry = 1; itry <= 10; ++itry ) {
+
+            err = np_writeProbeConfiguration(
+                    adr.slot, adr.port, adr.dock, writeMode == 1 );
+
+            if( err == SUCCESS ) {
+                if( itry > 1 ) {
+                    Warning() <<
+                    QString("Probe(%1): writeConfig() took %2 tries.")
+                    .arg( adr.tx_spd() ).arg( itry );
+                }
+                break;
+            }
+
+            QThread::msleep( 100 );
+        }
+
+        return err;
+    }
 #else
     Q_UNUSED( adr )
-    Q_UNUSED( write )
-    Q_UNUSED( check )
+    Q_UNUSED( writeMode )
 #endif
 
     return 0;
@@ -692,11 +712,11 @@ bool IMROTbl_T1110::edit_Attr_canonical() const
 
 void IMROTbl_T1110::edit_exclude_1( tImroSites vX, const IMRO_Site &s ) const
 {
-    T1110Key    K = s2k[s];
+    const T1110Key  K = s2k[s];
 
     QMap<T1110Key,IMRO_Site>::const_iterator
-        it  = k2s.find( T1110Key( K.c, 0 ) ),
-        end = k2s.end();
+        it  = k2s.constFind( T1110Key( K.c, 0 ) ),
+        end = k2s.constEnd();
 
     for( ; it != end; ++it ) {
         const T1110Key  &ik = it.key();

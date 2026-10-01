@@ -15,8 +15,7 @@
 QString IMROTbl_T3023::selectSites5(
     NeuropixAPI::IProbe*    pr,
     const PAddr&            adr,
-    bool                    write,
-    bool                    check ) const
+    int                     writeMode ) const
 {
 // ------------------------------------
 // Connect all according to table banks
@@ -45,21 +44,24 @@ QString IMROTbl_T3023::selectSites5(
         }
     }
 
-    if( write ) {
+    if( writeMode ) {
 
         for( int itry = 1; itry <= 10; ++itry ) {
 
             try {
-                if( !pr->WriteProbeConfiguration( check ) ) {
+                if( pr->WriteProbeConfiguration( writeMode == 1 ) ) {
+                    if( itry > 1 ) {
+                        Warning() <<
+                        QString("API5 WriteProbeConfiguration(%1) took %2 tries.")
+                        .arg( adr.tx_spd() ).arg( itry );
+                    }
+                    err.clear();
+                    break;
+                }
+                else {
                     err =
                     QString("API5 WriteProbeConfiguration(%1) failed.")
                     .arg( adr.tx_spd() );
-                    return err;
-                }
-                else if( itry > 1 ) {
-                    Warning() <<
-                    QString("API5 WriteProbeConfiguration(%1) took %2 tries.")
-                    .arg( adr.tx_spd() ).arg( itry );
                 }
             }
             catch( NeuropixAPI::NeuropixException& e ) {
@@ -76,8 +78,7 @@ QString IMROTbl_T3023::selectSites5(
 #else
     Q_UNUSED( pr )
     Q_UNUSED( adr )
-    Q_UNUSED( write )
-    Q_UNUSED( check )
+    Q_UNUSED( writeMode )
 #endif
 
     return err;

@@ -1,5 +1,6 @@
 
 #include "IMROTbl_T21base.h"
+#include "Util.h"
 
 #ifdef HAVE_IMEC
 #include "IMEC/NeuropixAPI.h"
@@ -7,6 +8,7 @@ using namespace Neuropixels;
 #endif
 
 #include <QTextStream>
+#include <QThread>
 
 /* ---------------------------------------------------------------- */
 /* struct IMRODesc ------------------------------------------------ */
@@ -337,22 +339,21 @@ void IMROTbl_T21base::muxTable( int &nADC, int &nGrp, std::vector<int> &T ) cons
 
 // This method connects multiple electrodes per channel.
 //
-int IMROTbl_T21base::selectSites4( const PAddr& adr, bool write, bool check ) const
+int IMROTbl_T21base::selectSites4( const PAddr& adr, int writeMode ) const
 {
 #ifdef HAVE_IMEC
 // ------------------------------------
 // Connect all according to table banks
 // ------------------------------------
 
+    NP_ErrorCode    err;
+
     for( int ic = 0, nC = nChan(); ic < nC; ++ic ) {
 
         if( chIsRef( ic ) )
             continue;
 
-        int             shank, bank;
-        NP_ErrorCode    err;
-
-        shank = elShankAndBank( bank, ic );
+        int bank, shank = elShankAndBank( bank, ic );
 
         err = np_selectElectrodeMask( adr.slot, adr.port, adr.dock, ic,
                 shank, electrodebanks_t(bank) );
@@ -361,12 +362,30 @@ int IMROTbl_T21base::selectSites4( const PAddr& adr, bool write, bool check ) co
             return err;
     }
 
-    if( write )
-        np_writeProbeConfiguration( adr.slot, adr.port, adr.dock, check );
+    if( writeMode ) {
+
+        for( int itry = 1; itry <= 10; ++itry ) {
+
+            err = np_writeProbeConfiguration(
+                    adr.slot, adr.port, adr.dock, writeMode == 1 );
+
+            if( err == SUCCESS ) {
+                if( itry > 1 ) {
+                    Warning() <<
+                    QString("Probe(%1): writeConfig() took %2 tries.")
+                    .arg( adr.tx_spd() ).arg( itry );
+                }
+                break;
+            }
+
+            QThread::msleep( 100 );
+        }
+
+        return err;
+    }
 #else
     Q_UNUSED( adr )
-    Q_UNUSED( write )
-    Q_UNUSED( check )
+    Q_UNUSED( writeMode )
 #endif
 
     return 0;
@@ -450,11 +469,11 @@ bool IMROTbl_T21base::edit_Attr_canonical() const
 
 void IMROTbl_T21base::edit_exclude_1( tImroSites vX, const IMRO_Site &s ) const
 {
-    T21Key  K = s2k[s];
+    const T21Key    K = s2k[s];
 
     QMap<T21Key,IMRO_Site>::const_iterator
-        it  = k2s.find( T21Key( K.c, 1 ) ),
-        end = k2s.end();
+        it  = k2s.constFind( T21Key( K.c, 1 ) ),
+        end = k2s.constEnd();
 
     for( ; it != end; ++it ) {
         const T21Key  &ik = it.key();

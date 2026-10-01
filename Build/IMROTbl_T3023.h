@@ -19,7 +19,7 @@ struct IMROTbl_T3023 : public IMROTbl_T3020base
         :   IMROTbl_T3020base(pn, imType3023Type)   {}
 
     virtual int typeConst() const       {return imType3023Type;}
-    virtual int probeTech() const       {return t_tech_nxt_a1b;}
+    virtual int probeTech() const       {return t_tech_np3_a1b;}
     virtual int apiFetchType() const    {return t_fetch_api5;}
 
 // Hardware
@@ -27,8 +27,7 @@ struct IMROTbl_T3023 : public IMROTbl_T3020base
     virtual QString selectSites5(
         NeuropixAPI::IProbe*    pr,
         const PAddr&            adr,
-        bool                    write,
-        bool                    check ) const;
+        int                     writeMode ) const;
     virtual QString selectRefs5(
         NeuropixAPI::IProbe*    pr,
         const PAddr&            adr ) const;

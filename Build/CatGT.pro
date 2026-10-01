@@ -42,12 +42,15 @@ HEADERS += \
     IMROTbl_T2003.h \
     IMROTbl_T2013.h \
     IMROTbl_T2020.h \
+    IMROTbl_T2020base.h \
+    IMROTbl_T2022.h \
     IMROTbl_T21.h \
     IMROTbl_T21base.h \
     IMROTbl_T24.h \
     IMROTbl_T24base.h \
     IMROTbl_T3010.h \
     IMROTbl_T3010base.h \
+    IMROTbl_T3012.h \
     IMROTbl_T3020.h \
     IMROTbl_T3020base.h \
     IMROTbl_T3022.h \
@@ -84,9 +87,12 @@ SOURCES += \
     IMROTbl_T1123.cpp \
     IMROTbl_T1200.cpp \
     IMROTbl_T1221.cpp \
+    IMROTbl_T1300.cpp \
     IMROTbl_T2003.cpp \
     IMROTbl_T2013.cpp \
     IMROTbl_T2020.cpp \
+    IMROTbl_T2020base.cpp \
+    IMROTbl_T2022.cpp \
     IMROTbl_T21.cpp \
     IMROTbl_T21base.cpp \
     IMROTbl_T24.cpp \

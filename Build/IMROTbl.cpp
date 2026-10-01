@@ -16,7 +16,9 @@
 #include "IMROTbl_T2003.h"
 #include "IMROTbl_T2013.h"
 #include "IMROTbl_T2020.h"
+#include "IMROTbl_T2022.h"
 #include "IMROTbl_T3010.h"
+#include "IMROTbl_T3012.h"
 #include "IMROTbl_T3020.h"
 #include "IMROTbl_T3022.h"
 #include "IMROTbl_T3023.h"
@@ -354,7 +356,8 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
                 _xpitch     = 32;
                 _zpitch     = 31;
                 break;
-            case 1300:  // Opto
+            case 1300:  // Optopix phase1
+            case 1400:  // Opto-II pre-Alpha
                 _ncolhwr    = 2;
                 _ncolvis    = 2;
                 _col2vis_ev = {0,1};
@@ -411,8 +414,8 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
                 _xpitch     = 32;
                 _zpitch     = 15;
                 break;
-            case 2020:  // 2.0 quad base (Ph 2C)
-            case 2021:  // 2.0 quad base (Ph 2C) with cap
+            case 2020:  // Neuropixels 2.0 multi shank probe quad base (Ph 2C)
+            case 2021:  // Neuropixels 2.0 multi shank probe quad base with cap (Ph 2C)
                 _ncolhwr    = 2;
                 _ncolvis    = 2;
                 _col2vis_ev = {0,1};
@@ -425,7 +428,20 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
                 _xpitch     = 32;
                 _zpitch     = 15;
                 break;
-            case 3000:  // Passive NXT probe
+            case 2022:  // Neuropixels 2.0 multi shank probe quad base NHP with cap (Ph 2C), cabling, sharpened, sterile packaging
+                _ncolhwr    = 2;
+                _ncolvis    = 4;
+                _col2vis_ev = {1,3};
+                _col2vis_od = {0,2};
+                _shankpitch = 2141.45f;
+                _shankwid   = 70;
+                _tiplength  = 206;
+                _x0_ev      = 27;
+                _x0_od      = 11;
+                _xpitch     = 20;
+                _zpitch     = 15;
+                break;
+            case 3000:  // Passive NP3 probe
                 _ncolhwr    = 1;
                 _ncolvis    = 4;
                 _col2vis_ev = {3};
@@ -438,8 +454,9 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
                 _xpitch     = 15;
                 _zpitch     = 15;
                 break;
-            case 3010:  // NXT single shank (Ph 1B)
-            case 3011:  // NXT single shank (Ph 1B) with cap
+            case 3010:  // Neuropixels NP3 phase1B single shank silicon cap
+            case 3011:  // Neuropixels NP3 phase1B single shank metal cap
+            case 3012:  // Neuropixels NP3 alpha version B single shank metal cap
                 _ncolhwr    = 2;
                 _ncolvis    = 2;
                 _col2vis_ev = {0,1};
@@ -452,9 +469,9 @@ IMROTbl::IMROTbl( const QString &pn, int type ) : pn(pn), type(type)
                 _xpitch     = 32;
                 _zpitch     = 15;
                 break;
-            case 3020:  // NXT multishank (Ph 1B)
-            case 3021:  // NXT multishank (Ph 1B) with cap
-            case 3022:  // Neuropixels NXT pre-alpha multishank silicon cap
+            case 3020:  // Neuropixels NP3 phase1B multishank silicon cap
+            case 3021:  // Neuropixels NP3 phase1B multishank metal cap
+            case 3022:  // Neuropixels NP3 pre-alpha multishank silicon cap
             case 3023:  // Neuropixels 3.0 alpha version B multishank silicon cap
             case 3024:  // Neuropixels 3.0 alpha version B multishank metal cap
                 _ncolhwr    = 2;
@@ -776,7 +793,7 @@ QString IMROTbl::muxTable_toString() const
 
 // This method connects one electrode per channel.
 //
-int IMROTbl::selectSites4( const PAddr& adr, bool write, bool check ) const
+int IMROTbl::selectSites4( const PAddr& adr, int writeMode ) const
 {
 #ifdef HAVE_IMEC
 // ------------------------------------
@@ -790,9 +807,7 @@ int IMROTbl::selectSites4( const PAddr& adr, bool write, bool check ) const
         if( chIsRef( ic ) )
             continue;
 
-        int shank, bank;
-
-        shank = elShankAndBank( bank, ic );
+        int bank, shank = elShankAndBank( bank, ic );
 
         err = np_selectElectrode(
                 adr.slot, adr.port, adr.dock, ic, shank, bank );
@@ -801,12 +816,12 @@ int IMROTbl::selectSites4( const PAddr& adr, bool write, bool check ) const
             return err;
     }
 
-    if( write ) {
+    if( writeMode ) {
 
         for( int itry = 1; itry <= 10; ++itry ) {
 
             err = np_writeProbeConfiguration(
-                    adr.slot, adr.port, adr.dock, check );
+                    adr.slot, adr.port, adr.dock, writeMode == 1 );
 
             if( err == SUCCESS ) {
                 if( itry > 1 ) {
@@ -819,11 +834,12 @@ int IMROTbl::selectSites4( const PAddr& adr, bool write, bool check ) const
 
             QThread::msleep( 100 );
         }
+
+        return err;
     }
 #else
     Q_UNUSED( adr )
-    Q_UNUSED( write )
-    Q_UNUSED( check )
+    Q_UNUSED( writeMode )
 #endif
 
     return 0;
@@ -1225,7 +1241,8 @@ bool IMROTbl::pnToType( int &type, const QString &pn )
                 type = 1200;
                 supp = true;
                 break;
-            case 1300:  // Opto
+            case 1300:  // Optopix phase1
+            case 1400:  // Opto-II pre-Alpha
                 type = 1300;
                 supp = true;
                 break;
@@ -1249,26 +1266,34 @@ bool IMROTbl::pnToType( int &type, const QString &pn )
                 type = 2013;
                 supp = true;
                 break;
-            case 2020:  // Neuropixels 2.0 quad base (Ph 2C)
-            case 2021:  // Neuropixels 2.0 quad base (Ph 2C) with cap
+            case 2020:  // Neuropixels 2.0 multi shank probe quad base (Ph 2C)
+            case 2021:  // Neuropixels 2.0 multi shank probe quad base with cap (Ph 2C)
                 type = 2020;
                 supp = true;
                 break;
-            case 3000:  // Passive NXT probe
+            case 2022:  // Neuropixels 2.0 multi shank probe quad base NHP with cap (Ph 2C), cabling, sharpened, sterile packaging
+                type = 2022;
+                supp = true;
+                break;
+            case 3000:  // Passive NP3 probe
                 type = 1200;
                 supp = true;
                 break;
-            case 3010:  // NXT single shank (Ph 1B)
-            case 3011:  // NXT single shank (Ph 1B) with cap
+            case 3010:  // Neuropixels NP3 phase1B single shank silicon cap
+            case 3011:  // Neuropixels NP3 phase1B single shank metal cap
                 type = 3010;
                 supp = true;
                 break;
-            case 3020:  // NXT multishank (Ph 1B)
-            case 3021:  // NXT multishank (Ph 1B) with cap
+            case 3012:  // Neuropixels NP3 alpha version B single shank metal cap
+                type = 3012;
+                supp = true;
+                break;
+            case 3020:  // Neuropixels NP3 phase1B multishank silicon cap
+            case 3021:  // Neuropixels NP3 phase1B multishank metal cap
                 type = 3020;
                 supp = true;
                 break;
-            case 3022:  // Neuropixels NXT pre-alpha multishank silicon cap
+            case 3022:  // Neuropixels NP3 pre-alpha multishank silicon cap
                 type = 3022;
                 supp = true;
                 break;
@@ -1349,11 +1374,12 @@ IMROTbl* IMROTbl::alloc( const QString &pn )
                 return new IMROTbl_T1123( pn );
             case 1200:  // NHP 128 channel analog 25mm
             case 1210:  // NHP 128 channel analog 45mm
-            case 3000:  // Passive NXT probe
+            case 3000:  // Passive NP3 probe
                 return new IMROTbl_T1200( pn );
             case 1221:  // Custom layout
                 return new IMROTbl_T1221( pn );
-            case 1300:  // Opto
+            case 1300:  // Optopix phase1
+            case 1400:  // Opto-II pre-Alpha
                 return new IMROTbl_T1300( pn );
             case 2000:  // NP 2.0 SS scrambled el 1280
                 return new IMROTbl_T21( pn );
@@ -1367,16 +1393,20 @@ IMROTbl* IMROTbl::alloc( const QString &pn )
             case 2013:  // Neuropixels 2.0 multishank probe
             case 2014:  // Neuropixels 2.0 multishank probe with cap
                 return new IMROTbl_T2013( pn );
-            case 2020:  // Neuropixels 2.0 quad base (Ph 2C)
-            case 2021:  // Neuropixels 2.0 quad base (Ph 2C) with cap
+            case 2020:  // Neuropixels 2.0 multi shank probe quad base (Ph 2C)
+            case 2021:  // Neuropixels 2.0 multi shank probe quad base with cap (Ph 2C)
                 return new IMROTbl_T2020( pn );
-            case 3010:  // NXT single shank (Ph 1B)
-            case 3011:  // NXT single shank (Ph 1B) with cap
+            case 2022:  // Neuropixels 2.0 multi shank probe quad base NHP with cap (Ph 2C), cabling, sharpened, sterile packaging
+                return new IMROTbl_T2022( pn );
+            case 3010:  // Neuropixels NP3 phase1B single shank silicon cap
+            case 3011:  // Neuropixels NP3 phase1B single shank metal cap
                 return new IMROTbl_T3010( pn );
-            case 3020:  // NXT multishank (Ph 1B)
-            case 3021:  // NXT multishank (Ph 1B) with cap
+            case 3012:  // Neuropixels NP3 alpha version B single shank metal cap
+                return new IMROTbl_T3012( pn );
+            case 3020:  // Neuropixels NP3 phase1B multishank silicon cap
+            case 3021:  // Neuropixels NP3 phase1B multishank metal cap
                 return new IMROTbl_T3020( pn );
-            case 3022:  // Neuropixels NXT pre-alpha multishank silicon cap
+            case 3022:  // Neuropixels NP3 pre-alpha multishank silicon cap
                 return new IMROTbl_T3022( pn );
             case 3023:  // Neuropixels 3.0 alpha version B multishank silicon cap
             case 3024:  // Neuropixels 3.0 alpha version B multishank metal cap
@@ -1398,7 +1428,9 @@ QString IMROTbl::default_imroLE( int type )
         case 21:
         case 2003:
         case 2020:
-        case 3010:  return "*Default (bank 0, ref ext)";
+        case 2022:
+        case 3010:
+        case 3012:  return "*Default (bank 0, ref ext)";
         case 24:
         case 2013:  return "*Default (shnk 0, bank 0, ref ext)";
         case 3020:
@@ -1414,12 +1446,12 @@ int IMROTbl::bscpnToTech( const QString &pn )
 {
     if( pn == "sim" )
         return t_tech_sim;
-    else if( pn.isEmpty() || pn == "" || pn == "<empty>" )
-        return t_tech_opto;
+    else if( pn == "NPOPTO_BS_00" || pn.isEmpty() || pn == "" || pn == "<empty>" )
+        return t_tech_opto_p1;
     else if( pn == "NPNXT_QBSC_01" )
-        return t_tech_nxt_pa;
+        return t_tech_np3_pa;
     else if( pn == "NPP_QBSC03_00" )
-        return t_tech_nxt_a1b;
+        return t_tech_np3_a1b;
 
     return t_tech_std;  // "NP2_QBSC_00", OneBox
 }
@@ -1440,12 +1472,12 @@ int IMROTbl::bscpnToTech( const QString &pn )
 //
 // OPTO_HS_00       // OPTO-1
 //
-// NPNXT_HS_03      // NXT pre-pre-alpha (2-dock, OBX-only)
-// NPNXT_HS_04      // NXT pre-alpha (1-dock, PXI-only)
-// NPNXT_HS03E      // NXT alpha-A (A1A*)
-// NPNXT_HS03_00    // NXT alpha-B
+// NPNXT_HS_03      // NP3 pre-pre-alpha (2-dock, OBX-only)
+// NPNXT_HS_04      // NP3 pre-alpha (1-dock, PXI-only)
+// NPNXT_HS03E      // NP3 alpha-A (A1A*)
+// NPNXT_HS03_00    // NP3 alpha-B
 //
-// *Note: The first ever NXT HS and BS were alpha-A (A1A) and these ran
+// *Note: The first ever NP3 HS and BS were alpha-A (A1A) and these ran
 // the first alpha probes which are alpha-B (A1B) probes. There was just
 // a single A1A HS and a single A1A BS, so these are not supported anymore.
 //
@@ -1456,13 +1488,13 @@ int IMROTbl::hspnToTech( const QString &pn )
     else if( pn == "NPM_HS_32" || pn == "NPM_HS_32_ext" || pn == "NPM_HSTC_ext" )
         return t_tech_qb;
     else if( pn == "OPTO_HS_00" )
-        return t_tech_opto;
+        return t_tech_opto_p1;
     else if( pn == "NPNXT_HS_03" )
-        return t_tech_nxt_ppa;
+        return t_tech_np3_ppa;
     else if( pn == "NPNXT_HS_04" )
-        return t_tech_nxt_pa;
+        return t_tech_np3_pa;
     else if( pn == "NPNXT_HS03_00" )
-        return t_tech_nxt_a1b;
+        return t_tech_np3_a1b;
 
     return t_tech_std;
 }
@@ -1488,15 +1520,42 @@ QString IMROTbl::strTech( int tech )
         case t_tech_sim:        return "sim";
         case t_tech_std:        return "std";
         case t_tech_qb:         return "qb";
-        case t_tech_opto:       return "opto";
-        case t_tech_nxt_ppa:
-        case t_tech_nxt_pa:
-        case t_tech_nxt_a1b:    return "nxt";
+        case t_tech_opto_p1:    return "opto";
+        case t_tech_np3_ppa:
+        case t_tech_np3_pa:
+        case t_tech_np3_a1b:    return "np3";
         default:                return "unknown";
     }
 }
 
 
+// t_tech_opto_p1:
+// - type 1300
+// - Originally only NP1300
+// - NP1400 functionally same as NP1300
+// - NP1400, NP1300 use same HS
+// - NP1400 requires newer OPTO firmware, but...
+// - That new firmware also handles NP1300
+// - So both remain opto_p1
+//
+// t_tech_np3_ppa:
+// - type 3010, 3020
+// - OneBox-only
+// - API 4.0.0, 4.0.2
+// - Only {Janelia, JHU}
+//
+// t_tech_np3_pa:
+// - type 3022
+// - PXI-only
+// - API 4.1.0 - 4.1.3
+// - Only {Janelia, JHU, Princeton}
+//
+// t_tech_np3_a1b:
+// - type 3023
+// - PXI-only
+// - API 5
+// - imro header has pn
+//
 void IMROTbl::bscReqVers( QString &bsreq, QString &bscreq, int bsctech )
 {
 #if 0
@@ -1505,17 +1564,17 @@ void IMROTbl::bscReqVers( QString &bsreq, QString &bscreq, int bsctech )
             bsreq  = VERS_PXI_STD_BS;
             bscreq = VERS_PXI_STD_BSC;
             break;
-        case t_tech_opto:
-            bsreq  = VERS_PXI_OPTO_BS;
-            bscreq = VERS_PXI_OPTO_BSC;
+        case t_tech_opto_p1:
+            bsreq  = VERS_PXI_OPTO_P1_BS;
+            bscreq = VERS_PXI_OPTO_P1_BSC;
             break;
-        case t_tech_nxt_pa:
-            bsreq  = VERS_PXI_NXT_PA_BS;
-            bscreq = VERS_PXI_NXT_PA_BSC;
+        case t_tech_np3_pa:
+            bsreq  = VERS_PXI_NP3_PA_BS;
+            bscreq = VERS_PXI_NP3_PA_BSC;
             break;
-        case t_tech_nxt_a1b:
-            bsreq  = VERS_PXI_NXT_A1B_BS;
-            bscreq = VERS_PXI_NXT_A1B_BSC;
+        case t_tech_np3_a1b:
+            bsreq  = VERS_PXI_NP3_A1B_BS;
+            bscreq = VERS_PXI_NP3_A1B_BSC;
             break;
         default:
             return;
@@ -1586,26 +1645,26 @@ QString IMROTbl::hsCompatTech(
                 .arg( adr.tx_sp() );
             }
         }
-        else if( hstech == t_tech_opto ) {
+        else if( hstech == t_tech_opto_p1 ) {
             msg = QString(
-            "OPTO headstage(%1) can only run in an OPTO PXI module.")
+            "OPTO_P1 headstage(%1) can only run in an OPTO_P1 PXI module.")
             .arg( adr.tx_sp() );
         }
-        else if( hstech == t_tech_nxt_ppa ) {
+        else if( hstech == t_tech_np3_ppa ) {
             if( bsctech != t_tech_std ) {
                 msg = QString(
-                "NXT-PPA headstage(%1) can only run in OneBox.")
+                "NP3-PPA headstage(%1) can only run in OneBox.")
                 .arg( adr.tx_sp() );
             }
         }
-        else if( hstech == t_tech_nxt_pa ) {
+        else if( hstech == t_tech_np3_pa ) {
             msg = QString(
-            "NXT-PA headstage(%1) can only run in NXT-PA PXI module.")
+            "NP3-PA headstage(%1) can only run in NP3-PA PXI module.")
             .arg( adr.tx_sp() );
         }
-        else {  // t_tech_nxt_a1b
+        else {  // t_tech_np3_a1b
             msg = QString(
-            "NXT-A1B headstage(%1) can only run in NXT-A1B PXI module.")
+            "NP3-A1B headstage(%1) can only run in NP3-A1B PXI module.")
             .arg( adr.tx_sp() );
         }
     }
@@ -1634,26 +1693,26 @@ QString IMROTbl::prbCompatTech(
                 .arg( adr.tx_spd() );
             }
         }
-        else if( prbtech == t_tech_opto ) {
+        else if( prbtech == t_tech_opto_p1 ) {
             msg = QString(
-            "OPTO probe(%1) can only run in an OPTO PXI module.")
+            "OPTO_P1 probe(%1) can only run in an OPTO_P1 PXI module.")
             .arg( adr.tx_spd() );
         }
-        else if( prbtech == t_tech_nxt_ppa ) {
+        else if( prbtech == t_tech_np3_ppa ) {
             if( bsctech != t_tech_std ) {
                 msg = QString(
-                "NXT-PPA probe(%1) can only run in OneBox.")
+                "NP3-PPA probe(%1) can only run in OneBox.")
                 .arg( adr.tx_spd() );
             }
         }
-        else if( prbtech == t_tech_nxt_pa ) {
+        else if( prbtech == t_tech_np3_pa ) {
             msg = QString(
-            "NXT-PA probe(%1) can only run in NXT-PA PXI module.")
+            "NP3-PA probe(%1) can only run in NP3-PA PXI module.")
             .arg( adr.tx_spd() );
         }
-        else {  // t_tech_nxt_a1b
+        else {  // t_tech_np3_a1b
             msg = QString(
-            "NXT-A1B probe(%1) can only run in an NXT-A1B PXI module.")
+            "NP3-A1B probe(%1) can only run in an NP3-A1B PXI module.")
             .arg( adr.tx_spd() );
         }
     }

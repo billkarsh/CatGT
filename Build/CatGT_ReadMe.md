@@ -1578,11 +1578,12 @@ command lines for TPrime.
 
 Version 5.4
 
+- Support NP1040, 1041, 1042, 1050, 1051, 1400, 2022, 3012, 3023, 3024.
+
 Version 5.3
 
 - Auto sync extractors decode period.
 - Allow -dir/dest = root.
-- Support NP1040, 1041, 1042, 1050, 1051, 3023, 3024.
 - Support imros with (pn,nchan) header.
 
 Version 5.2
@@ -1611,7 +1612,7 @@ Version 4.8
 - Support NP1.0 probe PRB_1_2_0480_2.
 - FirstSample meta updated according to -startsecs.
 - Set -startsecs=0 & maxsecs to export binary time range without filters.
-- NXT voltage inversion cased out by API.
+- NP3 voltage inversion cased out by API.
 - Error flags reported to log.
 - Handle supercat of probe ip2-files from -save or -sepShanks.
 - Include folder CatGT_std_scripts with Windows version demos.
@@ -1633,8 +1634,8 @@ Version 4.4
 
 - Support NP1221 probes.
 - Support NP2020 quad-probes.
-- Support NXT probes.
-- This version inverts NXT voltages.
+- Support NP3 probes.
+- This version inverts NP3 voltages.
 - Fix overlap handling when zerofillmax applied.
 - Smoother transitions at FFT boundaries.
 - linefill is automatic; disable with -no_linefill.

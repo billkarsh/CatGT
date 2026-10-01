@@ -89,15 +89,15 @@ void IMROTbl_T2020::setElecs()
 void IMROTbl_T2020::fillDefault()
 {
     e.clear();
-    e.resize( imType2020Chan );
+    e.resize( imType2020baseChan );
 
 // Set shnk fields
 
-    for( int is = 1; is < imType2020Shanks; ++is ) {
+    for( int is = 1; is < imType2020baseShanks; ++is ) {
 
-        int ic0 = is * imType2020ChPerShk;
+        int ic0 = is * imType2020baseChPerShk;
 
-        for( int ic = 0; ic < imType2020ChPerShk; ++ic )
+        for( int ic = 0; ic < imType2020baseChPerShk; ++ic )
             e[ic0 + ic].shnk = is;
     }
 
@@ -113,7 +113,7 @@ void IMROTbl_T2020::fillShankAndBank( int shank, int bank )
 
     for( int i = 0, n = e.size(); i < n; ++i ) {
         IMRODesc_T2020  &E = e[i];
-        E.bank = qMin( bank, maxBank( i, E.shnk ) );
+        E.bank = qMin( bank, maxBank( i ) );
     }
 
     setElecs();
@@ -268,7 +268,7 @@ void IMROTbl_T2020::eaChansOrder( QVector<int> &v ) const
 // Major order is by shank.
 // Minor order is by electrode.
 
-    for( int sh = 0; sh < imType2020Shanks; ++sh ) {
+    for( int sh = 0; sh < imType2020baseShanks; ++sh ) {
 
         QMap<int,int>   el2Ch;
 
@@ -312,36 +312,6 @@ int IMROTbl_T2020::refTypeAndFields( int &shank, int &bank, int ch ) const
     return 1;
 }
 
-
-void IMROTbl_T2020::locFltRadii( int &rin, int &rout, int iflt ) const
-{
-    switch( iflt ) {
-        case 2:     rin = 2; rout = 8; break;
-        default:    rin = 0; rout = 2; break;
-    }
-}
-
-
-void IMROTbl_T2020::muxTable( int &nADC, int &nGrp, std::vector<int> &T ) const
-{
-    nADC = 24 * imType2020Shanks;
-    nGrp = 16;
-
-    T.resize( imType2020Chan );
-
-// Generate by pairs of columns
-
-    int ch = 0;
-
-    for( int icol = 0; icol < nADC; icol += 2 ) {
-
-        for( int irow = 0; irow < nGrp; ++irow ) {
-            T[nADC*irow + icol]     = ch++;
-            T[nADC*irow + icol + 1] = ch++;
-        }
-    }
-}
-
 /* ---------------------------------------------------------------- */
 /* Edit ----------------------------------------------------------- */
 /* ---------------------------------------------------------------- */
@@ -350,15 +320,15 @@ void IMROTbl_T2020::edit_init() const
 {
 // forward
 
-    for( int c = 0; c < imType2020Chan; ++c ) {
+    for( int c = 0; c < imType2020baseChan; ++c ) {
 
-        int s = c / imType2020ChPerShk;
+        int s = c / imType2020baseChPerShk;
 
-        for( int b = 0; b < imType2020Banks; ++b ) {
+        for( int b = 0; b < imType2020baseBanks; ++b ) {
 
             int e = IMRODesc_T2020::chToEl( c, b );
 
-            if( e < imType2020ElPerShk )
+            if( e < imType2020baseElPerShk )
                 k2s[T2020Key( c, s, b )] = IMRO_Site( s, e & 1, e >> 1 );
             else
                 break;
@@ -376,34 +346,11 @@ void IMROTbl_T2020::edit_init() const
 }
 
 
-IMRO_GUI IMROTbl_T2020::edit_GUI() const
-{
-    IMRO_GUI    G;
-    G.refs.push_back( "Ground" );
-    G.refs.push_back( "Tip" );
-    G.gains.push_back( apGain( 0 ) );
-    G.nBase = 4;
-    return G;
-}
-
-
-IMRO_Attr IMROTbl_T2020::edit_Attr_def() const
-{
-    return IMRO_Attr( 0, 0, 0, 0 );
-}
-
-
-IMRO_Attr IMROTbl_T2020::edit_Attr_cur() const
-{
-    return IMRO_Attr( refid( 0 ), 0, 0, 0 );
-}
-
-
 bool IMROTbl_T2020::edit_Attr_canonical() const
 {
     int ne = e.size();
 
-    if( ne != imType2020Chan )
+    if( ne != imType2020baseChan )
         return false;
 
     int refid = e[0].refid;
@@ -419,11 +366,11 @@ bool IMROTbl_T2020::edit_Attr_canonical() const
 
 void IMROTbl_T2020::edit_exclude_1( tImroSites vX, const IMRO_Site &s ) const
 {
-    T2020Key    K = s2k[s];
+    const T2020Key  K = s2k[s];
 
     QMap<T2020Key,IMRO_Site>::const_iterator
-        it  = k2s.find( T2020Key( K.c, K.s, 0 ) ),
-        end = k2s.end();
+        it  = k2s.constFind( T2020Key( K.c, K.s, 0 ) ),
+        end = k2s.constEnd();
 
     for( ; it != end; ++it ) {
         const T2020Key  &ik = it.key();
@@ -444,7 +391,7 @@ int IMROTbl_T2020::edit_site2Chan( const IMRO_Site &s ) const
 void IMROTbl_T2020::edit_ROI2tbl( tconstImroROIs vR, const IMRO_Attr &A )
 {
     e.clear();
-    e.resize( imType2020Chan );
+    e.resize( imType2020baseChan );
 
     for( int ib = 0, nb = (int)vR.size(); ib < nb; ++ib ) {
 
@@ -468,47 +415,6 @@ void IMROTbl_T2020::edit_ROI2tbl( tconstImroROIs vR, const IMRO_Attr &A )
     }
 
     setElecs();
-}
-
-
-void IMROTbl_T2020::edit_defaultROI( tImroROIs vR ) const
-{
-    int rowsPerBank = nChanPerBank() / _ncolhwr;
-
-    vR.clear();
-
-    for( int is = 0; is < imType2020Shanks; ++is )
-        vR.push_back( IMRO_ROI( is, 0, rowsPerBank ) );
-}
-
-
-// - Boxes are whole- or half-shank width.
-// - Boxes enclose all channels per shank.
-// - Canonical attributes all channels.
-//
-bool IMROTbl_T2020::edit_isCanonical( tImroROIs vR ) const
-{
-// Assess boxes per shank
-
-    int ne[4] = {0,0,0,0};
-
-    for( int ib = 0; ib < (int)vR.size(); ++ib ) {
-
-        const IMRO_ROI  &B = vR[ib];
-        int             w  = B.width( _ncolhwr );
-
-        if( !(w == _ncolhwr || w == _ncolhwr/2) )
-            return false;
-
-        ne[B.s] += B.area( _ncolhwr );
-    }
-
-    for( int is = 0; is < imType2020Shanks; ++is ) {
-        if( ne[is] != imType2020ChPerShk )
-            return false;
-    }
-
-    return edit_Attr_canonical();
 }
 
 

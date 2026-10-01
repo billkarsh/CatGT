@@ -23,10 +23,10 @@ enum T_probe_tech {
     t_tech_sim      = 0,
     t_tech_std      = 1,
     t_tech_qb       = 2,
-    t_tech_opto     = 20,
-    t_tech_nxt_ppa  = 30,
-    t_tech_nxt_pa   = 31,
-    t_tech_nxt_a1b  = 32
+    t_tech_opto_p1  = 20,
+    t_tech_np3_ppa  = 30,
+    t_tech_np3_pa   = 31,
+    t_tech_np3_a1b  = 32
 };
 
 enum T_probe_mapping {
@@ -243,6 +243,15 @@ public:
     virtual int lfGain( int ch ) const = 0;
     virtual int apFlt( int ch ) const = 0;
 
+    virtual void optoGetEmts( std::vector<float> &vRows, int color ) const
+        {vRows.clear(); Q_UNUSED(color);}
+    virtual void optoSetCur( int color, int site )
+        {Q_UNUSED(color); Q_UNUSED(site)}
+    virtual int optoGetCur( int color ) const
+        {Q_UNUSED(color); return -1;}
+    virtual int optoGetNeib( std::vector<int> &vChan, int color ) const
+        {Q_UNUSED(vChan); Q_UNUSED(color); return -1;}
+
     virtual bool chIsRef( int ch ) const = 0;
     virtual int idxToGain( int idx ) const = 0;
     virtual int gainToIdx( int gain ) const = 0;
@@ -257,7 +266,9 @@ public:
 
 // Hardware
 
-    virtual int selectSites4( const PAddr& adr, bool write, bool check ) const;
+    // selectSites writeMode {0=skip, 1=strict, 2=permissive}
+
+    virtual int selectSites4( const PAddr& adr, int writeMode ) const;
     virtual int selectRefs4( const PAddr& adr ) const;
     virtual int selectGains4( const PAddr& adr ) const;
     virtual int selectAPFlts4( const PAddr& adr ) const;
@@ -265,17 +276,15 @@ public:
     virtual QString selectSites5(
         NeuropixAPI::IProbe*    pr,
         const PAddr&            adr,
-        bool                    write,
-        bool                    check ) const
-        {Q_UNUSED(pr) Q_UNUSED(adr)
-         Q_UNUSED(write) Q_UNUSED(check)
-         return QString();
+        int                     writeMode ) const
+        {Q_UNUSED(pr) Q_UNUSED(adr) Q_UNUSED(writeMode)
+            return QString();
         }
     virtual QString selectRefs5(
         NeuropixAPI::IProbe*    pr,
         const PAddr&            adr ) const
         {Q_UNUSED(pr) Q_UNUSED(adr)
-         return QString();
+            return QString();
         }
 
 // Edit
