@@ -3375,7 +3375,8 @@ bool CGBL::makeTaggedDest()
 
         if( !out_prb_fld )
             im_obase = aux_obase;
-        else if( pass() == 1 ) {
+
+        if( pass() == 1 ) {
             foreach( int ip1, vprb )
                 mprb_obase[ip1] = "";
         }

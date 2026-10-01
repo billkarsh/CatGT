@@ -30,14 +30,22 @@ int Pass2::first()
     samps   = 0;
     ip1     = (js >= AP ? GBL.velem[0].mip2ip1[ip2] : ip2);
 
-    set_ip1rep();
-
     QFileInfo   fim;
     int         ret = GBL.openInputMeta( fim, meta.kvp, 0, g0, -1, js, ip1, ip2, miss_ok );
     if( ret )
         return ret;
 
-    if( is_ip1rep() && !GBL.makeOutputProbeFolder( g0, ip1 ) )
+    // Block until output paths inited by ip1 representative (ip2)
+
+    if( js >= AP ) {
+        QMutexLocker    ml( &ip1Mtx );
+        if( !ip1rep.contains( ip1 ) ) {
+            ip1rep[ip1] = ip2;
+            if( !GBL.makeOutputProbeFolder( g0, ip1 ) )
+                return 2;
+        }
+    }
+    else if( !GBL.makeOutputProbeFolder( g0, ip1 ) )
         return 2;
 
     if( do_bin && !GBL.openOutputBinary( fout, outBin, 0, g0, js, ip1, ip2 ) )
@@ -93,16 +101,6 @@ void Pass2::close()
     if( meta.nC ) {
         meta.smpWritten = samps;
         meta.write( outBin, 0, -1, -1, js, ip1, ip2 );
-    }
-}
-
-
-void Pass2::set_ip1rep()
-{
-    if( js >= AP ) {
-        QMutexLocker    ml( &ip1Mtx );
-        if( !ip1rep.contains( ip1 ) )
-            ip1rep[ip1] = ip2;
     }
 }
 

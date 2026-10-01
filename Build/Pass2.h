@@ -36,7 +36,6 @@ public:
     void close();
 
 private:
-    void set_ip1rep();
     bool is_ip1rep();
     void initDigitalFields();
     bool openDigitalFiles( int g0 );
