@@ -13,7 +13,8 @@ class Pass2
 {
 private:
     qint64                  samps;
-    QString                 outBin;
+    QString                 outBin,
+                            geomMap;
     QFile                   fout;
     Meta                    meta;
     std::vector<BTYPE>      buf;

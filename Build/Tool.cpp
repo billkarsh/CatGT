@@ -916,6 +916,8 @@ bool P1EOF::init()
 {
 // Get all EOF metadata
 
+    std::vector<QString>    apMaps( GBL.vprb.size() ),
+                            lfMaps( GBL.vprb.size() );
     GT_iterator I;
     int         g, t;
     bool        isSeg = false;
@@ -923,32 +925,33 @@ bool P1EOF::init()
     while( I.next( g, t ) ) {
 
         if( GBL.ni ) {
-            if( !getMeta( isSeg, g, t, NI, 0, GBL.t_miss_ok ) )
+            if( !getMeta( isSeg, 0, g, t, NI, 0, GBL.t_miss_ok ) )
                 return false;
         }
 
         foreach( uint ip, GBL.vobx ) {
-            if( !getMeta( isSeg, g, t, OB, ip, GBL.t_miss_ok ) )
+            if( !getMeta( isSeg, 0, g, t, OB, ip, GBL.t_miss_ok ) )
                 return false;
         }
 
-        foreach( uint ip, GBL.vprb ) {
+        for( int i = 0, n = GBL.vprb.size(); i < n; ++i ) {
 
+            uint    ip      = GBL.vprb[i];
             bool    miss_ok = GBL.t_miss_ok || GBL.prb_miss_ok;
 
             if( GBL.ap ) {
-                if( !getMeta( isSeg, g, t, AP, ip, miss_ok ) )
+                if( !getMeta( isSeg, &apMaps[i], g, t, AP, ip, miss_ok ) )
                     return false;
             }
 
             if( GBL.lf ) {
                 switch( gP1LFCase.getCase( ip ) ) {
                     case 0:
-                        if( !getMeta( isSeg, g, t, LF, ip, miss_ok ) )
+                        if( !getMeta( isSeg, &lfMaps[i], g, t, LF, ip, miss_ok ) )
                             return false;
                     break;
                     case 1:
-                        if( !getMeta( isSeg, g, t, AP, ip, miss_ok ) )
+                        if( !getMeta( isSeg, &apMaps[i], g, t, AP, ip, miss_ok ) )
                             return false;
                     break;
                     default:
@@ -1014,7 +1017,7 @@ P1EOF::EOFDAT P1EOF::getEOFDAT( int g, int t, t_js js, int ip ) const
 // If true for any file {g, t}-sets should not be trimmed
 // because the run is not composed by time-aligned files.
 //
-bool P1EOF::getMeta( bool &isSeg, int g, int t, t_js js, int ip, bool t_miss_ok )
+bool P1EOF::getMeta( bool &isSeg, QString *map, int g, int t, t_js js, int ip, bool t_miss_ok )
 {
     QFileInfo   fim;
     KVParams    kvp;
@@ -1024,6 +1027,25 @@ bool P1EOF::getMeta( bool &isSeg, int g, int t, t_js js, int ip, bool t_miss_ok 
         case 0: break;
         case 1: return true;
         case 2: return false;
+    }
+
+    if( js >= AP ) {
+        KVParams::const_iterator    it_kvp;
+        it_kvp = kvp.find( "~snsGeomMap" );
+        if( it_kvp == kvp.end() )
+            it_kvp = kvp.find( "~snsShankMap" );
+
+        if( it_kvp != kvp.end() ) {
+            if( map->isEmpty() )
+                *map = it_kvp.value().toString();
+            else if( *map != it_kvp.value().toString() ) {
+                Log() <<
+                QString("Meta geomMap (or shankMap) for (js,ip)=(%1,%2),"
+                " doesn't match first, file '%3'.")
+                .arg( js ).arg( ip ).arg( fim.fileName() );
+                return false;
+            }
+        }
     }
 
     EOFDAT  D;
@@ -1047,6 +1069,13 @@ bool P1EOF::getMeta( bool &isSeg, int g, int t, t_js js, int ip, bool t_miss_ok 
     D.smp1st    = kvp["firstSample"].toLongLong();
     D.smpBytes  = sizeof(qint16) * kvp["nSavedChans"].toInt();
     D.span      = D.bytes / D.smpBytes / D.srate;
+
+    if( !D.bytes ) {
+        Log() <<
+        QString("Meta file missing (or zero) fileSizeBytes '%1'.")
+        .arg( fim.filePath() );
+        return false;
+    }
 
     id2dat[GTJSIP( g, t, js, ip )] = D;
     return true;

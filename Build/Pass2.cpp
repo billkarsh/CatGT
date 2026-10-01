@@ -38,6 +38,14 @@ int Pass2::first()
     // Block until output paths inited by ip1 representative (ip2)
 
     if( js >= AP ) {
+
+        KVParams::const_iterator    it_kvp;
+        it_kvp = meta.kvp.find( "~snsGeomMap" );
+        if( it_kvp == meta.kvp.end() )
+            it_kvp = meta.kvp.find( "~snsShankMap" );
+        if( it_kvp != meta.kvp.end() )
+            geomMap = it_kvp.value().toString();
+
         QMutexLocker    ml( &ip1Mtx );
         if( !ip1rep.contains( ip1 ) ) {
             ip1rep[ip1] = ip2;
@@ -176,6 +184,7 @@ bool Pass2::copyDigitalFiles( int ie )
 
 
 // - Check channel count matches first run.
+// - Check channel def   matches first run.
 // - Return sample count, or zero if error.
 //
 qint64 Pass2::checkCounts( int ie )
@@ -196,6 +205,22 @@ qint64 Pass2::checkCounts( int ie )
         " does not match run-zero count [%3], file: '%4'.")
         .arg( ie ).arg( chans ).arg( meta.nC ).arg( fim.fileName() ) ;
         return 0;
+    }
+
+    if( js >= AP && !geomMap.isEmpty() ) {
+
+        KVParams::const_iterator    it_kvp;
+        it_kvp = kvpn.find( "~snsGeomMap" );
+        if( it_kvp == kvpn.end() )
+            it_kvp = kvpn.find( "~snsShankMap" );
+
+        if( it_kvp == kvpn.end() || geomMap != it_kvp.value().toString() ) {
+            Log() <<
+            QString("Error at supercat run '%1': geomMap (or shankMap) for (js,ip)=(%2,%3)"
+            " doesn't match first, file '%4'.")
+            .arg( ie ).arg( js ).arg( ip2 ).arg( fim.fileName() );
+            return 0;
+        }
     }
 
     double  rate = E.rate( js, ip1 );
