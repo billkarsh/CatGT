@@ -47,14 +47,14 @@ protected:
                         gfix0,  // cur o_buf start in i_buf
                         maxInt;
     bool                doWrite,
-                        flip_NXT;
+                        flip_NP3;
 
 public:
     Pass1( t_js js_in, t_js js_out, int ip )
     :   hipass(0), lopass(0),
         js_in(js_in), js_out(js_out), ip(ip),
         i_nxt(0), i_lim(0), doWrite(false),
-        flip_NXT(false) {}
+        flip_NP3(false) {}
     virtual ~Pass1();
 
     virtual bool run() = 0;

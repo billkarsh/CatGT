@@ -3417,6 +3417,36 @@ void CGBL::parseNiChanCounts(
 }
 
 
+// Silently check existence of any meta file ip2 derived from given ip1.
+// Return ip2, or -1.
+//
+int CGBL::pass2_any_ip2_from_ip1( int ie, int g, int t, t_js js, int ip1 )
+{
+    QFileInfo   fim;
+    Elem        &E = velem[ie];
+
+    QMap<int,int>::const_iterator   it, end = E.mip2ip1.end();
+
+    foreach( uint ip2, vprb ) {
+
+        it = E.mip2ip1.find( ip2 );
+
+        if( it == end || it.value() != ip1 )
+            continue;
+
+        QString inMeta = inFile( ie, g, t, js, ip1, ip2, eMETA );
+
+        fim.setFile( inMeta );
+
+        if( fim.exists() )
+            return ip2;
+    }
+
+    Log() << QString("No ip2 meta files found for ip1 = %1.").arg( ip1 );
+    return -1;
+}
+
+
 bool CGBL::addAutoExtractors()
 {
     if( !auto_sync )
@@ -3534,10 +3564,13 @@ bool CGBL::addAutoExtractors()
         }
     }
     else {
-        foreach( int ip, set_ip1 ) {
+        foreach( int ip1, set_ip1 ) {
 
             if( !span ) {
-                if( openInputMeta( fim, kvp, ie, g0, t0, AP, ip, ip, false ) )
+                int ip2 = pass2_any_ip2_from_ip1( ie, g0, t0, AP, ip1 );
+                if( ip2 < 0 )
+                    return false;
+                if( openInputMeta( fim, kvp, ie, g0, t0, AP, ip1, ip2, false ) )
                     return false;
                 span = 500 * kvp["syncSourcePeriod"].toInt();
             }
@@ -3546,7 +3579,7 @@ bool CGBL::addAutoExtractors()
             X->ex       = eXD;
             X->usrord   = -1;
             X->js       = AP;
-            X->ip       = ip;
+            X->ip       = ip1;
             X->word     = -1;
             X->bit      = 6;
             X->span     = span;

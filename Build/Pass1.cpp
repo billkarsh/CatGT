@@ -36,7 +36,7 @@ void Pass1::mySaves()
 
 bool Pass1::splitShanks()
 {
-    flip_NXT =  meta.kvp["imDatPrb_type"].toInt() > 3000 &&
+    flip_NP3 =  meta.kvp["imDatPrb_type"].toInt() > 3000 &&
                 meta.kvp["imDatApi"].toString() < "4.0.2";
 
     if( js_in != AP )
@@ -533,9 +533,9 @@ bool Pass1::load( qint64 &xferBytes )
         return false;
     }
 
-// Flip if NXT stream
+// Flip if NP3 stream
 
-    if( flip_NXT ) {
+    if( flip_NP3 ) {
         qint16 *data = IBUF(i_lim);
         for( int it = 0; it < ntpts; ++it, data += meta.nC ) {
             // flip neurals

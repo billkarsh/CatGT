@@ -492,6 +492,7 @@ private:
     void parseNiChanCounts(
         int             (&niCumTypCnt)[CniCfg::niNTypes],
         const KVParams  &kvp );
+    int pass2_any_ip2_from_ip1( int ie, int g, int t, t_js js, int ip1 );
     bool addAutoExtractors();
     QString trim_adjust_slashes( const QString &dir );
     QString inPath( int ie, int g, t_js js, int ip1 );

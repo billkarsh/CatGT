@@ -1578,6 +1578,7 @@ command lines for TPrime.
 
 Version 5.4
 
+- Fix supercat issue finding metafiles.
 - Support NP1040, 1041, 1042, 1050, 1051, 1400, 2022, 3012, 3023, 3024.
 
 Version 5.3
