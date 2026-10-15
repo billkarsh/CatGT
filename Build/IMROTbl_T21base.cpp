@@ -367,7 +367,10 @@ int IMROTbl_T21base::selectSites4( const PAddr& adr, int writeMode ) const
         for( int itry = 1; itry <= 10; ++itry ) {
 
             err = np_writeProbeConfiguration(
-                    adr.slot, adr.port, adr.dock, writeMode == 1 );
+                    adr.slot, adr.port, adr.dock, true );
+
+            if( err == PROBE_DEGRADATION_ERROR && writeMode == 2 )
+                err = SUCCESS;
 
             if( err == SUCCESS ) {
                 if( itry > 1 ) {
