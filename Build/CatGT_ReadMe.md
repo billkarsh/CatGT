@@ -1576,6 +1576,10 @@ command lines for TPrime.
 
 ## Change Log
 
+Version 5.5
+
+- Fix AP2LF zero-filling.
+
 Version 5.4
 
 - Fix supercat issue finding metafiles.

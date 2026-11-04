@@ -78,13 +78,13 @@ bool Pass1AP2LF::run()
 // xxLxxxxxxxxxxxL... : Buffer holding nsmp
 // xxL                : first (partial) group
 //
-// offset : zero based step to next L
+// offset : zero based step to next L (= 2 in fig)
 //
 // (A) offset + 1               : count spanned by first group
 // (B) nsmp - (A)               : count excluding first group
 // (C) (nsmp - offset - 1) / DS : num whole groups after first
 // (D) nlf = 1 + (C)            : num L in buffer (first + wholes)
-// (E) (A) + DS * (C)           : count spanned by L's
+// (E) (A) + DS * (C)           : count from start, spanned by L's
 // (E) offset + 1 + DS * (nlf - 1)
 // (F) nsmp - (E)               : remainder count
 // (G) DS - (F)                 : count spanned by first group of next buffer
@@ -92,10 +92,17 @@ bool Pass1AP2LF::run()
 // (H) DS - 1 - nsmp + offset + 1 + DS * (nlf - 1)
 // (H) offset' = DS - nsmp + offset + DS * (nlf - 1)
 //
-// For zero filling, want remaining count of last buffer:
+// For zero filling, Pass1::inputSizeAndOverlap() first determines
+// a gap size based upon AP-band tracking of samps written and the
+// next firstSample, and then asks a proxy to write those zeros.
+// For the AP2LF case, though, the gap is larger by the last file's
+// remainder sample count, calculated as follows:
+//
 // (I) offset' + 1      : count spanned by first group of "next" virtual buffer
 // (J) DS - (I)         : remainder in last buffer
 // (J) DS - 1 - offset' : remainder from last file
+//
+// This is implemented in Pass1AP2LF::zero().
 //
 bool Pass1AP2LF::_write( qint64 bytes )
 {
@@ -112,7 +119,7 @@ bool Pass1AP2LF::_write( qint64 bytes )
     int nlf = 1 + (nsmp - offset - 1) / DS,
         nmv = nlf,
         dDS = DS * nC,
-        wrt;
+        wrt = nlf * smpBytes;
 
     qint16  *dst = &o_buf[0],
             *src = &o_buf[offset * nC];
@@ -128,8 +135,6 @@ bool Pass1AP2LF::_write( qint64 bytes )
 
     offset = DS - nsmp + offset + DS * (nlf - 1);
 
-    wrt = nlf * smpBytes;
-
     return Pass1::_write( wrt );
 }
 
@@ -138,8 +143,8 @@ bool Pass1AP2LF::zero( qint64 gapBytes, qint64 zfBytes )
 {
     int DS = GBL.ap2lf_dwnsmp;
 
-    gapBytes = meta.smpBytes * (DS - 1 - offset + gapBytes/meta.smpBytes) / DS;
-    zfBytes  = meta.smpBytes * (DS - 1 - offset + zfBytes /meta.smpBytes) / DS;
+    gapBytes = meta.smpBytes * ((DS - 1 - offset + gapBytes/meta.smpBytes) / DS);
+    zfBytes  = meta.smpBytes * ((DS - 1 - offset + zfBytes /meta.smpBytes) / DS);
     offset   = 0;   // want first sample of next file
 
     Log() <<
