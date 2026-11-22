@@ -2696,6 +2696,19 @@ void CGBL::fyi_sc_write()
 }
 
 
+// - If no ap samples then no lp samples.
+// - Else...
+// First lf is guaranteed at start of file, hence, always add 1.
+// Successive lf each additional "12."
+//
+// E.g. 1 lf if ap = [0..11], 2 lf if ap = [12..23]...
+//
+qint64 CGBL::ap2lfSamp( qint64 ap ) const
+{
+    return (ap > 0 ? 1 + (ap - 1) / ap2lf_dwnsmp : 0);
+}
+
+
 bool CGBL::makeOutputProbeFolder( int g0, int ip1 )
 {
     QString fyikey  = QString("outpath_parent_probe%1").arg( ip1 );

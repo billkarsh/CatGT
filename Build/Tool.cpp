@@ -692,7 +692,7 @@ void FOffsets::dwnSmp( int ip )
         QVector<qint64> &V = moff[s];
 
         for( int i = 1, n = V.size(); i < n; ++i )
-            V[i] /= GBL.ap2lf_dwnsmp;
+            V[i] = GBL.ap2lfSamp( V[i] );
     }
 }
 

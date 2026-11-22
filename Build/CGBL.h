@@ -423,6 +423,8 @@ public:
     void fyi_ct_write();
     void fyi_sc_write();
 
+    qint64 ap2lfSamp( qint64 ap ) const;
+
     bool makeOutputProbeFolder( int g0, int ip1 );
 
     QString inFile( int ie, int g, int t, t_js js, int ip1, int ip2, t_ex ex, XTR *X = 0 );

@@ -150,7 +150,7 @@ bool Pass1AP2LF::zero( qint64 gapBytes, qint64 zfBytes )
     Log() <<
     QString("Gap before file '%1' out_start_smp=%2 inp_gap_smp=%3 out_zeros_smp=%4")
     .arg( i_fi.fileName() )
-    .arg( meta.smpWritten / DS )
+    .arg( GBL.ap2lfSamp( meta.smpWritten ) )
     .arg( gapBytes / meta.smpBytes )
     .arg( zfBytes / meta.smpBytes );
 
@@ -159,7 +159,7 @@ bool Pass1AP2LF::zero( qint64 gapBytes, qint64 zfBytes )
 
     if( js_in >= AP && GBL.linefil ) {
         vSeg.push_back(
-        LineSeg( meta.smpWritten / DS, zfBytes / meta.smpBytes ) );
+        LineSeg( GBL.ap2lfSamp( meta.smpWritten ), zfBytes / meta.smpBytes ) );
     }
 
     qint64  o_bufBytes = o_buf.size() * sizeof(qint16);

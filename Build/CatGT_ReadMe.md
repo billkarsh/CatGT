@@ -1576,6 +1576,10 @@ command lines for TPrime.
 
 ## Change Log
 
+Version 5.6
+
+- Fix AP2LF ct_offset reporting.
+
 Version 5.5
 
 - Fix AP2LF zero-filling.
