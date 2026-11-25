@@ -91,16 +91,10 @@ bool Pass1AP2LF::run()
 // (H) DS - 1 - (F)             : offset to first L of next buffer
 // (H) DS - 1 - nsmp + offset + 1 + DS * (nlf - 1)
 // (H) offset' = DS - nsmp + offset + DS * (nlf - 1)
+// (H) offset' = offset + DS * nlf - nsmp
 //
-// For zero filling, Pass1::inputSizeAndOverlap() first determines
-// a gap size based upon AP-band tracking of samps written and the
-// next firstSample, and then asks a proxy to write those zeros.
-// For the AP2LF case, though, the gap is larger by the last file's
-// remainder sample count, calculated as follows:
-//
-// (I) offset' + 1      : count spanned by first group of "next" virtual buffer
-// (J) DS - (I)         : remainder in last buffer
-// (J) DS - 1 - offset' : remainder from last file
+// For zero filling, the same calculations apply as if gapSmp or zfSmp
+// had been loaded in place of nsmp.
 //
 // This is implemented in Pass1AP2LF::zero().
 //
@@ -133,7 +127,7 @@ bool Pass1AP2LF::_write( qint64 bytes )
     for( int i = 0; i < nmv; ++i, dst += nC, src += dDS )
         memcpy( dst, src, smpBytes );
 
-    offset = DS - nsmp + offset + DS * (nlf - 1);
+    offset += DS * nlf - nsmp;
 
     return Pass1::_write( wrt );
 }
@@ -141,26 +135,30 @@ bool Pass1AP2LF::_write( qint64 bytes )
 
 bool Pass1AP2LF::zero( qint64 gapBytes, qint64 zfBytes )
 {
-    int DS = GBL.ap2lf_dwnsmp;
+    qint64  lfWritten   = GBL.ap2lfSamp( meta.smpWritten );
+    int     DS          = GBL.ap2lf_dwnsmp,
+            nsmp        = zfBytes  / meta.smpBytes,
+            nlf_gap,
+            nlf;
 
-    gapBytes = meta.smpBytes * ((DS - 1 - offset + gapBytes/meta.smpBytes) / DS);
-    zfBytes  = meta.smpBytes * ((DS - 1 - offset + zfBytes /meta.smpBytes) / DS);
-    offset   = 0;   // want first sample of next file
+    nlf_gap = 1 + (gapBytes / meta.smpBytes - offset - 1) / DS;
+    nlf     = 1 + (nsmp - offset - 1) / DS;
 
     Log() <<
     QString("Gap before file '%1' out_start_smp=%2 inp_gap_smp=%3 out_zeros_smp=%4")
     .arg( i_fi.fileName() )
-    .arg( GBL.ap2lfSamp( meta.smpWritten ) )
-    .arg( gapBytes / meta.smpBytes )
-    .arg( zfBytes / meta.smpBytes );
+    .arg( lfWritten )
+    .arg( nlf_gap )
+    .arg( nlf );
 
-    if( zfBytes <= 0 )
+    if( nlf <= 0 )
         return true;
 
-    if( js_in >= AP && GBL.linefil ) {
-        vSeg.push_back(
-        LineSeg( GBL.ap2lfSamp( meta.smpWritten ), zfBytes / meta.smpBytes ) );
-    }
+    zfBytes = nlf * meta.smpBytes;
+    offset += DS * nlf - nsmp;
+
+    if( GBL.linefil )
+        vSeg.push_back( LineSeg( lfWritten, nlf ) );
 
     qint64  o_bufBytes = o_buf.size() * sizeof(qint16);
 

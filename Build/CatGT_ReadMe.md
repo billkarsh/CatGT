@@ -1576,6 +1576,10 @@ command lines for TPrime.
 
 ## Change Log
 
+Version 5.7
+
+- Rework AP2LF to fix phase issues.
+
 Version 5.6
 
 - Fix AP2LF ct_offset reporting.
